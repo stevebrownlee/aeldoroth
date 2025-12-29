@@ -1,80 +1,171 @@
+# Map of Aeldoroth
 
-**Image Type:** Fantasy World Map / Cartography
-**Style:** Classic AD&D / Old-School Fantasy Cartography
-**World Name:** Aeldoroth
+## Image Type
 
-**Core Instructions (High Priority):**
+**Fantasy World Atlas Map**
 
-* Create a **single cohesive fantasy world map** named **Aeldoroth**
-* Geography must be **natural, continuous, and believable**
-* Natural, believable geography defines some of the borders between regions but not always
-* Regions must **flow logically** into one another (no random biomes)
-* Map should feel **usable for tabletop role-playing**
-* **Readable labels**, clear terrain boundaries, strong contrast
-* Perspective: **top-down cartographic view**
+## Map Title
 
-**Art & Rendering Style:**
+**Aeldoroth**
 
-* Hand-drawn parchment map
-* Inked linework with restrained color washes
-* Cross-hatched forests, stippled mountains, textured coastlines
-* Medieval calligraphy for region names
-* Decorative compass rose, scale bar, subtle border
-* Muted earth tones, aged parchment texture
-* High detail, clean edges, no modern elements
+* No subtitle for map
 
 ---
 
-### Regional Layout (Very Important – Use Exact Placement)
+## PRIMARY STYLE LOCK (HIGHEST PRIORITY)
 
-**WEST**
+Create a **Fonstad-style academic fantasy atlas plate**, comparable to *The Atlas of Middle-earth*.
 
-* **Thornwood**: Not a forest. Fertile farmlands, gentle hills, rivers, roads, villages; clearly the safest and most welcoming region. At the center is the town of Thornwood. To the southeast of Thornwood should be the major city of Esfereld. To the north of Thornwood should be the town of Ubechlode.
+The map must look:
 
-* **Dimwood**: dark corrupted forest encroaching eastward, twisted trees, fog, shadow influence
+* Scholarly
+* Restrained
+* Terrain-driven
+* Suitable for a reference atlas or novel appendix
 
-**CENTRAL**
+This is **cartography**, not illustration.
 
-* **Rust Wastes**: blasted necromantic wasteland, undead city-state, black spires, ossified terrain, extreme danger
+---
+
+## CARTOGRAPHIC CONSTRUCTION RULES
+
+* Terrain is drawn first; labels are secondary
+* Geography follows real geological logic
+* No visible biome borders
+* No segmented or color-coded regions
+* All transitions are gradual and natural
+
+### Terrain Rendering
+
+* Mountains as continuous hand-inked ranges
+* Rivers follow valleys and watersheds
+* Forests taper organically
+* Deserts fade gradually from dry plains
+* Marshlands appear where rivers slow and spread
+* Coastlines are irregular and eroded
+
+---
+
+## COLOR & MATERIALS
+
+* Primarily monochrome ink
+* Very restrained sepia, olive, or pale gray washes
+* Color used only to gently differentiate terrain
+* No saturated colors
+* No glow, shimmer, or magical lighting
+* Aged parchment texture with subtle wear
+
+---
+
+## LABELING & TYPOGRAPHY (CRITICAL)
+
+* Labels float lightly over terrain
+* No boxed labels, banners, or region outlines
+* Fonts resemble Tolkien-era cartography
+* Region names are understated and secondary
+* Cities, ruins, and fortresses are small and subtle
+
+---
+
+## GEOGRAPHIC LAYOUT (TERRAIN-DRIVEN)
+
+### WESTERN LANDS
+
+Fertile farmlands, gentle hills, rivers, roads, villages; clearly the safest and most welcoming region.
+
+* Takes up the left third of the map horizontally
+* Fertile lowlands with rivers and roads
+* The land of the Western Lands degrades into the **Rust Wastes** to the east
+* The northwestern part of this region is defined by * **Dimwood**—a dark corrupted forest encroaching eastward, twisted trees, fog, shadow influence
+
+#### CITIES
+
+* **Thornwood** as a farming town located centrally in the region
+* **Esfereld** as a larger walled city to the southeast
+* **Ubechlode** as a smaller northern settlement with a thin road leading to the westernmost dwarf hold opening in the Broken Peaks
+
+### RUST WASTES (central third of map)
+
+A blasted necromantic wasteland, ossified terrain, extreme danger.
+
+#### CITIES
+
+* **Ebonfall**: Undead city-state named Ebonfall, black spires. Located in the northeast of the center of the region
 * **Underhearth**: massive underground dwarf-gnome civilization beneath central regions; surface marked by mountain vents, stone doors, rune circles; visually implied, not fully exposed
 
-**NORTH**
+### NORTHERN HIGHLANDS
 
-* **Broken Peaks**: jagged mountain range with ancient dwarven holds, contested territory
-* **Starfall Expanse**: enormous cosmic impact crater, warped land, alien geometry, unstable magic effects
-* **Ashen March**: volcanic highlands, lava flows, fire giant warzone; **Ashguard Fortress** holding a narrow pass
+* **Broken Peaks** as a single continuous mountain system. Ancient dwarven holds (unnamed) randomly carved into cliffs. It should extend from the Western Lands all the way to the eastern edge of the map, gently becoming the Ashen March (see below) in the east.
+* **Starfall Expanse** as a small portion of the northern region, south of the Broken Peaks just right of the middle of the mountain range. It should contain a very small meteor crater icon.
+* **Ashen March** is volcanic slopes that takes up the eastern fourth of the Broken Peaks
 
-**EAST**
+#### CITIES
 
-* **Singing Wastes**: crystalline desert, refractive sands, faint magical energy patterns, haunted appearance
-* **Blackmere Ruins**: marshy battlefield graveyard, broken fortifications, flooded ruins, undead presence
+* **Ashguard Fortress** is in the Ashen March and is guarding a narrow pass into the Ashen March
 
-**SOUTH**
+### SINGING WASTES
 
-* **Midnight Shore**: storm-lashed demon-plagued coastline, dark seas, glowing planar breaches along cliffs
+* **Singing Wastes** as pale, crystalline, wind-scoured desert that contains very small crystal icons subtle and geological, haunted appearance, middle east portion of map
+* **Blackmere Ruins** marshy battlefield graveyard, broken fortifications, flooded ruins, undead presence, southest portion of map
 
-**SOUTHWEST**
+#### CITIES
 
-* **Verdant Scar**: dense hostile elven jungle, overgrown ruins, aggressive borders, oppressive canopy
+* **Aroneth**: A ruined, crumbling, abandoned city in the northern part of the Blackmere Ruins. Small icon.
+* **Rus**: A loose collection of villages in the far east of the Singing Wastes
+
+### MIDNIGHT SHORE
+
+* **Midnight Shore** south of the Rust Wastes, storm-lashed cliffs and dark seas with planar disturbances suggested by fractured land
+
+#### CITIES
+
+* **Dunshale**: A mysterious series of doorways and stairs and platforms carved into the side of the cliffs
+
+
+### SOUTHWEST
+
+* **Verdant Scar** should take up about one-fifth the height, and one-fifth the width of the map. It contains dense jungle canopy with overgrown ruins barely visible beneath foliage and dark rivers
 
 ---
 
-### Labeling & Usability Requirements
+## ROADS
 
-* All regions **clearly labeled**
-* Text must be **legible at full map scale**
-* Roads, rivers, mountains, forests clearly distinguished
-* No character portraits, no UI elements, no modern fonts
-* Map should look suitable for a **boxed-set campaign world**
+- A thin line road should connect all cities in the western lands
+- Esfereld has a connecting road to Ebonfall
+- Ebonfall has a connecting road to the Ashguard Fortress
+- Ebonfall has a connecting road to the Aroneth
+- Ebonfall has a connecting road to one of the dwarven holds in the Broken Peaks to the north
+- Aroneth has a connecting path to the villages of Rus
+
 
 ---
 
-### Negative Constraints (Strongly Enforced)
+## MAP ELEMENTS
 
-* No sci-fi aesthetics
-* No photorealism
+* Simple compass rose
+* Modest scale bar
+* Thin decorative border
+* No embellishment beyond necessity
+
+---
+
+## STRICT NEGATIVE CONSTRAINTS
+
+* No cartoon style
+* No illustrative fantasy icons
+* No bright or saturated colors
+* No glowing or magical effects
+* No thick borders
+* No region blobs
 * No modern typography
-* No floating islands
-* No abstract shapes
-* No bright neon colors
-* No random biome placement
+* No board-game aesthetics
+
+---
+
+## AESTHETIC TONE
+
+* Ancient
+* Scholarly
+* Grounded
+* Timeless
+* Atlas-quality realism
