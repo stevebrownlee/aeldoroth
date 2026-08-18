@@ -149,6 +149,29 @@ defmodule EngineCore.Fold do
       :boundary_catchup ->
         world
 
+      :hazard_triggered ->
+        id = p.id
+
+        cond do
+          Map.has_key?(world.hazards, id) ->
+            %{world | hazards: Map.update!(world.hazards, id, &%{&1 | triggered: true})}
+
+          Map.has_key?(world.hazards, to_string(id)) ->
+            %{
+              world
+              | hazards: Map.update!(world.hazards, to_string(id), &%{&1 | triggered: true})
+            }
+
+          true ->
+            world
+        end
+
+      :hazard_avoided ->
+        world
+
+      :cadence_tick ->
+        world
+
       other ->
         raise ArgumentError, "unknown payload kind: #{inspect(other)}"
     end
