@@ -2,20 +2,27 @@ defmodule EngineCore.Rules.Movement do
   @moduledoc "Room-to-room traversal along edges. Sealed edges block; permeability routing is Plan 2."
   alias EngineCore.{Ledger, Types, World}
 
-  @spec traverse(World.t(), :rand.state(), String.t(), String.t()) ::
+  @spec traverse(World.t(), :rand.state(), String.t(), String.t(), keyword()) ::
           {:ok, Ledger.Event.t(), World.t(), :rand.state()} | {:error, atom()}
-  def traverse(world, rng, agent_id, to) do
+  def traverse(world, rng, agent_id, to, opts \\ []) do
     with {:ok, agent} <- fetch_agent(world, agent_id),
          :ok <- check_alive(agent),
          {:ok, _place} <- fetch_place(world, to),
          :ok <- check_edge(world, agent.place_id, to) do
       tick = world.tick + 1
+      careful = Keyword.get(opts, :careful, false)
 
       ev = %Ledger.Event{
         seq: 0,
         tick: tick,
         class: :world,
-        payload: %{kind: :move, agent_id: agent_id, from: agent.place_id, to: to}
+        payload: %{
+          kind: :move,
+          agent_id: agent_id,
+          from: agent.place_id,
+          to: to,
+          careful: careful
+        }
       }
 
       w2 = %{
@@ -33,6 +40,7 @@ defmodule EngineCore.Rules.Movement do
 
   defp check_alive(agent) do
     body = agent.body || %{hp: 1, conditions: []}
+
     if body.hp == 0 or :dead in (body.conditions || []) do
       {:error, :dead}
     else

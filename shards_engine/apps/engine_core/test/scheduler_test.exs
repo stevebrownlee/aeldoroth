@@ -1,8 +1,9 @@
 defmodule EngineCore.SchedulerTest do
   use ExUnit.Case, async: true
-  alias EngineCore.{Dice, Fold, Loader, Scheduler, Signals, Types}
+  alias EngineCore.{Dice, Fold, Ledger, Loader, Scheduler, Signals, Types}
 
   path = Path.expand("../../../../the-ruined-tower/ruined_tower.yaml", __DIR__)
+
   @yaml if File.exists?(path),
           do: path,
           else: Path.expand("../../../../../../the-ruined-tower/ruined_tower.yaml", __DIR__)
@@ -11,9 +12,14 @@ defmodule EngineCore.SchedulerTest do
     {:ok, w} = Loader.load(@yaml)
     # a deafening alarm lands in guard_room at tick 1
     {:ok, [_emit], w1} =
-      Signals.emit(%{w | tick: 0}, "alarm_tripwire", :sound,
-        %{class: :alarm, threat: true, about: "pc1", count: 1}, 9,
-        "pots and pans crashing")
+      Signals.emit(
+        %{w | tick: 0},
+        "alarm_tripwire",
+        :sound,
+        %{class: :alarm, threat: true, about: "pc1", count: 1},
+        9,
+        "pots and pans crashing"
+      )
 
     {:ok, events, w2, _rng} = Scheduler.advance(w1, Dice.new(21))
 
@@ -22,9 +28,14 @@ defmodule EngineCore.SchedulerTest do
     refute arrived == []
 
     gz_arrival = Enum.find(arrived, &(&1.payload.place_id == "guard_room"))
+
     if gz_arrival do
-      assert Enum.any?(events, &(&1.payload.kind == :boundary_wake and
-                                 &1.payload.id == "guard_room_zone"))
+      assert Enum.any?(
+               events,
+               &(&1.payload.kind == :boundary_wake and
+                   &1.payload.id == "guard_room_zone")
+             )
+
       assert w2.agents["goblin_guard_1"].attention == :alert
       assert w2.agents["goblin_guard_1"].cadence.next_due == 2
     end
@@ -42,19 +53,36 @@ defmodule EngineCore.SchedulerTest do
       %{w | tick: 130}
       |> Map.update!(:agents, fn agents ->
         Map.update!(agents, "goblin_guard_1", fn a ->
-          %{a | commitments: [%Types.Commitment{id: "guard_watch_rotation",
-            debtor: "goblin_guard_1", deed: "keep_watch", due: 30, every: 30,
-            priority: 5}]}
+          %{
+            a
+            | commitments: [
+                %Types.Commitment{
+                  id: "guard_watch_rotation",
+                  debtor: "goblin_guard_1",
+                  deed: "keep_watch",
+                  due: 30,
+                  every: 30,
+                  priority: 5
+                }
+              ]
+          }
         end)
       end)
 
-    w2 = Map.update!(w.boundaries, "guard_room_zone", fn b ->
-      %{b | state: :awake, last_trigger_tick: 10}
-    end) |> then(&%{w | boundaries: &1, tick: 130})
+    w2 =
+      Map.update!(w.boundaries, "guard_room_zone", fn b ->
+        %{b | state: :awake, last_trigger_tick: 10}
+      end)
+      |> then(&%{w | boundaries: &1, tick: 130})
 
     {:ok, events, w3, _} = Scheduler.advance(w2, Dice.new(2))
-    assert Enum.any?(events, &(&1.payload.kind == :commitment_due and
-                               &1.payload.id == "guard_watch_rotation"))
+
+    assert Enum.any?(
+             events,
+             &(&1.payload.kind == :commitment_due and
+                 &1.payload.id == "guard_watch_rotation")
+           )
+
     # a still-due commitment holds sleep (pending_among? includes :due)
     assert w3.agents["goblin_guard_1"].commitments
            |> Enum.any?(&(&1.id == "guard_watch_rotation" and &1.status == :due))
@@ -62,16 +90,102 @@ defmodule EngineCore.SchedulerTest do
 
   test "advance runs wolf pack cadence against intruders" do
     {:ok, w} = Loader.load(@yaml)
-    w = w
-        |> Map.update!(:agents, fn a -> Map.put(a, "pc1",
-            struct!(Types.Agent, id: "pc1", name: "PC", tier: 3, place_id: "beast_pen")) end)
-        |> Map.update!(:boundaries, fn b ->
-            Map.update!(b, "wolf_pack", fn z -> %{z | state: :awake} end) end)
-        |> Map.update!(:agents, fn a ->
-            Map.update!(a, "wolf_1", fn wolf ->
-              %{wolf | attention: :alert, cadence: %{every: 5, next_due: 1}} end) end)
+
+    w =
+      w
+      |> Map.update!(:agents, fn a ->
+        Map.put(
+          a,
+          "pc1",
+          struct!(Types.Agent, id: "pc1", name: "PC", tier: 3, place_id: "beast_pen")
+        )
+      end)
+      |> Map.update!(:boundaries, fn b ->
+        Map.update!(b, "wolf_pack", fn z -> %{z | state: :awake} end)
+      end)
+      |> Map.update!(:agents, fn a ->
+        Map.update!(a, "wolf_1", fn wolf ->
+          %{wolf | attention: :alert, cadence: %{every: 5, next_due: 1}}
+        end)
+      end)
 
     {:ok, events, _w2, _} = Scheduler.advance(%{w | tick: 0}, Dice.new(4))
     assert Enum.any?(events, &(Map.get(&1.payload, :kind) in [:to_hit, :damage]))
+  end
+
+  test "react turns moves and damage into side-effect signals and boundary wakes" do
+    {:ok, w} = Loader.load(@yaml)
+
+    w =
+      put_in(
+        w.agents["pc1"],
+        struct!(Types.Agent, id: "pc1", name: "PC", tier: 3, place_id: "library")
+      )
+
+    moves = [
+      %Ledger.Event{
+        seq: 1,
+        tick: 0,
+        class: :world,
+        payload: %{
+          kind: :move,
+          agent_id: "pc1",
+          from: "entry_hall",
+          to: "library",
+          careful: false
+        }
+      }
+    ]
+
+    w1 = Fold.fold(w, moves)
+
+    {:ok, events, w2, _} = Scheduler.react(w1, Dice.new(17), moves)
+
+    emits = Enum.filter(events, &(&1.payload.kind == :signal_emitted))
+
+    assert Enum.any?(
+             emits,
+             &(&1.payload.signal_kind == :sound and
+                 &1.payload.content_core.class == :footsteps)
+           )
+
+    # rats in the library hear the arrival this tick
+    assert Enum.any?(
+             events,
+             &(&1.payload.kind == :signal_received and
+                 &1.payload.agent_id in ~w(giant_rat_1 giant_rat_2 giant_rat_3))
+           )
+
+    assert Fold.fold(w1, events) == w2
+  end
+
+  test "react runs hazard checks on careless moves" do
+    {:ok, w} = Loader.load(@yaml)
+
+    w =
+      put_in(
+        w.agents["pc1"],
+        struct!(Types.Agent, id: "pc1", name: "PC", tier: 3, place_id: "entry_hall")
+      )
+
+    moves = [
+      %Ledger.Event{
+        seq: 1,
+        tick: 0,
+        class: :world,
+        payload: %{
+          kind: :move,
+          agent_id: "pc1",
+          from: "entry_hall",
+          to: "guard_room",
+          careful: false
+        }
+      }
+    ]
+
+    w1 = Fold.fold(w, moves)
+
+    {:ok, events, _w2, _} = Scheduler.react(w1, Dice.new(17), moves)
+    assert Enum.any?(events, &(&1.payload.kind in [:hazard_triggered, :hazard_avoided]))
   end
 end
