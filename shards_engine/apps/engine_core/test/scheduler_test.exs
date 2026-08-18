@@ -72,6 +72,6 @@ defmodule EngineCore.SchedulerTest do
               %{wolf | attention: :alert, cadence: %{every: 5, next_due: 1}} end) end)
 
     {:ok, events, _w2, _} = Scheduler.advance(%{w | tick: 0}, Dice.new(4))
-    assert Enum.any?(events, &(Map.get(&1.payload, :kind) in [:to_hit, :damage] or Map.get(&1.payload, :purpose) in [:to_hit, :damage]))
+    assert Enum.any?(events, &(Map.get(&1.payload, :kind) in [:to_hit, :damage]))
   end
 end
