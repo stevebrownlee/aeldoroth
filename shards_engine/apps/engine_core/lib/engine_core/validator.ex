@@ -5,6 +5,7 @@ defmodule EngineCore.Validator do
 
   @monster_req ~w(id name hit_dice hit_points armor_class thac0 morale current_room_id)
   @orphan_fragment ~r/\(\d+ \(\d/
+  @valid_triggers MapSet.new(~w(presence_crossing signal_arrived commitment_due coarse_tick))
 
   @doc """
   Reads YAML from file and runs structural checks.
@@ -19,8 +20,15 @@ defmodule EngineCore.Validator do
   Runs structural checks on parsed YAML map.
   """
   def check(yaml) when is_map(yaml) do
+    rooms_set = room_ids(yaml)
+    agents_set = agent_ids(yaml)
+
     errors =
-      monster_errors(yaml) ++ text_errors(yaml) ++ room_errors(yaml)
+      monster_errors(yaml) ++
+        text_errors(yaml) ++
+        room_errors(yaml) ++
+        boundary_errors(yaml, rooms_set) ++
+        commitment_errors(yaml, agents_set)
 
     if errors == [] do
       :ok
@@ -117,4 +125,106 @@ defmodule EngineCore.Validator do
 
   defp walk_strings(s, path) when is_binary(s), do: [%{path: path, elem: s}]
   defp walk_strings(_, _), do: []
+
+  defp room_ids(%{"rooms" => rooms}) when is_map(rooms) do
+    rooms
+    |> Enum.flat_map(fn {k, r} ->
+      id = if is_map(r), do: r["id"], else: nil
+      [k, id]
+    end)
+    |> Enum.filter(&is_binary/1)
+    |> MapSet.new()
+  end
+
+  defp room_ids(%{"rooms" => rooms}) when is_list(rooms) do
+    rooms
+    |> Enum.map(fn r -> if is_map(r), do: r["id"], else: nil end)
+    |> Enum.filter(&is_binary/1)
+    |> MapSet.new()
+  end
+
+  defp room_ids(_), do: MapSet.new()
+
+  defp agent_ids(yaml) do
+    enemies = yaml["initial_enemies"] || yaml["monsters"]
+
+    cond do
+      is_map(enemies) ->
+        enemies
+        |> Enum.flat_map(fn {k, m} ->
+          id = if is_map(m), do: m["id"], else: nil
+          [k, id]
+        end)
+        |> Enum.filter(&is_binary/1)
+        |> MapSet.new()
+
+      is_list(enemies) ->
+        enemies
+        |> Enum.map(fn m -> if is_map(m), do: m["id"], else: nil end)
+        |> Enum.filter(&is_binary/1)
+        |> MapSet.new()
+
+      true ->
+        MapSet.new()
+    end
+  end
+
+  defp boundary_errors(%{"boundaries" => bs}, room_ids) when is_list(bs) do
+    Enum.flat_map(bs, fn b ->
+      id = b["id"] || "?"
+
+      cond do
+        b["place"] == nil and b["group"] == nil ->
+          ["boundary #{id}: needs place or group scope"]
+
+        b["place"] != nil and b["group"] != nil ->
+          ["boundary #{id}: place and group are mutually exclusive"]
+
+        true ->
+          []
+      end ++
+        trigger_errors(id, b) ++ scope_errors(id, b, room_ids)
+    end)
+  end
+
+  defp boundary_errors(_, _), do: []
+
+  defp trigger_errors(id, b) do
+    b
+    |> Map.get("triggers", [])
+    |> Enum.flat_map(fn t ->
+      if MapSet.member?(@valid_triggers, t),
+        do: [],
+        else: ["boundary #{id}: invalid trigger #{t}"]
+    end)
+  end
+
+  defp scope_errors(id, b, room_ids) do
+    place = b["place"]
+
+    unknown_place =
+      if place != nil and not MapSet.member?(room_ids, place),
+        do: ["boundary #{id}: unknown place #{place}"],
+        else: []
+
+    coarse_on_group =
+      if b["group"] != nil and "coarse_tick" in (b["triggers"] || []),
+        do: ["boundary #{id}: coarse_tick is reserved for place boundaries"],
+        else: []
+
+    unknown_place ++ coarse_on_group
+  end
+
+  defp commitment_errors(%{"initial_commitments" => cs}, agent_ids)
+       when is_list(cs) do
+    Enum.flat_map(cs, fn c ->
+      id = c["id"] || "?"
+
+      if c["debtor"] in agent_ids,
+        do: [],
+        else: ["commitment #{id}: unknown debtor #{c["debtor"]}"]
+    end)
+  end
+
+  defp commitment_errors(_, _), do: []
 end

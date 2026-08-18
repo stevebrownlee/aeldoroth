@@ -59,4 +59,51 @@ defmodule EngineCore.ValidatorTest do
     assert {:error, errors} = EngineCore.Validator.check(bad)
     assert Enum.any?(errors, &(&1 =~ "unknown room"))
   end
+
+  test "boundary validation: unknown place, bad trigger, coarse_tick on group scope" do
+    base = %{"rooms" => %{}, "initial_enemies" => %{}}
+
+    assert {:error, errs} =
+             EngineCore.Validator.check(
+               Map.put(base, "boundaries", [
+                 %{"id" => "b1", "place" => "nowhere", "triggers" => ["presence_crossing"]}
+               ])
+             )
+
+    assert "boundary b1: unknown place nowhere" in errs
+
+    assert {:error, errs2} =
+             EngineCore.Validator.check(
+               Map.put(base, "boundaries", [
+                 %{"id" => "b1", "place" => "r1", "triggers" => ["nonsense"]}
+               ])
+             )
+
+    assert "boundary b1: invalid trigger nonsense" in errs2
+
+    assert {:error, errs3} =
+             EngineCore.Validator.check(
+               Map.put(base, "boundaries", [
+                 %{"id" => "b1", "group" => "wolf", "triggers" => ["coarse_tick"]}
+               ])
+             )
+
+    assert "boundary b1: coarse_tick is reserved for place boundaries" in errs3
+
+    assert {:error, errs4} =
+             EngineCore.Validator.check(
+               Map.merge(base, %{
+                 "boundaries" => [
+                   %{"id" => "b1", "place" => "r1", "triggers" => ["presence_crossing"]}
+                 ],
+                 "rooms" => %{"r1" => %{"id" => "r1"}},
+                 "initial_enemies" => %{"g1" => %{"id" => "g1"}},
+                 "initial_commitments" => [
+                   %{"id" => "c1", "debtor" => "ghost", "deed" => "x", "due" => 5}
+                 ]
+               })
+             )
+
+    assert "commitment c1: unknown debtor ghost" in errs4
+  end
 end

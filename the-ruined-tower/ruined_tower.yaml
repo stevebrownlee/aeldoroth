@@ -108,6 +108,7 @@ rooms:
     traps:
       - id: "alarm_tripwire"
         type: "alarm"
+        bound_exit: "east"
         difficulty_class: 12
         damage: "0"
         description: "Crude tripwire across the eastern passage, connected to hanging pots and pans. Auto-detect if moving carefully, otherwise Thief 30%."
@@ -992,3 +993,48 @@ initial_treasure:
     is_magical: true
     effect: "No mechanical benefit but valuable for sale (75 gp) or magical research. Connects to campaign lore and Vaelith's story."
     is_collected: false
+
+# --- Agent engine seed data (spec sections 4.2, 5.4; decisions 25, 30) ---
+boundaries:
+  - id: "guard_room_zone"
+    place: "guard_room"
+    triggers: ["presence_crossing", "signal_arrived"]
+    wake_on_intensity: 4
+    sleep_after: 60
+  - id: "chiefs_room_zone"
+    place: "chiefs_room"
+    triggers: ["presence_crossing", "signal_arrived"]
+    wake_on_intensity: 5
+    sleep_after: 80
+  - id: "library_zone"
+    place: "library"
+    triggers: ["presence_crossing", "signal_arrived"]
+    wake_on_intensity: 6
+    sleep_after: 40
+  - id: "wolf_pack"
+    group: "wolf"
+    triggers: ["presence_crossing", "signal_arrived"]
+    wake_on_intensity: 6
+    sleep_after: 30
+  - id: "skeleton_sentinel"
+    place: "ritual_chamber"
+    triggers: ["presence_crossing"]
+
+initial_commitments:
+  - id: "guard_watch_rotation"
+    debtor: "goblin_guard_1"
+    deed: "keep_watch"
+    due: 30
+    every: 30
+    priority: 5
+  - id: "east_passage_patrol"
+    debtor: "goblin_guard_3"
+    deed: "patrol_east_passage"
+    due: 45
+    every: 45
+    priority: 4
+  - id: "grisk_relocation_deadline"
+    debtor: "grisk_the_snatcher"
+    deed: "relocate_treasure_if_alarmed"
+    due: 120
+    priority: 8
