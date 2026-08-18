@@ -170,7 +170,9 @@ defmodule EngineCore.Fold do
         world
 
       :cadence_tick ->
-        world
+        update_agent(world, p.agent_id, fn a ->
+          %{a | cadence: %{a.cadence | next_due: p.next_due}}
+        end)
 
       other ->
         raise ArgumentError, "unknown payload kind: #{inspect(other)}"

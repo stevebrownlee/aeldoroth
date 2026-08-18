@@ -41,6 +41,47 @@ defmodule EngineCore.CognitionTest do
     assert Enum.all?(events, &(&1.payload.kind == :hazard_avoided))
   end
 
+  test "damage traps on careless crossing deal dice damage with a ledgered roll" do
+    {:ok, w} = Loader.load(@yaml)
+
+    w =
+      put_pc(w, "guard_room")
+      |> update_agent("pc1", fn a -> %{a | body: %{a.body | hp: 10}} end)
+
+    {:ok, events, w2, _} =
+      Hazard.check_move(w, Dice.new(2), move("guard_room", "chiefs_room", false))
+
+    # seed 2: all three place-bound hazards on this crossing trigger,
+    # sorted by id — caltrops (1d4=1), false_cache_needle (1d4=1), pit_trap (1d6=3)
+    for id <- ["caltrops", "false_cache_needle", "pit_trap"] do
+      assert Enum.any?(
+               events,
+               &(&1.payload[:kind] == :hazard_triggered and &1.payload[:id] == id)
+             )
+    end
+
+    dice =
+      Enum.find(events, fn e ->
+        e.class == :dice and e.payload[:purpose] == :hazard_damage and
+          e.payload[:hazard_id] == "pit_trap"
+      end)
+
+    assert dice.payload[:sides] == 6
+    assert dice.payload[:rolls] == [3]
+    assert dice.payload[:amount] == 3
+
+    assert Enum.any?(
+             events,
+             &(&1.payload[:kind] == :damage and &1.payload[:target_id] == "pc1")
+           )
+
+    assert w2.agents["pc1"].body.hp == 5
+
+    for id <- ["caltrops", "false_cache_needle", "pit_trap"] do
+      assert w2.hazards[id].triggered == true
+    end
+  end
+
   test "skeleton pattern strikes intruders entering its chamber" do
     {:ok, w} = Loader.load(@yaml)
     w = w |> put_pc("library") |> wake_boundary("skeleton_sentinel")
