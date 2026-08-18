@@ -33,6 +33,12 @@ defmodule EngineCore.FoldTest do
     assert Fold.fold(w2, []) == w2
   end
 
+  test "out-of-order events preserve tick monotonicity", %{w: w} do
+    w1 = Fold.apply(w, ev(1, 3, %{kind: :damage, target_id: "g1", amount: 1}))
+    w2 = Fold.apply(w1, ev(2, 1, %{kind: :damage, target_id: "g1", amount: 1}))
+    assert w2.tick == 3
+  end
+
   test "unknown payload kind raises" do
     assert_raise ArgumentError, ~r/unknown payload kind/, fn ->
       Fold.apply(%World{}, ev(1, 0, %{kind: :teleport}))

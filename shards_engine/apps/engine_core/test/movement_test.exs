@@ -40,4 +40,12 @@ defmodule EngineCore.MovementTest do
     assert {:error, :no_agent} = Movement.traverse(w, EngineCore.Dice.new(1), "nope", "guard_room")
     assert {:error, :no_place} = Movement.traverse(w, EngineCore.Dice.new(1), "g1", "nowhere")
   end
+
+  test "dead agent cannot traverse", %{w: w} do
+    w_hp0 = put_in(w.agents["g1"].body.hp, 0)
+    assert {:error, :dead} = Movement.traverse(w_hp0, EngineCore.Dice.new(1), "g1", "guard_room")
+
+    w_dead = put_in(w.agents["g1"].body.conditions, [:dead])
+    assert {:error, :dead} = Movement.traverse(w_dead, EngineCore.Dice.new(1), "g1", "guard_room")
+  end
 end

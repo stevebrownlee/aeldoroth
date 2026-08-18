@@ -8,7 +8,7 @@ defmodule EngineCore.Fold do
 
   @spec apply(World.t(), Ledger.Event.t()) :: World.t()
   def apply(world, %Ledger.Event{tick: tick, payload: %{kind: kind} = p}) do
-    world = %{world | tick: tick}
+    world = %{world | tick: max(world.tick, tick)}
 
     case kind do
       :move ->
@@ -20,7 +20,9 @@ defmodule EngineCore.Fold do
         end)
 
       :death ->
-        update_agent(world, p.agent_id, &%{&1 | capabilities: []})
+        update_agent(world, p.agent_id, fn a ->
+          %{a | capabilities: [], body: %{a.body | conditions: Enum.uniq([:dead | a.body.conditions])}}
+        end)
 
       :morale_break ->
         update_agent(world, p.agent_id, fn a ->
@@ -34,6 +36,8 @@ defmodule EngineCore.Fold do
         raise ArgumentError, "unknown payload kind: #{inspect(other)}"
     end
   end
+
+  def apply(world, %Ledger.Event{}), do: world
 
   defp update_agent(world, id, fun) do
     case World.agent(world, id) do

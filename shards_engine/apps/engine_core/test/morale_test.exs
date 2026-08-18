@@ -30,6 +30,17 @@ defmodule EngineCore.MoraleTest do
     g1 = World.agent(w2, "g1")
     assert g1.body.conditions == [] or :fleeing in g1.body.conditions
     assert Enum.all?(events, &(&1.payload[:agent_id] != "l")), "dead do not roll"
+
+    dice_ev = Enum.find(events, &(&1.class == :dice and &1.payload[:purpose] == :morale and &1.payload[:agent_id] == "g1"))
+    has_break = Enum.any?(events, &(&1.payload[:kind] == :morale_break and &1.payload[:agent_id] == "g1"))
+
+    if :fleeing in g1.body.conditions do
+      assert has_break
+      assert dice_ev != nil and dice_ev.payload.held == false
+    else
+      assert not has_break
+      if dice_ev, do: assert dice_ev.payload.held == true
+    end
   end
 
   test "50% casualties trigger" do
@@ -53,5 +64,16 @@ defmodule EngineCore.MoraleTest do
     break_ev = Enum.find(events, &(&1.payload[:kind] == :morale_break))
     assert break_ev.tick == 2
     assert :fleeing in World.agent(w2, "g1").body.conditions
+  end
+
+  test "dead 1-HD agent does not trigger leader down" do
+    agents = %{
+      "g1" => gob("g1", hd: 1, hp: 0),
+      "g2" => gob("g2", hd: 1, hp: 5),
+      "g3" => gob("g3", hd: 1, hp: 5)
+    }
+
+    w = %World{places: %{}, edges: [], agents: agents, items: %{}, tick: 0}
+    assert {:ok, [], ^w, _} = Morale.check(w, EngineCore.Dice.new(3), ["g1", "g2", "g3"])
   end
 end

@@ -33,6 +33,7 @@ defmodule EngineCore.SavesTest do
     assert ev.payload.purpose == :save and ev.payload.category == :death
     assert is_integer(ev.payload.roll) and is_boolean(ev.payload.saved)
     assert ev.payload.target == 14
+    assert ev.payload.saved == (ev.payload.roll >= ev.payload.target)
     assert {:error, :no_agent} = Saves.check(w, EngineCore.Dice.new(11), "nope", :death)
   end
 end

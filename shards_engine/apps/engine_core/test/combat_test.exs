@@ -1,6 +1,6 @@
 defmodule EngineCore.CombatTest do
   use ExUnit.Case, async: true
-  alias EngineCore.{Rules.Combat, Types, World}
+  alias EngineCore.{Fold, Rules.Combat, Types, World}
 
   defp world do
     g =
@@ -78,5 +78,33 @@ defmodule EngineCore.CombatTest do
     {o1, _} = Combat.initiative(rng, ["g1", "pc1"])
     {o2, _} = Combat.initiative(rng, ["g1", "pc1"])
     assert Enum.sort(o1) == ["g1", "pc1"] and o1 == o2
+  end
+
+  test "lethal attack emits death event, clears capabilities, adds :dead condition, and matches fold invariant" do
+    w0 = put_in(world().agents["g1"].body.hp, 1)
+
+    {events, w_result} =
+      Enum.find_value(1..100, fn seed ->
+        case Combat.attack(w0, EngineCore.Dice.new(seed), "pc1", "g1") do
+          {:ok, [_, %{payload: %{kind: :damage}}, %{payload: %{kind: :death}}] = evs, w_out, _} ->
+            {evs, w_out}
+
+          _ ->
+            nil
+        end
+      end)
+
+    assert [
+             %{class: :dice, payload: %{hit: true}},
+             %{class: :world, payload: %{kind: :damage, target_id: "g1"}},
+             %{class: :world, payload: %{kind: :death, agent_id: "g1"}}
+           ] = events
+
+    g_dead = World.agent(w_result, "g1")
+    assert g_dead.body.hp == 0
+    assert g_dead.capabilities == []
+    assert :dead in g_dead.body.conditions
+
+    assert Fold.fold(w0, events) == w_result
   end
 end

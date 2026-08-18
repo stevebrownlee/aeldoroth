@@ -41,8 +41,13 @@ defmodule EngineCore.Loader do
 
     edges =
       for r <- rooms,
-          c <- extract_connections(r),
-          do: %Types.Edge{id: :"#{r["id"]}__#{c}", from: r["id"], to: c}
+          c <- extract_exits(r),
+          do: %Types.Edge{
+            id: :"#{r["id"]}__#{c.target}",
+            from: r["id"],
+            to: c.target,
+            sealed: c.sealed
+          }
 
     monsters = extract_elements(yaml, ["initial_enemies", "monsters"])
     agents = Map.new(monsters, fn m -> {m["id"], agent_from(m)} end)
@@ -66,16 +71,27 @@ defmodule EngineCore.Loader do
   end
 
   defp extract_connections(r) do
+    r
+    |> extract_exits()
+    |> Enum.map(& &1.target)
+  end
+
+  defp extract_exits(r) do
     cond do
       is_list(r["connections"]) ->
-        r["connections"]
+        Enum.map(r["connections"], fn target -> %{target: target, sealed: false} end)
 
       is_map(r["exits"]) ->
         Enum.map(r["exits"], fn
-          {_dir, target} when is_binary(target) -> target
-          {_dir, %{"target_room_id" => target}} when is_binary(target) -> target
-          {_dir, %{target_room_id: target}} when is_binary(target) -> target
-          _ -> nil
+          {_dir, target} when is_binary(target) ->
+            %{target: target, sealed: false}
+
+          {_dir, %{"target_room_id" => target} = map} when is_binary(target) ->
+            locked = map["is_locked"] == true or (not is_nil(map["password_required"]) and map["password_required"] != false)
+            %{target: target, sealed: locked}
+
+          _ ->
+            nil
         end)
         |> Enum.reject(&is_nil/1)
 
@@ -95,7 +111,7 @@ defmodule EngineCore.Loader do
       place_id: m["current_room_id"] || m["room_id"] || m["location_room_id"],
       statblock: %{
         ac: m["armor_class"] || m["ac"] || 10,
-        hd: m["hit_dice"] || m["hd"] || 1,
+        hd: parse_hd(m["hit_dice"] || m["hd"]),
         hp_max: hp,
         thac0: m["thac0"] || 20,
         morale: m["morale"] || 7,
@@ -111,6 +127,15 @@ defmodule EngineCore.Loader do
   defp tier_of(id) when id in @tier2, do: 2
   defp tier_of(id) when id in @tier0, do: 0
   defp tier_of(_), do: 1
+  defp parse_hd(val) when is_integer(val), do: val
+  defp parse_hd(val) when is_binary(val) do
+    case Integer.parse(String.trim(val)) do
+      {n, _rest} -> n
+      :error -> 1
+    end
+  end
+  defp parse_hd(_), do: 1
+
 
   defp parse_damage(%{"damage_dice" => d, "damage_sides" => s} = m) do
     %{dice: d, sides: s, plus: m["damage_plus"] || 0}

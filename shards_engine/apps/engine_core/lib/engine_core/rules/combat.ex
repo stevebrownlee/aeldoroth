@@ -58,7 +58,28 @@ defmodule EngineCore.Rules.Combat do
           end)
     }
 
-    {:ok, [ev_dice, ev_dmg], w2, rng2}
+    target_after = World.agent(w2, t.id)
+
+    if target_after.body.hp == 0 do
+      ev_death = %Ledger.Event{
+        seq: 0,
+        tick: world.tick,
+        class: :world,
+        payload: %{kind: :death, agent_id: t.id}
+      }
+
+      w3 = %{
+        w2
+        | agents:
+            Map.update!(w2.agents, t.id, fn ag ->
+              %{ag | capabilities: [], body: %{ag.body | conditions: Enum.uniq([:dead | ag.body.conditions])}}
+            end)
+      }
+
+      {:ok, [ev_dice, ev_dmg, ev_death], w3, rng2}
+    else
+      {:ok, [ev_dice, ev_dmg], w2, rng2}
+    end
   end
 
   defp dice_event(tick, payload),

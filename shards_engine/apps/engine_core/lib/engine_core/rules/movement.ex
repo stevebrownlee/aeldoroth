@@ -6,6 +6,7 @@ defmodule EngineCore.Rules.Movement do
           {:ok, Ledger.Event.t(), World.t(), :rand.state()} | {:error, atom()}
   def traverse(world, rng, agent_id, to) do
     with {:ok, agent} <- fetch_agent(world, agent_id),
+         :ok <- check_alive(agent),
          {:ok, _place} <- fetch_place(world, to),
          :ok <- check_edge(world, agent.place_id, to) do
       tick = world.tick + 1
@@ -29,6 +30,15 @@ defmodule EngineCore.Rules.Movement do
 
   defp fetch_agent(world, id),
     do: if(a = World.agent(world, id), do: {:ok, a}, else: {:error, :no_agent})
+
+  defp check_alive(agent) do
+    body = agent.body || %{hp: 1, conditions: []}
+    if body.hp == 0 or :dead in (body.conditions || []) do
+      {:error, :dead}
+    else
+      :ok
+    end
+  end
 
   defp fetch_place(world, id),
     do: if(p = World.place(world, id), do: {:ok, p}, else: {:error, :no_place})
