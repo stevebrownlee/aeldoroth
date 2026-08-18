@@ -79,7 +79,8 @@ defmodule EngineCore.CommitmentsTest do
     assert ev_keep.payload.rearm_due == 40
     assert %{status: :pending, due: 40} = hd(w3.agents["g1"].commitments)
 
-    {:ok, [_], w4} = Commitments.mark_due(w3, "c", late_by: 2)
+    {:ok, [ev_due], w4} = Commitments.mark_due(w3, "c", 2)
+    assert ev_due.payload.late_by == 2
     {:ok, [_], w5} = Commitments.violate(w4, "c")
     assert hd(w5.agents["g1"].commitments).status == :violated
     # every fold round-trips
