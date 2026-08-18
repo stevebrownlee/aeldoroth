@@ -834,8 +834,8 @@ initial_treasure:
   hidden_wall_cache:
     id: "hidden_wall_cache"
     name: "Vaelith's Hidden Wall Cache"
-    description: "Behind a carefully concealed loose stone (the third from the corner, behind where the crate sits), Vaelith hid his most precious emergency funds: 50 old platinum pieces (250 gp) and three gems (tracked separately as 'three_gems', 150 gp). Total value 400 gp. Requires journal clue to know where to look, or very careful searching."
-    value: 400
+    description: "Behind a carefully concealed loose stone (the third from the corner, behind where the crate sits), Vaelith hid his most precious emergency funds: 50 old platinum pieces (250 gp). Three gems (150 gp) sit alongside, tracked as the separate entry 'three_gems' via 'contains'. Total 400 gp if both are taken; this entry's value counts ONLY its own coins so global sums never double-count contained items. Requires journal clue to know where to look, or very careful searching."
+    value: 250
     coins:
       pp: 50
     contains: ["three_gems"]
