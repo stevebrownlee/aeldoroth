@@ -7,6 +7,7 @@ defmodule EngineCore.BoundariesTest do
     |> Map.put(:attention, Keyword.get(opts, :attention, :dormant))
     |> Map.put(:cadence, Keyword.get(opts, :cadence))
     |> Map.put(:commitments, Keyword.get(opts, :commitments, []))
+    |> Map.put(:group, Keyword.get(opts, :group))
   end
 
   defp world(boundaries, agents) do
