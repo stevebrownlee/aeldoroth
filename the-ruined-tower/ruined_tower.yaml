@@ -1,0 +1,994 @@
+name: "The Ruined Tower"
+description: "A collapsed wizard's tower infested by goblins who have been raiding the nearby village of Thornhollow. The tower hides secrets of shadow magic and failed rituals from 30 years ago. Recommended for 4 level 1 characters."
+recommended_level: "1"
+difficulty_level: "balanced"
+starting_room: "entry_hall"
+opening_narrative: "You stand in the warm common room of Mara's inn in Thornhollow, listening to Mayor Grevik's worried voice. 'The livestock disappearances grow worse,' he says, his weathered face grave. 'Strange lights flicker from the old wizard's tower on the hill—ruins that have stood silent for thirty years. The villagers are terrified. Will you investigate and stop this threat? I can offer 100 gold pieces for your aid.' Through the window, you can see the crumbled silhouette of the tower against the autumn sky."
+
+home_base:
+  name: "Thornhollow"
+  description: "A small farming community of hardworking folk, surrounded by autumn fields ready for harvest. The village has about 150 souls, mostly farmers and craftspeople who rarely see trouble. Until now."
+
+  key_locations:
+    - name: "Mara's Inn"
+      type: "tavern"
+      description: "A cozy two-story inn with a thatched roof and warm hearth. Mara serves hearty stews, fresh bread, and local ale. The common room is the village's social center."
+      services: ["food and lodging", "local gossip", "warm meals (3 sp)", "rooms (1-3 gp/night)"]
+
+    - name: "Jorren's General Store"
+      type: "general_store"
+      description: "A cluttered shop selling farming tools, basic adventuring supplies, and household goods. Jorren knows where to find anything a traveler might need."
+      services: ["basic equipment", "rations and rope", "adventuring gear", "buys minor treasures"]
+
+    - name: "Sister Aldara's Chapel"
+      type: "temple"
+      description: "A small stone chapel dedicated to the gods of harvest and healing. Sister Aldara tends to the sick and injured."
+      services: ["healing (donation-based)", "blessings", "sanctuary"]
+
+    - name: "Erik's Farm"
+      type: "farm"
+      description: "A sheep farm on the village outskirts. Erik the Shepherd has lost several animals to the mysterious raids."
+      services: ["information about attacks", "local geography knowledge"]
+
+  notable_npcs:
+    - name: "Mayor Grevik"
+      role: "village_leader"
+      description: "A weathered man in his sixties with kind eyes but worried demeanor. Respected leader who puts his people first. Offers 100 gp reward for stopping the threat."
+
+    - name: "Mara"
+      role: "innkeeper"
+      description: "A warm, motherly woman who runs the village inn. Knows everyone's business and treats travelers like family. Source of local gossip and rumors."
+
+    - name: "Jorren"
+      role: "shopkeeper"
+      description: "A practical middle-aged merchant who stocks adventuring supplies. Fair prices and honest dealing. Can acquire special items with advance notice."
+
+    - name: "Sister Aldara"
+      role: "cleric"
+      description: "A gentle healer devoted to serving the village. Offers healing and blessings to those in need, accepting only donations."
+
+    - name: "Erik the Shepherd"
+      role: "victim"
+      description: "A gruff farmer whose sheep have been disappearing. Can describe the timing of raids and strange lights on the hill."
+
+    - name: "Willem's Wife (Anna)"
+      role: "victim's_family"
+      description: "Frantic with worry about her missing husband Willem, the kidnapped farmer. Will offer 20 gp reward for his safe return."
+
+  available_services:
+    shopping:
+      - category: "adventuring_supplies"
+        items: ["10-foot pole (1 gp)", "rope 50ft (1 gp)", "torches x10 (1 gp)", "waterskin (1 gp)", "rations x7 (5 gp)", "chalk (1 sp)", "iron spikes x12 (1 gp)", "hammer (5 sp)"]
+        vendor: "Jorren's General Store"
+      - category: "weapons"
+        items: ["dagger (2 gp)", "club (3 sp)", "spear (1 gp)", "hand axe (3 gp)", "short sword (7 gp)"]
+        vendor: "Jorren's General Store"
+      - category: "armor"
+        items: ["leather armor (5 gp)", "shield (10 gp)"]
+        vendor: "Jorren's General Store"
+
+    lodging:
+      - type: "common_room"
+        cost: 1
+        description: "Straw mattress in the common room, warm but not private"
+      - type: "shared_room"
+        cost: 2
+        description: "Bed in a shared room with other travelers"
+      - type: "private_room"
+        cost: 3
+        description: "Clean private room with comfortable bed, washbasin, and window"
+
+    healing:
+      - type: "basic_healing"
+        cost: "donation"
+        description: "Sister Aldara will tend wounds and cure diseases. She accepts whatever you can afford to give."
+
+  rumors:
+    - "The tower belonged to Vaelith the Mirage-Weaver, a powerful illusionist who died thirty years ago when his tower collapsed in a magical accident."
+    - "Some say Vaelith was researching dangerous shadow magic from the old days, before the Darkening ended."
+    - "Erik swears he saw green-skinned creatures carrying off his sheep two nights ago. They headed toward the ruined tower."
+    - "Strange lights—greenish and flickering—have been seen in the tower ruins at night for the past two weeks."
+    - "Willem the farmer went to investigate the tower three days ago and never returned. His wife Anna is beside herself with worry."
+    - "Old Jorren says adventurers should bring a 10-foot pole. 'Vaelith was paranoid,' he mutters. 'Traps everywhere.'"
+    - "Mara whispers that Vaelith's ghost might still haunt the ruins, angry at being disturbed after so long."
+
+rooms:
+  entry_hall:
+    id: "entry_hall"
+    name: "Entry Hall"
+    description: "The entrance to the tower is partially collapsed. Rubble litters the floor, and sections of the ceiling have fallen in, allowing dim daylight to filter through. The remains of what was once an impressive stone archway stand broken and weathered. Fresh tracks—small, clawed footprints—are visible in the dust and dirt. Two passages lead deeper into the ruins: one north, one east."
+    terrain: "rubble-strewn stone floor"
+    lighting: "dim (daylight from collapsed ceiling)"
+    structures: ["broken stone archway", "collapsed ceiling sections", "rubble piles", "cracked walls"]
+    atmosphere: "Musty and damp. Smell of old stone and goblin musk. Sounds of dripping water echo from deeper in. The ceiling looks unstable—loud noises might be dangerous."
+    exits:
+      north: "library"
+      east: "guard_room"
+    features: ["goblin tracks in dust", "unstable ceiling (1 in 6 chance of collapse if loud noise)", "evidence of recent traffic"]
+    traps:
+      - id: "alarm_tripwire"
+        type: "alarm"
+        difficulty_class: 12
+        damage: "0"
+        description: "Crude tripwire across the eastern passage, connected to hanging pots and pans. Auto-detect if moving carefully, otherwise Thief 30%."
+        save_type: "none"
+        is_triggered: false
+        trigger_effect: "Loud clattering alerts all goblins in guard room. Possible ceiling collapse (1 in 6)."
+
+  library:
+    id: "library"
+    name: "Vaelith's Library"
+    description: "This room once housed an impressive collection of arcane knowledge. Water damage has destroyed most of the books—rotting shelves line the walls, and torn, moldy pages litter the floor. A collapsed reading table lies in the center, partially buried under debris. Through the gloom, you can see three large rats the size of small dogs scurrying among the ruined books. The north wall, behind a collapsed bookshelf, seems oddly intact."
+    terrain: "water-damaged stone floor, scattered debris"
+    lighting: "pitch black"
+    structures: ["rotting bookshelves", "collapsed reading table", "wall sconces (empty)", "collapsed bookshelf against north wall"]
+    atmosphere: "Damp and moldy. Overpowering smell of rot and rat droppings. Constant scratching and squeaking. Pages rustle in unseen drafts. A faint sense of hidden knowledge lingers."
+    exits:
+      south: "entry_hall"
+      down:
+        direction: "down"
+        target_room_id: "ritual_chamber"
+        is_locked: true
+        password_required: "Lux Memoriae"
+        description: "Hidden trapdoor behind collapsed bookshelf on north wall (DC 15 to find). Requires password 'Lux Memoriae' spoken aloud, OR Detect Magic + Read Magic to open."
+    features: ["water-damaged books (mostly ruined)", "journal page with dual clues (on reading table)", "hidden trapdoor behind north wall bookshelf", "faint magical aura on north wall (if Detect Magic used)"]
+    traps: []
+
+  guard_room:
+    id: "guard_room"
+    name: "Guard Room"
+    description: "This chamber serves as the goblins' main living quarters. Crude bedrolls are scattered about, along with stolen goods from village raids—chickens in cages, sacks of grain, farm tools. The stench of unwashed goblin is overwhelming. Four goblins occupy this room, gambling with knucklebones around a makeshift table. Smoky torches in wall brackets provide flickering light. Three exits lead from this room."
+    terrain: "stone floor covered in refuse and straw"
+    lighting: "torchlight (smoky, flickering)"
+    structures: ["crude bedrolls (4)", "overturned crates serving as furniture", "wall-mounted torches", "stolen chicken cages"]
+    atmosphere: "Stinking and smoky. Goblin chatter and harsh laughter. Clatter of knucklebones. Chickens clucking nervously. Piles of stolen village goods everywhere."
+    exits:
+      west: "entry_hall"
+      north: "prison_cells"
+      south: "chiefs_room"
+    features: ["stolen goods from Thornhollow (chickens, grain, tools)", "gambling knucklebones", "crude goblin graffiti on walls", "40 gp scattered among goblins"]
+    traps:
+      - id: "caltrops"
+        type: "floor_hazard"
+        difficulty_class: 12
+        damage: "1d4"
+        description: "Iron caltrops scattered at the western entrance (from entry hall). Auto-detect if looking down with light, otherwise Thief 30%."
+        save_type: "none"
+        is_triggered: false
+        trigger_effect: "1d4 damage, movement reduced by half for 1d4 turns, -2 to attack rolls while wounded."
+
+  prison_cells:
+    id: "prison_cells"
+    name: "Prison Cells"
+    description: "Three small cells with iron bar doors line the north wall. These cramped spaces were once used by Vaelith for storing dangerous magical specimens or components. Now the goblins use them as a makeshift prison. Stone benches and rusted manacles are bolted to the walls. In the western cell, a frightened, bedraggled farmer huddles in the corner—this is Willem, the missing villager. The cell doors are unlocked, but a tripwire alarm guards the entrance."
+    terrain: "cold stone floor"
+    lighting: "dark"
+    structures: ["iron-barred cells (3)", "stone benches in each cell", "rusted manacles on walls"]
+    atmosphere: "Cold, damp, and oppressive. Willem's quiet, fearful sobbing. Smell of unwashed bodies and despair. An eerie silence otherwise, broken only by distant dripping water."
+    exits:
+      south: "guard_room"
+      east: "beast_pen"
+    features: ["Willem (kidnapped farmer, rescue objective)", "cell doors unlocked but guarded", "old manacles and chains", "evidence of recent captivity"]
+    traps:
+      - id: "bell_tripwire"
+        type: "alarm"
+        difficulty_class: 13
+        damage: "0"
+        description: "Wire stretched across doorway at ankle height, connected to bell that rings in goblin areas. Auto-detect if checking carefully, otherwise Thief 30%."
+        save_type: "none"
+        is_triggered: false
+        trigger_effect: "Alerts all goblins. Reinforcements from chief's room arrive in 1d4 rounds."
+
+  chiefs_room:
+    id: "chiefs_room"
+    name: "Goblin Chief's Room (Vaelith's Old Supply Room)"
+    description: "This chamber was once Vaelith's supply storage. Now it's claimed by Grisk the Snatcher, the goblin chief. A large stolen stone crate from Thornhollow serves as his crude throne. Weapons, armor pieces, and loot are piled in the corners. The room reeks of goblin chief, unwashed furs, and dominance. Grisk sits on his throne with two bodyguards flanking him. The corridor approaching this room has a concealed pit trap, and a false cache in the wall hides a needle trap. The REAL treasure cache is two feet to the left of the false one, behind the third stone from the corner."
+    terrain: "stone floor with hidden pit in approach corridor"
+    lighting: "torchlight (better quality torches than guard room)"
+    structures: ["stone crate throne", "weapon pile", "crude goblin tapestry", "wall alcoves", "loose stones in wall"]
+    atmosphere: "Thick with goblin musk and arrogance. Grisk's aggressive posturing and guttural commands. Glint of treasure in torchlight. Tension and imminent violence. Sense of danger from multiple threats."
+    exits:
+      north: "guard_room"
+    features: ["Grisk's throne (stolen crate)", "obvious treasure pile (150 gp, scroll, chainmail)", "FALSE cache (too obvious, trapped)", "REAL hidden cache (requires careful wall search, behind third stone from corner)"]
+    traps:
+      - id: "pit_trap"
+        type: "pit_trap"
+        difficulty_class: 14
+        damage: "1d6 falling + 1d4 spikes"
+        description: "10-foot deep pit in corridor before chief's room, covered with boards and debris. Auto-detect with 10-foot pole or WIS check to notice disturbed dust, otherwise Thief 30%."
+        save_type: "dexterity"
+        is_triggered: false
+        trigger_effect: "Victim falls 10 feet (1d6 damage) onto wooden spikes at bottom (1d4 damage). Stuck until rescued with rope."
+      - id: "false_cache_needle"
+        type: "poison_needle"
+        difficulty_class: 15
+        damage: "1 + poison"
+        description: "Obvious 'loose stone' in wall is actually a decoy. Needle trap triggered when stone is moved. Thief 30% notices stone is TOO obvious, INT check to suspect trap."
+        save_type: "poison"
+        is_triggered: false
+        trigger_effect: "1 damage from needle. Save vs Poison or -1 DEX for 1 hour (minor paralytic toxin)."
+
+  beast_pen:
+    id: "beast_pen"
+    name: "Beast Pen"
+    description: "This small chamber once served as Vaelith's alchemical laboratory. Now the goblins keep their two trained wolves here as guard animals and hunting beasts. The wolves are chained to iron rings in the walls but have enough slack to attack anyone entering. Old laboratory equipment—shattered glassware, broken tables, scattered alchemical components—is smashed and scattered everywhere. The smell of wet dog, animal waste, and broken chemicals is overpowering. Straw covers the floor."
+    terrain: "straw-covered stone floor, broken glass hazards"
+    lighting: "dark"
+    structures: ["iron chains attached to wall rings", "broken laboratory tables", "shattered glassware and bottles", "animal feeding bowls"]
+    atmosphere: "Heavy animal musk. Aggressive growling and pacing. Straw rustling. Chains rattling. Predatory menace. The wolves' yellow eyes gleam in any light source."
+    exits:
+      west: "prison_cells"
+    features: ["chained wolves (10-foot reach from anchor points)", "broken alchemical equipment (some components might be salvageable)", "animal feeding bowls with scraps", "evidence of goblin wolf-training"]
+    traps: []
+
+  ritual_chamber:
+    id: "ritual_chamber"
+    name: "Vaelith's Secret Ritual Chamber"
+    description: "A hidden chamber 20 feet beneath the library, perfectly preserved by sealing magic. The 20' × 20' room has a 12-foot ceiling carved with astronomical charts. A large ritual circle (10 feet in diameter) dominates the floor, its grooves stained with dried blood and glowing with faint purple phosphorescence. Arcane symbols and formulae cover the walls in chalk and dried blood. In the center of the circle sits a skeletal corpse in dark blue ritual robes, its bones blackened by shadow corruption—this is Talven, Vaelith's apprentice. A stone workbench holds research notes and alchemical components. A stone pedestal bears a sealed letter. The air is unnaturally cold, and constant whispers in an unknown language echo from nowhere."
+    terrain: "smooth ritual-inscribed stone, ritual circle floor"
+    lighting: "eerie purple phosphorescence from ritual circle (equivalent to torchlight)"
+    structures: ["ritual circle (10' diameter)", "stone pedestal with letter", "stone workbench", "arcane wall inscriptions", "astronomical ceiling carvings", "Shadow-Touched Skeleton in center"]
+    atmosphere: "Oppressively cold—breath mists. Constant whispers in unknown tongue cause dread. Smell of decay and ozone. Shadows seem to move independently. Feeling of being watched. Wrongness permeates everything. Purple light creates dancing shadows."
+    exits:
+      up:
+        direction: "up"
+        target_room_id: "library"
+        description: "Stone spiral staircase leading back to library trapdoor"
+    features: ["ritual circle with blood stains and shadow runes", "shadow magic research inscriptions", "letter from Master Gearheart (267-year-old gnome elder)", "Talven's corrupted skeletal remains", "Vaelith's research notes (reveals true story)", "workbench with secret compartment", "evidence of failed shadow purification ritual"]
+    traps: []
+
+initial_enemies:
+  giant_rat_1:
+    id: "giant_rat_1"
+    name: "Giant Rat"
+    type: "giant_rat"
+    description: "A rat the size of a small dog, with matted, filthy fur and gleaming yellow teeth. Its eyes glint with feral hunger as it squeaks aggressively."
+    strength: 7
+    dexterity: 15
+    constitution: 10
+    intelligence: 1
+    wisdom: 10
+    charisma: 3
+    hit_dice: "1d8"
+    hit_points: 4
+    max_hit_points: 4
+    armor_class: 7
+    thac0: 19
+    attacks_per_round: 1
+    damage_per_attack: ["1d3"]
+    movement_rate: 120
+    special_abilities:
+      - "5% chance of disease on successful bite"
+      - "Keen smell"
+    saving_throws:
+      paralyzation_poison_death_magic: 14
+      petrification_polymorph: 16
+      rod_staff_wand: 15
+      breath_weapon: 17
+      spell: 16
+    treasure_type: "None"
+    current_room_id: "library"
+    morale: 6
+    is_alive: true
+
+  giant_rat_2:
+    id: "giant_rat_2"
+    name: "Giant Rat"
+    type: "giant_rat"
+    description: "A rat the size of a small dog, with matted, filthy fur and gleaming yellow teeth. Its eyes glint with feral hunger as it squeaks aggressively."
+    strength: 7
+    dexterity: 15
+    constitution: 10
+    intelligence: 1
+    wisdom: 10
+    charisma: 3
+    hit_dice: "1d8"
+    hit_points: 3
+    max_hit_points: 3
+    armor_class: 7
+    thac0: 19
+    attacks_per_round: 1
+    damage_per_attack: ["1d3"]
+    movement_rate: 120
+    special_abilities:
+      - "5% chance of disease on successful bite"
+      - "Keen smell"
+    saving_throws:
+      paralyzation_poison_death_magic: 14
+      petrification_polymorph: 16
+      rod_staff_wand: 15
+      breath_weapon: 17
+      spell: 16
+    treasure_type: "None"
+    current_room_id: "library"
+    morale: 6
+    is_alive: true
+
+  giant_rat_3:
+    id: "giant_rat_3"
+    name: "Giant Rat"
+    type: "giant_rat"
+    description: "A rat the size of a small dog, with matted, filthy fur and gleaming yellow teeth. Its eyes glint with feral hunger as it squeaks aggressively."
+    strength: 7
+    dexterity: 15
+    constitution: 10
+    intelligence: 1
+    wisdom: 10
+    charisma: 3
+    hit_dice: "1d8"
+    hit_points: 5
+    max_hit_points: 5
+    armor_class: 7
+    thac0: 19
+    attacks_per_round: 1
+    damage_per_attack: ["1d3"]
+    movement_rate: 120
+    special_abilities:
+      - "5% chance of disease on successful bite"
+      - "Keen smell"
+    saving_throws:
+      paralyzation_poison_death_magic: 14
+      petrification_polymorph: 16
+      rod_staff_wand: 15
+      breath_weapon: 17
+      spell: 16
+    treasure_type: "None"
+    current_room_id: "library"
+    morale: 6
+    is_alive: true
+
+  goblin_guard_1:
+    id: "goblin_guard_1"
+    name: "Goblin Guard"
+    type: "goblin"
+    description: "A scrawny humanoid with yellowish-green skin and beady red eyes. It wears scraps of leather armor and carries a crude short sword. Its teeth are filed to points."
+    strength: 11
+    dexterity: 14
+    constitution: 10
+    intelligence: 10
+    wisdom: 9
+    charisma: 6
+    hit_dice: "1-1 (1d8-1)"
+    hit_points: 4
+    max_hit_points: 4
+    armor_class: 6
+    thac0: 20
+    attacks_per_round: 1
+    damage_per_attack: ["1d6"]
+    movement_rate: 90
+    special_abilities:
+      - "-1 to hit in full sunlight"
+      - "Infravision 60 feet"
+    saving_throws:
+      paralyzation_poison_death_magic: 14
+      petrification_polymorph: 16
+      rod_staff_wand: 15
+      breath_weapon: 17
+      spell: 16
+    treasure_type: "Individual (10 gp)"
+    current_room_id: "guard_room"
+    morale: 7
+    is_alive: true
+
+  goblin_guard_2:
+    id: "goblin_guard_2"
+    name: "Goblin Guard"
+    type: "goblin"
+    description: "A scrawny humanoid with yellowish-green skin and beady red eyes. It wears scraps of leather armor and carries a crude short sword. Its teeth are filed to points."
+    strength: 11
+    dexterity: 14
+    constitution: 10
+    intelligence: 10
+    wisdom: 9
+    charisma: 6
+    hit_dice: "1-1 (1d8-1)"
+    hit_points: 3
+    max_hit_points: 3
+    armor_class: 6
+    thac0: 20
+    attacks_per_round: 1
+    damage_per_attack: ["1d6"]
+    movement_rate: 90
+    special_abilities:
+      - "-1 to hit in full sunlight"
+      - "Infravision 60 feet"
+    saving_throws:
+      paralyzation_poison_death_magic: 14
+      petrification_polymorph: 16
+      rod_staff_wand: 15
+      breath_weapon: 17
+      spell: 16
+    treasure_type: "Individual (10 gp)"
+    current_room_id: "guard_room"
+    morale: 7
+    is_alive: true
+
+  goblin_guard_3:
+    id: "goblin_guard_3"
+    name: "Goblin Guard"
+    type: "goblin"
+    description: "A scrawny humanoid with yellowish-green skin and beady red eyes. It wears scraps of leather armor and carries a crude short sword. Its teeth are filed to points."
+    strength: 11
+    dexterity: 14
+    constitution: 10
+    intelligence: 10
+    wisdom: 9
+    charisma: 6
+    hit_dice: "1-1 (1d8-1)"
+    hit_points: 5
+    max_hit_points: 5
+    armor_class: 6
+    thac0: 20
+    attacks_per_round: 1
+    damage_per_attack: ["1d6"]
+    movement_rate: 90
+    special_abilities:
+      - "-1 to hit in full sunlight"
+      - "Infravision 60 feet"
+    saving_throws:
+      paralyzation_poison_death_magic: 14
+      petrification_polymorph: 16
+      rod_staff_wand: 15
+      breath_weapon: 17
+      spell: 16
+    treasure_type: "Individual (10 gp)"
+    current_room_id: "guard_room"
+    morale: 7
+    is_alive: true
+
+  goblin_guard_4:
+    id: "goblin_guard_4"
+    name: "Goblin Guard"
+    type: "goblin"
+    description: "A scrawny humanoid with yellowish-green skin and beady red eyes. It wears scraps of leather armor and carries a crude short sword. Its teeth are filed to points."
+    strength: 11
+    dexterity: 14
+    constitution: 10
+    intelligence: 10
+    wisdom: 9
+    charisma: 6
+    hit_dice: "1-1 (1d8-1)"
+    hit_points: 4
+    max_hit_points: 4
+    armor_class: 6
+    thac0: 20
+    attacks_per_round: 1
+    damage_per_attack: ["1d6"]
+    movement_rate: 90
+    special_abilities:
+      - "-1 to hit in full sunlight"
+      - "Infravision 60 feet"
+    saving_throws:
+      paralyzation_poison_death_magic: 14
+      petrification_polymorph: 16
+      rod_staff_wand: 15
+      breath_weapon: 17
+      spell: 16
+    treasure_type: "Individual (10 gp)"
+    current_room_id: "guard_room"
+    morale: 7
+    is_alive: true
+
+  grisk_the_snatcher:
+    id: "grisk_the_snatcher"
+    name: "Grisk the Snatcher (Goblin Chief)"
+    type: "goblin_chief"
+    description: "Larger and meaner than the other goblins, Grisk wears a patchwork of stolen chainmail and leather. His eyes are cunning and cruel, and scars cross his green face. He wields a short sword taken from a Thornhollow guard and wears the +1 dagger at his belt. He barks orders in the harsh goblin tongue."
+    strength: 13
+    dexterity: 14
+    constitution: 12
+    intelligence: 12
+    wisdom: 10
+    charisma: 9
+    hit_dice: "2d8"
+    hit_points: 12
+    max_hit_points: 12
+    armor_class: 5
+    thac0: 19
+    attacks_per_round: 1
+    damage_per_attack: ["1d6+1"]
+    movement_rate: 90
+    special_abilities:
+      - "-1 to hit in full sunlight"
+      - "Infravision 60 feet"
+      - "Commands other goblins (+1 to their morale when present)"
+      - "Wears stolen chainmail"
+      - "Carries +1 dagger on belt"
+    saving_throws:
+      paralyzation_poison_death_magic: 13
+      petrification_polymorph: 14
+      rod_staff_wand: 13
+      breath_weapon: 15
+      spell: 14
+    treasure_type: "Individual (10 gp) + Chief's treasure + +1 dagger"
+    current_room_id: "chiefs_room"
+    morale: 9
+    is_alive: true
+
+  goblin_bodyguard_1:
+    id: "goblin_bodyguard_1"
+    name: "Goblin Bodyguard"
+    type: "goblin"
+    description: "A tough-looking goblin that stands guard near Grisk. Better equipped than the regular guards with studded leather armor and a serviceable short sword. Loyal to the chief."
+    strength: 12
+    dexterity: 14
+    constitution: 11
+    intelligence: 10
+    wisdom: 9
+    charisma: 6
+    hit_dice: "1d8"
+    hit_points: 6
+    max_hit_points: 6
+    armor_class: 6
+    thac0: 19
+    attacks_per_round: 1
+    damage_per_attack: ["1d6"]
+    movement_rate: 90
+    special_abilities:
+      - "-1 to hit in full sunlight"
+      - "Infravision 60 feet"
+      - "Loyal to chief (won't flee while Grisk lives)"
+    saving_throws:
+      paralyzation_poison_death_magic: 14
+      petrification_polymorph: 16
+      rod_staff_wand: 15
+      breath_weapon: 17
+      spell: 16
+    treasure_type: "Individual (10 gp)"
+    current_room_id: "chiefs_room"
+    morale: 8
+    is_alive: true
+
+  goblin_bodyguard_2:
+    id: "goblin_bodyguard_2"
+    name: "Goblin Bodyguard"
+    type: "goblin"
+    description: "A tough-looking goblin that stands guard near Grisk. Better equipped than the regular guards with studded leather armor and a serviceable short sword. Loyal to the chief."
+    strength: 12
+    dexterity: 14
+    constitution: 11
+    intelligence: 10
+    wisdom: 9
+    charisma: 6
+    hit_dice: "1d8"
+    hit_points: 5
+    max_hit_points: 5
+    armor_class: 6
+    thac0: 19
+    attacks_per_round: 1
+    damage_per_attack: ["1d6"]
+    movement_rate: 90
+    special_abilities:
+      - "-1 to hit in full sunlight"
+      - "Infravision 60 feet"
+      - "Loyal to chief (won't flee while Grisk lives)"
+    saving_throws:
+      paralyzation_poison_death_magic: 14
+      petrification_polymorph: 16
+      rod_staff_wand: 15
+      breath_weapon: 17
+      spell: 16
+    treasure_type: "Individual (10 gp)"
+    current_room_id: "chiefs_room"
+    morale: 8
+    is_alive: true
+
+  wolf_1:
+    id: "wolf_1"
+    name: "Wolf"
+    type: "wolf"
+    description: "A lean, gray wolf with yellow eyes. Its fangs are bared and it growls menacingly. The beast is chained to the wall but has enough slack to attack anyone entering the room."
+    strength: 13
+    dexterity: 15
+    constitution: 12
+    intelligence: 2
+    wisdom: 12
+    charisma: 6
+    hit_dice: "2d8"
+    hit_points: 10
+    max_hit_points: 10
+    armor_class: 7
+    thac0: 19
+    attacks_per_round: 1
+    damage_per_attack: ["1d4+1"]
+    movement_rate: 180
+    special_abilities:
+      - "Keen senses (difficult to surprise)"
+      - "Chained (10-foot reach from anchor point)"
+      - "Pack tactics (if both wolves engage same target)"
+    saving_throws:
+      paralyzation_poison_death_magic: 14
+      petrification_polymorph: 16
+      rod_staff_wand: 15
+      breath_weapon: 17
+      spell: 16
+    treasure_type: "None"
+    current_room_id: "beast_pen"
+    morale: 9
+    is_alive: true
+
+  wolf_2:
+    id: "wolf_2"
+    name: "Wolf"
+    type: "wolf"
+    description: "A lean, gray wolf with yellow eyes. Its fangs are bared and it growls menacingly. The beast is chained to the wall but has enough slack to attack anyone entering the room."
+    strength: 13
+    dexterity: 15
+    constitution: 12
+    intelligence: 2
+    wisdom: 12
+    charisma: 6
+    hit_dice: "2d8"
+    hit_points: 9
+    max_hit_points: 9
+    armor_class: 7
+    thac0: 19
+    attacks_per_round: 1
+    damage_per_attack: ["1d4+1"]
+    movement_rate: 180
+    special_abilities:
+      - "Keen senses (difficult to surprise)"
+      - "Chained (10-foot reach from anchor point)"
+      - "Pack tactics (if both wolves engage same target)"
+    saving_throws:
+      paralyzation_poison_death_magic: 14
+      petrification_polymorph: 16
+      rod_staff_wand: 15
+      breath_weapon: 17
+      spell: 16
+    treasure_type: "None"
+    current_room_id: "beast_pen"
+    morale: 9
+    is_alive: true
+
+  shadow_touched_skeleton:
+    id: "shadow_touched_skeleton"
+    name: "Shadow-Touched Skeleton (Talven)"
+    type: "undead_skeleton"
+    description: "The animated corpse of Vaelith's apprentice Talven, killed 30 years ago in a failed shadow purification ritual. The bones are blackened with shadow corruption, and wisps of darkness curl around the skeletal form like living smoke. Its eye sockets burn with eerie purple light. It wears dark blue ritual robes embroidered with silver runes. It rises when living beings enter the ritual chamber."
+    strength: 12
+    dexterity: 10
+    constitution: 10
+    intelligence: 3
+    wisdom: 10
+    charisma: 1
+    hit_dice: "1+2 (1d8+2)"
+    hit_points: 8
+    max_hit_points: 8
+    armor_class: 7
+    thac0: 19
+    attacks_per_round: 1
+    damage_per_attack: ["1d4 + chill touch"]
+    movement_rate: 90
+    special_abilities:
+      - "Immune to sleep, charm, and hold spells"
+      - "Immune to poison and cold"
+      - "Takes half damage from slashing/piercing weapons"
+      - "Vulnerable to bludgeoning weapons (+1 damage per die)"
+      - "Chill Touch: On hit, Save vs Paralysis or -1 to hit next round (cold numbness)"
+      - "Shadow Whispers: Living creatures in room Save vs Magic each round or -1 to hit (cumulative, max -3)"
+      - "Can only be permanently destroyed with Turn Undead or by blessing the ritual circle"
+      - "Turns as 2 HD undead"
+    saving_throws:
+      paralyzation_poison_death_magic: 13
+      petrification_polymorph: 14
+      rod_staff_wand: 13
+      breath_weapon: 15
+      spell: 14
+    treasure_type: "Talven's ring + shadow crystal (on corpse)"
+    current_room_id: "ritual_chamber"
+    morale: 12
+    is_alive: true
+
+coinage:
+  description: "Coin values expressed in copper pieces (AD&D 1E). Treasure value in gp = sum(count x value_in_cp) / 100. House rule: 1 gp of treasure value = 1 XP. Electrum (ep) is unused in this adventure."
+  value_in_cp:
+    pp: 500
+    gp: 100
+    ep: 50
+    sp: 10
+    cp: 1
+
+initial_treasure:
+  healing_potion:
+    id: "healing_potion"
+    name: "Potion of Healing"
+    description: "A small glass vial containing a red liquid that glows faintly in the darkness. The cork is sealed with wax. The liquid smells faintly of herbs and magic."
+    value: 50
+    type: "potion"
+    location_room_id: "library"
+    location_description: "hidden inside a hollowed-out book on the shelf (DC 12 to find while searching)"
+    weight: 0.1
+    is_hidden: true
+    is_magical: true
+    effect: "Heals 1d6+1 hit points when consumed"
+    is_collected: false
+
+  illusionists_spellbook:
+    id: "illusionists_spellbook"
+    name: "Vaelith's Spellbook"
+    description: "A water-damaged but still legible spellbook bound in blue leather with silver clasp. Contains two 2nd-level illusionist spells: Invisibility and Mirror Image. The pages smell of old parchment and lingering magic. Margin notes are in Vaelith's hand. Worth 200-500 gp to an illusionist."
+    value: 500
+    type: "magic_item"
+    location_room_id: "library"
+    location_description: "on the collapsed reading table, partially buried under debris and torn pages"
+    weight: 3.0
+    is_hidden: false
+    is_magical: true
+    effect: "Contains Invisibility and Mirror Image spells for illusionists to copy. Margin notes mention 'Lux Memoriae' as password."
+    is_collected: false
+
+  journal_page:
+    id: "journal_page"
+    name: "Water-Damaged Journal Page"
+    description: "A torn page from Vaelith's research journal, water-stained but partially legible. Contains two important clues: (1) 'third stone behind... crate from town... hidden...' pointing to a wall cache, and (2) 'Lux Memoriae... ritual circle... Talven remains...' hinting at a secret chamber and its password. The handwriting is shaky and distressed."
+    value: 0
+    type: "quest_item"
+    location_room_id: "library"
+    location_description: "tucked between pages of the spellbook, as if used as a bookmark"
+    weight: 0.0
+    is_hidden: false
+    is_magical: false
+    effect: "DUAL CLUE: Reveals (1) location of hidden treasure cache in Room 5, and (2) password 'Lux Memoriae' and existence of ritual chamber below library"
+    is_collected: false
+
+  goblin_coins_guard_room:
+    id: "goblin_coins_guard_room"
+    name: "Goblin Treasure (Guard Room)"
+    description: "Loot from village raids carried by the four goblin guards. Each guard carries an identical pouch holding 5 gp, 30 sp, and 200 cp (10 gp value per pouch, 40 gp total)."
+    value: 40
+    coins:
+      gp: 20
+      sp: 120
+      cp: 800
+    type: "currency"
+    location_room_id: "guard_room"
+    location_description: "one pouch per goblin guard (each pouch: 5 gp, 30 sp, 200 cp — splits evenly four ways)"
+    weight: 0.4
+    is_hidden: false
+    is_magical: false
+    is_collected: false
+
+  dagger_plus_one:
+    id: "dagger_plus_one"
+    name: "Dagger +1"
+    description: "A finely crafted dagger with a blade that never dulls or tarnishes. The pommel bears the mark of a master smith from before the Darkening. A faint magical aura surrounds it. The balance is perfect. Worth 100 gp, but worth far more to the right buyer."
+    value: 100
+    type: "magic_item"
+    location_room_id: "chiefs_room"
+    location_description: "on Grisk's belt (must defeat him to claim)"
+    weight: 1.0
+    is_hidden: false
+    is_magical: true
+    magic_bonus: "+1"
+    effect: "+1 to attack and damage rolls. Never dulls or rusts."
+    is_collected: false
+
+  chiefs_treasure_hoard:
+    id: "chiefs_treasure_hoard"
+    name: "Chief's Treasure Hoard"
+    description: "A sack of raid loot beside Grisk's throne-crate: mixed coins plus small valuables stolen from Thornhollow. Coins total 130 gp, valuables 20 gp, total 150 gp."
+    value: 150
+    coins:
+      gp: 80
+      sp: 400
+      cp: 1000
+    valuables:
+      - name: "Silver locket (stolen from a Thornhollow farmhouse)"
+        value_gp: 12
+      - name: "Pair of silver candlesticks (from the village chapel)"
+        value_gp: 8
+    type: "currency"
+    location_room_id: "chiefs_room"
+    location_description: "in a crude sack next to Grisk's throne (coins loose, valuables wrapped in cloth)"
+    weight: 1.5
+    is_hidden: false
+    is_magical: false
+    is_collected: false
+
+  scroll_of_sleep:
+    id: "scroll_of_sleep"
+    name: "Scroll of Sleep"
+    description: "A magical scroll containing the Sleep spell. The parchment is old but well-preserved, with arcane script in black ink. Single use."
+    value: 100
+    type: "magic_item"
+    location_room_id: "chiefs_room"
+    location_description: "in the chief's treasure chest with the obvious loot"
+    weight: 0.1
+    is_hidden: false
+    is_magical: true
+    effect: "Single-use Sleep spell (affects 2-16 HD of creatures, 1st level)"
+    is_collected: false
+
+  chainmail_armor:
+    id: "chainmail_armor"
+    name: "Chainmail Armor"
+    description: "A suit of chainmail armor worn by Grisk the Snatcher. Patchwork of stolen pieces but serviceable. AC 5. Worth about 25 gp."
+    value: 25
+    type: "armor"
+    location_room_id: "chiefs_room"
+    location_description: "worn by Grisk (must defeat him)"
+    weight: 40.0
+    is_hidden: false
+    is_magical: false
+    effect: "AC 5 when worn"
+    is_collected: false
+
+  chiefs_bodyguard_coins:
+    id: "chiefs_bodyguard_coins"
+    name: "Bodyguard Coins"
+    description: "Coins carried by Grisk's two bodyguards, 10 gp each. Each carries 4 gp, 40 sp, and 200 cp. Total 20 gp."
+    value: 20
+    coins:
+      gp: 8
+      sp: 80
+      cp: 400
+    type: "currency"
+    location_room_id: "chiefs_room"
+    location_description: "on the two goblin bodyguards (each: 4 gp, 40 sp, 200 cp — splits evenly two ways)"
+    weight: 0.2
+    is_hidden: false
+    is_magical: false
+    is_collected: false
+
+  hidden_wall_cache:
+    id: "hidden_wall_cache"
+    name: "Vaelith's Hidden Wall Cache"
+    description: "Behind a carefully concealed loose stone (the third from the corner, behind where the crate sits), Vaelith hid his most precious emergency funds: 50 old platinum pieces (250 gp). Three gems (150 gp) sit alongside, tracked as the separate entry 'three_gems' via 'contains'. Total 400 gp if both are taken; this entry's value counts ONLY its own coins so global sums never double-count contained items. Requires journal clue to know where to look, or very careful searching."
+    value: 250
+    coins:
+      pp: 50
+    contains: ["three_gems"]
+    type: "treasure_cache"
+    location_room_id: "chiefs_room"
+    location_description: "behind the third stone from the corner, behind the crate throne, two feet LEFT of the false cache (DC 15 to find without journal clue, DC 10 with clue)"
+    weight: 2.5
+    is_hidden: true
+    requires: "journal_page"
+    is_magical: false
+    is_collected: false
+
+  three_gems:
+    id: "three_gems"
+    name: "Three Gems"
+    description: "Three semi-precious gems of 50 gp each: an amethyst, a citrine, and a piece of jade. Found in the hidden wall cache; each gem is a discrete item for party division."
+    value: 150
+    quantity: 3
+    value_each: 50
+    type: "treasure"
+    location_room_id: "chiefs_room"
+    location_description: "inside the hidden wall cache"
+    weight: 0.1
+    is_hidden: true
+    requires: "hidden_wall_cache"
+    is_magical: false
+    is_collected: false
+
+  talvens_signet_ring:
+    id: "talvens_signet_ring"
+    name: "Talven's Signet Ring"
+    description: "A silver ring engraved with the initials 'T.M.' (Talven Mordale). Simple but well-crafted. Worth 10 gp as silver, more to someone who knew Talven."
+    value: 10
+    type: "jewelry"
+    location_room_id: "ritual_chamber"
+    location_description: "on the skeletal finger of the Shadow-Touched Skeleton (Talven's remains)"
+    weight: 0.1
+    is_hidden: false
+    is_magical: false
+    is_collected: false
+
+  shadow_crystal:
+    id: "shadow_crystal"
+    name: "Shadow-Crystal"
+    description: "A black crystal shard embedded in Talven's ribcage, pulsing faintly with dark energy. It emanates a subtle aura of dread. Worth 50 gp to a collector of dark curiosities or shadow magic researcher. Potentially dangerous."
+    value: 50
+    type: "magic_item"
+    location_room_id: "ritual_chamber"
+    location_description: "embedded in the Shadow-Touched Skeleton's ribcage"
+    weight: 0.2
+    is_hidden: false
+    is_magical: true
+    effect: "Valuable to shadow magic researchers. May have unknown properties. Causes unease in those nearby."
+    is_collected: false
+
+  alchemical_components:
+    id: "alchemical_components"
+    name: "Alchemical Components"
+    description: "Various preserved alchemical reagents, powders, and ingredients on the workbench. Some rare, some common. Total value about 20 gp to an alchemist."
+    value: 20
+    type: "components"
+    location_room_id: "ritual_chamber"
+    location_description: "on the stone workbench, in vials and pouches"
+    weight: 1.0
+    is_hidden: false
+    is_magical: false
+    is_collected: false
+
+  scroll_protection_from_evil:
+    id: "scroll_protection_from_evil"
+    name: "Scroll of Protection from Evil"
+    description: "A magical scroll containing Protection from Evil. Well-preserved despite the age. Single use. Worth 100 gp."
+    value: 100
+    type: "magic_item"
+    location_room_id: "ritual_chamber"
+    location_description: "on the stone workbench among the research materials"
+    weight: 0.1
+    is_hidden: false
+    is_magical: true
+    effect: "Single-use Protection from Evil spell (1st level, 12 turn duration)"
+    is_collected: false
+
+  vaeliths_research_notes:
+    id: "vaeliths_research_notes"
+    name: "Vaelith's Research Notes"
+    description: "A partially burned journal describing Vaelith's shadow magic research, the Age of Shadow, the Darkening, failing Titan Pillars, and the final ritual with Talven. Provides crucial lore about what happened. No gold value, but immense historical significance."
+    value: 0
+    type: "quest_item"
+    location_room_id: "ritual_chamber"
+    location_description: "on the stone workbench, water-stained and partially burned"
+    weight: 1.0
+    is_hidden: false
+    is_magical: false
+    effect: "Reveals the true story of the tower's collapse, Vaelith's guilt, and the shadow purification ritual failure. Connects to world history."
+    is_collected: false
+
+  darkened_grimoire:
+    id: "darkened_grimoire"
+    name: "Darkened Grimoire"
+    description: "A spellbook containing Darkness 15' Radius and Phantasmal Force, plus extensive notes on shadow magic theory. Bound in dark leather. Hidden in a secret compartment in the workbench. Worth 300 gp to the right wizard."
+    value: 300
+    type: "magic_item"
+    location_room_id: "ritual_chamber"
+    location_description: "hidden in secret compartment in the stone workbench (DC 12 to find while searching workbench)"
+    weight: 3.0
+    is_hidden: true
+    is_magical: true
+    effect: "Contains Darkness 15' Radius (2nd level) and Phantasmal Force (2nd level) spells, plus shadow magic theory notes"
+    is_collected: false
+
+  old_coins_ritual_chamber:
+    id: "old_coins_ritual_chamber"
+    name: "Old Coins (Ritual Chamber)"
+    description: "50 gp in very old coins of pre-Darkening mintage, kept in the secret workbench compartment: 5 old platinum pieces, 20 gold, 40 silver, and 100 copper coins."
+    value: 50
+    coins:
+      pp: 5
+      gp: 20
+      sp: 40
+      cp: 100
+    type: "currency"
+    location_room_id: "ritual_chamber"
+    location_description: "in the secret compartment of the workbench, with the Darkened Grimoire"
+    weight: 0.5
+    is_hidden: true
+    requires: "darkened_grimoire"
+    is_magical: false
+    is_collected: false
+
+  gearhearts_letter:
+    id: "gearhearts_letter"
+    name: "Letter from Master Gearheart"
+    description: "A sealed letter addressed to Vaelith from Master Gearheart, a 267-year-old gnome elder. It discusses shadow corruption research, mentions 'the Rekindlers' and 'the Underhearth,' and warns about the dangers of shadow purification rituals. Dated 30 years ago. No gold value, but provides crucial world lore and potential adventure hooks."
+    value: 0
+    type: "quest_item"
+    location_room_id: "ritual_chamber"
+    location_description: "on the stone pedestal near Talven's corpse, sealed with wax"
+    weight: 0.1
+    is_hidden: false
+    is_magical: false
+    effect: "Provides lore connection to The Shattered Kingdoms world history, the Rekindlers, Master Gearheart, and the Underhearth. Sets up future adventure hooks."
+    is_collected: false
+
+  ritual_robes:
+    id: "ritual_robes"
+    name: "Talven's Ritual Robes"
+    description: "Dark blue robes covered in silver runic embroidery, worn by the Shadow-Touched Skeleton. Though 30 years old, they are magically preserved and still in good condition. Valuable to collectors or for magical research. Worth 75 gp."
+    value: 75
+    type: "equipment"
+    location_room_id: "ritual_chamber"
+    location_description: "worn by the Shadow-Touched Skeleton (Talven's corpse)"
+    weight: 2.0
+    is_hidden: false
+    is_magical: true
+    effect: "No mechanical benefit but valuable for sale (75 gp) or magical research. Connects to campaign lore and Vaelith's story."
+    is_collected: false
