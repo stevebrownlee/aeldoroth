@@ -117,6 +117,38 @@ defmodule EngineCore.Fold do
       :commitment_renegotiated ->
         update_commitment(world, p.id, &%{&1 | due: p.due, status: :pending})
 
+      :boundary_wake ->
+        %{
+          world
+          | boundaries:
+              Map.update!(world.boundaries, p.id, fn b ->
+                %{b | state: :awake, last_trigger_tick: p.tick}
+              end)
+        }
+        |> wake_agents(p)
+
+      :boundary_refresh ->
+        %{
+          world
+          | boundaries:
+              Map.update!(world.boundaries, p.id, fn b ->
+                %{b | last_trigger_tick: p.tick}
+              end)
+        }
+
+      :boundary_sleep ->
+        %{
+          world
+          | boundaries:
+              Map.update!(world.boundaries, p.id, fn b ->
+                %{b | state: :dormant}
+              end)
+        }
+        |> sleep_agents(p)
+
+      :boundary_catchup ->
+        world
+
       other ->
         raise ArgumentError, "unknown payload kind: #{inspect(other)}"
     end
@@ -148,5 +180,32 @@ defmodule EngineCore.Fold do
              }}
           end)
     }
+  end
+
+  defp wake_agents(world, p) do
+    Enum.reduce(p.bound_agent_ids, world, fn id, w ->
+      update_agent(w, id, fn a ->
+        cadence =
+          case a.cadence do
+            %{every: _} = c -> %{c | next_due: max(a_last_next(c), p.tick + 1)}
+            nil -> nil
+          end
+
+        %{a | attention: :alert, cadence: cadence}
+      end)
+    end)
+  end
+
+  defp a_last_next(%{next_due: nil}), do: 0
+  defp a_last_next(%{next_due: n}) when is_integer(n), do: n
+
+  defp sleep_agents(world, p) do
+    bound_ids =
+      Map.get(p, :bound_agent_ids) ||
+        (world.boundaries[p.id] && world.boundaries[p.id].bound_agent_ids) || []
+
+    Enum.reduce(bound_ids, world, fn id, w ->
+      update_agent(w, id, fn a -> %{a | attention: :dormant} end)
+    end)
   end
 end
