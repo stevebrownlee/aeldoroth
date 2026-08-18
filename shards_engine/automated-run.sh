@@ -4,6 +4,7 @@
 # Usage (from anywhere; the script finds its own way home):
 #   ./automated-run.sh                 # same as: fight 1234
 #   ./automated-run.sh fight [seed]    # full battle report for one dice seed
+#   ./automated-run.sh cascade [seed]  # alarm cascade scenario + signals/scheduler
 #   ./automated-run.sh survey          # 10 different seeds, one-line outcome each
 #   ./automated-run.sh inventory       # rooms / monsters / treasure loaded from the YAML
 #   ./automated-run.sh all             # everything, in order
@@ -17,7 +18,7 @@ SEED="${2:-${SEED:-1234}}"
 export YAML SEED
 
 usage() {
-  sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'
   exit 1
 }
 
@@ -51,6 +52,19 @@ IO.puts("=== OUTCOME ===")
 IO.puts("Party: #{Enum.count(pcs, & &1.body.hp > 0)}/4 survived" <> (for a <- pcs, a.body.hp > 0, do: " (#{a.name} #{a.body.hp}hp in #{Map.get(rooms, a.place_id)})", into: ""))
 for m <- mons, m.body.hp > 0, do: IO.puts("Still standing: #{m.name} (#{m.body.hp}hp) in #{Map.get(rooms, m.place_id)}")
 IO.puts("Total casualties: #{Enum.count(agents, & &1.body.hp <= 0)}")
+ELIXIR
+}
+
+cascade() { elixir <<'ELIXIR'
+seed = String.to_integer(System.get_env("SEED"))
+yaml = System.get_env("YAML")
+r = EngineCore.Scenario.alarm_cascade(yaml, seed)
+kinds = Enum.frequencies(Enum.map(r.ledger, &Map.get(&1.payload, :kind)))
+IO.puts("=== ALARM CASCADE — seed #{seed} ===")
+IO.inspect(kinds, label: "event kinds")
+IO.puts("final tick: #{r.final_world.tick}")
+IO.puts("guard zone: #{r.final_world.boundaries["guard_room_zone"].state}")
+IO.puts("wolf pack:  #{r.final_world.boundaries["wolf_pack"].state} (dormancy proof)")
 ELIXIR
 }
 
@@ -90,9 +104,10 @@ ELIXIR
 
 case "${1:-fight}" in
   fight)     fight ;;
+  cascade)   cascade ;;
   survey)    survey ;;
   inventory) inventory ;;
-  all)       inventory; echo; fight; echo; survey ;;
+  all)       inventory; echo; fight; echo; cascade; echo; survey ;;
   help|-h|--help) usage ;;
   *)         echo "Unknown command: $1"; echo; usage ;;
 esac

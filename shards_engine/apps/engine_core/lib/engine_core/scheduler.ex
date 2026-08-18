@@ -42,8 +42,8 @@ defmodule EngineCore.Scheduler do
   @spec react(World.t(), :rand.state(), [Ledger.Event.t()]) ::
           {:ok, [Ledger.Event.t()], World.t(), :rand.state()}
   def react(world, rng, events) do
-    moves = Enum.filter(events, &(&1.payload.kind == :move))
-    damages = Enum.filter(events, &(&1.payload.kind == :damage))
+    moves = Enum.filter(events, &(Map.get(&1.payload, :kind) == :move))
+    damages = Enum.filter(events, &(Map.get(&1.payload, :kind) == :damage))
 
     {h_events, world, rng} = hazard_phase(world, rng, moves)
     {s_events, world} = side_effect_phase(world, moves, damages)

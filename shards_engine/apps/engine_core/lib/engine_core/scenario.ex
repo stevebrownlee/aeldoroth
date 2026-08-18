@@ -2,7 +2,7 @@ defmodule EngineCore.Scenario do
   @moduledoc """
   Deterministic scripted combat — Plan-1 acceptance proof (replay determinism + fold = state).
   """
-  alias EngineCore.{Dice, Ledger, Loader, Rules.Combat, Rules.Movement, Types, World}
+  alias EngineCore.{Dice, Ledger, Loader, Rules.Combat, Rules.Movement, Scheduler, Types, World}
 
   def party_vs_warband(yaml_path, seed) do
     {:ok, world} = Loader.load(yaml_path)
@@ -10,6 +10,33 @@ defmodule EngineCore.Scenario do
     ledger = start_ledger!()
     world = add_party(world)
     {world, _rng} = loop(world, rng, ledger, 100)
+
+    %{ledger: Ledger.events(ledger), final_world: world}
+  end
+
+  @doc """
+  The alarm cascade (spec 12.4 phases 3-4 gate): party trips the entry-hall
+  alarm; signals propagate; the guard zone wakes; scripted guards respond
+  (tier-3 stand-in until Plan-3 brains); melee noise wakes deeper zones.
+  Wolves and skeleton stay dormant — dormancy is load-bearing.
+  """
+  def alarm_cascade(yaml_path, seed) do
+    {:ok, world} = Loader.load(yaml_path)
+    rng = Dice.new(seed)
+    ledger = start_ledger!()
+    world = add_party(world)
+
+    # Beat 1: pc1 crosses the trapped east passage carelessly.
+    {world, rng} = step(world, rng, ledger, Movement.traverse(world, rng, "pc1", "guard_room"))
+
+    # Beat 2: the world reacts on its own clock.
+    {world, rng} = quiet_advance(world, rng, ledger, 6)
+
+    # Beat 3: scripted guard response (brains arrive in Plan 3).
+    {world, rng} = guards_investigate(world, rng, ledger)
+
+    # Beat 4: let the aftermath propagate (chiefs_room may wake).
+    {world, _rng} = quiet_advance(world, rng, ledger, 12)
 
     %{ledger: Ledger.events(ledger), final_world: world}
   end
@@ -81,6 +108,139 @@ defmodule EngineCore.Scenario do
     {:ok, pid} = Ledger.start_link(name: nil)
     pid
   end
+
+  defp step(_world, _rng, ledger, {:ok, res, w2, r2}) do
+    events = List.wrap(res)
+    Enum.each(events, &Ledger.append(ledger, &1.class, &1.tick, &1.payload))
+    apply_and_react(w2, r2, events, ledger)
+  end
+
+  defp step(world, rng, _ledger, _), do: {world, rng}
+
+  defp apply_and_react(w2, r2, events, ledger) do
+    {:ok, reaction, w3, r3} = Scheduler.react(w2, r2, events)
+    Enum.each(reaction, &Ledger.append(ledger, &1.class, &1.tick, &1.payload))
+    {w3, r3}
+  end
+
+  defp quiet_advance(world, rng, _ledger, 0), do: {world, rng}
+
+  defp quiet_advance(world, rng, ledger, n) do
+    {:ok, events, w2, r2} = Scheduler.advance(world, rng)
+    Enum.each(events, &Ledger.append(ledger, &1.class, &1.tick, &1.payload))
+    domain_events = Enum.reject(events, &(Map.get(&1.payload, :kind) == :tick_advance))
+
+    if domain_events == [] do
+      quiet_advance(w2, r2, ledger, n - 1, :quiet)
+    else
+      quiet_advance(w2, r2, ledger, n - 1)
+    end
+  end
+
+  defp quiet_advance(world, rng, _ledger, n, :quiet) when n <= 1, do: {world, rng}
+
+  defp quiet_advance(world, rng, ledger, n, :quiet) do
+    {:ok, events, w2, r2} = Scheduler.advance(world, rng)
+    Enum.each(events, &Ledger.append(ledger, &1.class, &1.tick, &1.payload))
+    domain_events = Enum.reject(events, &(Map.get(&1.payload, :kind) == :tick_advance))
+
+    if domain_events == [] do
+      {w2, r2}
+    else
+      quiet_advance(w2, r2, ledger, n - 1)
+    end
+  end
+
+  defp guards_investigate(world, rng, ledger) do
+    guards =
+      world.agents
+      |> Map.values()
+      |> Enum.filter(&String.starts_with?(&1.id, "goblin_guard_"))
+      |> Enum.filter(&(&1.attention == :alert and &1.body.hp > 0))
+      |> Enum.sort_by(& &1.id)
+
+    Enum.reduce(guards, {world, rng}, fn g, {w, r} ->
+      {w2, r2} = maybe_walk(w, r, ledger, g.id)
+      fight(w2, r2, ledger, g.id)
+    end)
+  end
+
+  defp maybe_walk(world, rng, ledger, guard_id) do
+    g = World.agent(world, guard_id)
+
+    if g && g.body.hp > 0 && g.place_id != "entry_hall" do
+      case path_to(world, g.place_id, "entry_hall") do
+        [next | _] ->
+          step(world, rng, ledger, Movement.traverse(world, rng, g.id, next))
+
+        [] ->
+          {world, rng}
+      end
+    else
+      {world, rng}
+    end
+  end
+
+  defp fight(world, rng, ledger, guard_id) do
+    fight_loop(world, rng, ledger, guard_id, 3)
+  end
+
+  defp fight_loop(world, rng, _ledger, _id, 0), do: {world, rng}
+
+  defp fight_loop(world, rng, ledger, id, n) do
+    g = World.agent(world, id)
+
+    if g && g.body.hp > 0 do
+      pcs =
+        world
+        |> World.agents_in(g.place_id)
+        |> Enum.filter(&String.starts_with?(&1.id, "pc"))
+        |> Enum.filter(&(&1.body.hp > 0))
+        |> Enum.sort_by(& &1.id)
+
+      case pcs do
+        [] ->
+          {world, rng}
+
+        [target | _] ->
+          case Combat.attack(world, rng, id, target.id) do
+            {:ok, events, w2, r2} ->
+              Enum.each(events, &Ledger.append(ledger, &1.class, &1.tick, &1.payload))
+              {:ok, reaction, w3, r3} = Scheduler.react(w2, r2, events)
+              Enum.each(reaction, &Ledger.append(ledger, &1.class, &1.tick, &1.payload))
+              fight_loop(w3, r3, ledger, id, n - 1)
+
+            {:error, _} ->
+              {world, rng}
+          end
+      end
+    else
+      {world, rng}
+    end
+  end
+
+  defp path_to(world, from, to) do
+    bfs([{from, []}], world, MapSet.new([from]), to)
+  end
+
+  defp bfs([{place, path} | _], _world, _seen, to) when place == to,
+    do: path
+
+  defp bfs([{place, path} | rest], world, seen, to) do
+    nexts =
+      (World.place(world, place).connections || [])
+      |> Enum.sort()
+      |> Enum.reject(&MapSet.member?(seen, &1))
+
+    bfs(
+      rest ++ Enum.map(nexts, &{&1, path ++ [&1]}),
+      world,
+      MapSet.union(seen, MapSet.new(nexts)),
+      to
+    )
+  end
+
+  defp bfs([], _world, _seen, _to), do: []
 
   defp loop(world, rng, _ledger, 0), do: {world, rng}
 
