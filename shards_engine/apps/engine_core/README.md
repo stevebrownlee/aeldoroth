@@ -1,21 +1,20 @@
 # EngineCore
 
-**TODO: Add description**
+Deterministic engine core for the Shards agent engine (Plan 1). Loads adventure
+YAML into `%World{}`, applies rules (movement, combat, morale, saves) as pure
+functions that emit append-only ledger events, and replays any event stream
+through `EngineCore.Fold` to reconstruct identical world state.
 
-## Installation
-
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `engine_core` to your list of dependencies in `mix.exs`:
+Acceptance proof: `EngineCore.Scenario.party_vs_warband/2` runs scripted
+party-vs-warband combat on `the-ruined-tower.yaml`; the golden replay test
+pins byte-identical reruns and `fold(events, w0) == final_world`.
 
 ```elixir
-def deps do
-  [
-    {:engine_core, "~> 0.1.0"}
-  ]
-end
+{:ok, world} = EngineCore.Loader.load("path/to/adventure.yaml")
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at <https://hexdocs.pm/engine_core>.
+Run the suite from the umbrella root:
 
+```sh
+cd shards_engine && mix test
+```
