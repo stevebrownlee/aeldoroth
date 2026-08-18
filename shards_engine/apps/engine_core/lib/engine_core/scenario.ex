@@ -14,17 +14,64 @@ defmodule EngineCore.Scenario do
     %{ledger: Ledger.events(ledger), final_world: world}
   end
 
+  # Level-3 party, class-flavored 1E statblocks with strong rolls (no spell
+  # engine yet, so casters contribute martial stats: mace and conjured dagger).
+  @party [
+    {"pc1", "Bran Ironhelm (Fighter)",
+     %{
+       ac: 2,
+       hd: 3,
+       hp_max: 26,
+       thac0: 16,
+       morale: 12,
+       int: 10,
+       damage: %{dice: 1, sides: 8, plus: 2}
+     }},
+    {"pc2", "Kestrel Thornwood (Ranger)",
+     %{
+       ac: 3,
+       hd: 3,
+       hp_max: 24,
+       thac0: 17,
+       morale: 11,
+       int: 13,
+       damage: %{dice: 1, sides: 6, plus: 2}
+     }},
+    {"pc3", "Aldous Brightmantle (Cleric)",
+     %{
+       ac: 4,
+       hd: 3,
+       hp_max: 20,
+       thac0: 18,
+       morale: 10,
+       int: 12,
+       damage: %{dice: 1, sides: 6, plus: 2}
+     }},
+    {"pc4", "Miriel Duskweaver (Illusionist)",
+     %{
+       ac: 7,
+       hd: 3,
+       hp_max: 14,
+       thac0: 18,
+       morale: 9,
+       int: 17,
+       damage: %{dice: 1, sides: 4, plus: 2}
+     }}
+  ]
+
   def add_party(world) do
     pcs =
-      for i <- 1..4, into: %{} do
-        id = "pc#{i}"
-
+      for {id, name, stats} <- @party, into: %{} do
         {id,
-         struct!(Types.Agent, id: id, name: "PC#{i}", tier: 3, place_id: "entry_hall",
-           statblock: %{ac: 5, hd: 3, hp_max: 16, thac0: 18, morale: 12, int: 10,
-                        damage: %{dice: 1, sides: 8, plus: 0}},
-           body: %{hp: 16, conditions: []},
-           capabilities: [:move, :strike, :wait])}
+         struct!(Types.Agent,
+           id: id,
+           name: name,
+           tier: 3,
+           place_id: "entry_hall",
+           statblock: stats,
+           body: %{hp: stats.hp_max, conditions: []},
+           capabilities: [:move, :strike, :wait]
+         )}
       end
 
     %{world | agents: Map.merge(world.agents, pcs)}
@@ -64,6 +111,7 @@ defmodule EngineCore.Scenario do
       |> World.agents_in(a.place_id)
       |> Enum.reject(&(&1.id == a.id))
       |> Enum.reject(&(&1.body.hp == 0))
+      |> Enum.reject(&same_side?(a.id, &1.id))
 
     case foes do
       [] ->
@@ -82,6 +130,9 @@ defmodule EngineCore.Scenario do
     end
   end
 
+  defp same_side?(id, other_id), do: pc?(id) == pc?(other_id)
+  defp pc?(id), do: String.starts_with?(id, "pc")
+
   defp move_or_wait(world, rng, _ledger, _a, nil), do: {world, rng}
 
   defp move_or_wait(world, rng, ledger, a, dest) do
@@ -95,13 +146,12 @@ defmodule EngineCore.Scenario do
     end
   end
 
-
   defp alive(world),
     do: world.agents |> Map.values() |> Enum.filter(&(&1.body.hp > 0)) |> Enum.map(& &1.id)
 
   defp battle_over?(world) do
     living = alive(world)
     pcs = Enum.filter(living, &String.starts_with?(&1, "pc"))
-    (living -- pcs) == [] or pcs == []
+    living -- pcs == [] or pcs == []
   end
 end

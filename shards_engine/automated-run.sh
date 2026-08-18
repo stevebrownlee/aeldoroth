@@ -46,7 +46,7 @@ for e <- r.ledger, e.class == :world do
   end
 end
 agents = Map.values(r.final_world.agents)
-{pcs, mons} = Enum.split_with(agents, &String.starts_with?(&1.name, "PC"))
+{pcs, mons} = Enum.split_with(agents, &String.starts_with?(&1.id, "pc"))
 IO.puts("=== OUTCOME ===")
 IO.puts("Party: #{Enum.count(pcs, & &1.body.hp > 0)}/4 survived" <> (for a <- pcs, a.body.hp > 0, do: " (#{a.name} #{a.body.hp}hp in #{Map.get(rooms, a.place_id)})", into: ""))
 for m <- mons, m.body.hp > 0, do: IO.puts("Still standing: #{m.name} (#{m.body.hp}hp) in #{Map.get(rooms, m.place_id)}")
@@ -60,7 +60,7 @@ IO.puts("=== DIFFICULTY SURVEY — same dungeon, 10 different dice seeds ===")
 for seed <- [1, 7, 42, 99, 123, 555, 1234, 2026, 31337, 77777] do
   r = EngineCore.Scenario.party_vs_warband(yaml, seed)
   agents = Map.values(r.final_world.agents)
-  {pcs, monsters} = Enum.split_with(agents, &String.starts_with?(&1.name, "PC"))
+  {pcs, monsters} = Enum.split_with(agents, &String.starts_with?(&1.id, "pc"))
   p_alive = Enum.count(pcs, & &1.body.hp > 0)
   m_alive = Enum.count(monsters, & &1.body.hp > 0)
   hp_left = pcs |> Enum.filter(&(&1.body.hp > 0)) |> Enum.map(& &1.body.hp) |> Enum.join("/")

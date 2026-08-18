@@ -11,5 +11,4 @@ defmodule ShardsEngine.MixProject do
     ]
   end
 
-  defp deps, do: []
 end
