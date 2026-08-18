@@ -36,6 +36,24 @@ defmodule EngineCore.MovementTest do
     assert {:error, :sealed_edge} = Movement.traverse(w, EngineCore.Dice.new(1), "g1", "guard_room")
   end
 
+  test "sealed one-way edge does not block the unsealed reverse edge", %{w: w} do
+    # library->ritual_chamber is a sealed trapdoor; ritual_chamber->library is open stairs.
+    # Edge matching is directional: reverse traversal must consult only its own edge.
+    w = %{
+      w
+      | edges: [
+          %Types.Edge{id: :sealed_fwd, from: "entry_hall", to: "guard_room", sealed: true},
+          %Types.Edge{id: :open_back, from: "guard_room", to: "entry_hall"}
+        ]
+    }
+
+    assert {:error, :sealed_edge} = Movement.traverse(w, EngineCore.Dice.new(1), "g1", "guard_room")
+
+    w_back = put_in(w.agents["g1"].place_id, "guard_room")
+    assert {:ok, _ev, w2, _} = Movement.traverse(w_back, EngineCore.Dice.new(1), "g1", "entry_hall")
+    assert %Types.Agent{place_id: "entry_hall"} = World.agent(w2, "g1")
+  end
+
   test "unknown agent and unknown destination error", %{w: w} do
     assert {:error, :no_agent} = Movement.traverse(w, EngineCore.Dice.new(1), "nope", "guard_room")
     assert {:error, :no_place} = Movement.traverse(w, EngineCore.Dice.new(1), "g1", "nowhere")

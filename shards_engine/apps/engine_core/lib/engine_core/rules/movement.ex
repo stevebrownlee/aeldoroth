@@ -47,9 +47,7 @@ defmodule EngineCore.Rules.Movement do
     from_place = World.place(world, from)
 
     if from_place && to in (from_place.connections || []) do
-      case Enum.find(world.edges, fn e ->
-             (e.from == from and e.to == to) or (e.from == to and e.to == from)
-           end) do
+      case Enum.find(world.edges, fn e -> e.from == from and e.to == to end) do
         %Types.Edge{sealed: true} -> {:error, :sealed_edge}
         _ -> :ok
       end
