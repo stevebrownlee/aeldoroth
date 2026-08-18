@@ -1,0 +1,113 @@
+defmodule EngineCore.Scheduler do
+  @moduledoc """
+  Pure per-tick world motion (spec 7.1): arrivals, receptions, reflex,
+  commitment dues, cadences, boundary sleep. The OTP Scheduler process
+  and brains arrive in Plan 3; this module is the deterministic core.
+  """
+  alias EngineCore.{Boundaries, Cognition, Commitments, Fold, Ledger, Perception, World}
+
+  @reflex_fidelity 3
+  @reflex_salience 6
+
+  @spec advance(World.t(), :rand.state()) ::
+          {:ok, [Ledger.Event.t()], World.t(), :rand.state()}
+  def advance(world, rng) do
+    t = world.tick + 1
+    tick_ev = tick_event(t)
+    world = Fold.fold(world, [tick_ev])
+
+    {a_events, world, rng} = arrivals_phase(world, rng, t)
+    {c_events, world, rng} = commitments_phase(world, rng, t)
+    {k_events, world, rng} = cadence_phase(world, rng, t)
+    {s_events, world} = sleep_phase(world)
+
+    {:ok, [tick_ev] ++ a_events ++ c_events ++ k_events ++ s_events, world, rng}
+  end
+
+  defp arrivals_phase(world, rng, t) do
+    due = world.in_flight |> Enum.filter(&(&1.tick == t)) |> Enum.sort_by(&{&1.ref, &1.place_id})
+
+    Enum.reduce(due, {[], world, rng}, fn arrival, {evs, w, r} ->
+      ev = %Ledger.Event{seq: 0, tick: t, class: :signal,
+        payload: %{kind: :signal_arrived, ref: arrival.ref, place_id: arrival.place_id,
+                   tick: t, intensity: arrival.intensity, signal_kind: arrival.kind,
+                   about: arrival.about}}
+      w1 = Fold.fold(w, [ev])
+
+      {:ok, recv_evs, w2, r2} = Perception.receive_arrival(w1, r, arrival)
+      {:ok, b_evs, w3} = Boundaries.evaluate(w2, ev)
+      {reflex_evs, w4, r3} = reflex_phase(w3, r2, arrival)
+
+      {evs ++ [ev] ++ recv_evs ++ b_evs ++ reflex_evs, w4, r3}
+    end)
+  end
+
+  defp reflex_phase(world, rng, arrival) do
+    stimulated =
+      world.agents
+      |> Map.values()
+      |> Enum.filter(&(&1.tier == 1 and &1.place_id == arrival.place_id))
+      |> Enum.filter(fn a ->
+        entry = get_in(a.beliefs, [arrival.place_id, arrival.about])
+        entry != nil and entry.last_tick == world.tick and
+          entry.last_fidelity >= @reflex_fidelity and entry.salience >= @reflex_salience
+      end)
+      |> Enum.sort_by(& &1.id)
+
+    Enum.reduce(stimulated, {[], world, rng}, fn rat, {evs, w, r} ->
+      {:ok, e, w2, r2} = Cognition.Reflex.decide(w, r, rat)
+      {evs ++ e, w2, r2}
+    end)
+  end
+
+  defp commitments_phase(world, rng, t) do
+    Enum.reduce(Commitments.due(world, t), {[], world, rng}, fn c, {evs, w, r} ->
+      {:ok, e, w2} = Commitments.mark_due(w, c.id)
+      {:ok, b_evs, w3} = Boundaries.evaluate(w2, hd(e))
+      {evs ++ e ++ b_evs, w3, r}
+    end)
+  end
+
+  defp cadence_phase(world, rng, t) do
+    due =
+      world.agents
+      |> Map.values()
+      |> Enum.filter(&(&1.attention == :alert and &1.cadence != nil and
+                       &1.cadence.next_due != nil and &1.cadence.next_due <= t))
+      |> Enum.sort_by(& &1.id)
+
+    Enum.reduce(due, {[], world, rng}, fn a, {evs, w, r} ->
+      case a.tier do
+        2 ->
+          {:ok, e, w2, r2} = Cognition.Pack.decide(w, r, a)
+          {evs ++ e, w2, r2}
+
+        _ ->
+          ev = %Ledger.Event{seq: 0, tick: t, class: :meta,
+            payload: %{kind: :cadence_tick, agent_id: a.id, due: t,
+                       next_due: t + a.cadence.every}}
+          {evs ++ [ev], fold_cadence(w, ev), r}
+      end
+    end)
+  end
+
+  defp fold_cadence(world, ev) do
+    Fold.update_agent(world, ev.payload.agent_id, fn a ->
+      %{a | cadence: %{a.cadence | next_due: ev.payload.next_due}}
+    end)
+  end
+
+  defp sleep_phase(world) do
+    world.boundaries
+    |> Map.values()
+    |> Enum.sort_by(& &1.id)
+    |> Enum.filter(&Boundaries.sleep_ready?(world, &1))
+    |> Enum.reduce({[], world}, fn b, {evs, w} ->
+      {:ok, e, w2} = Boundaries.sleep(w, b.id)
+      {evs ++ e, w2}
+    end)
+  end
+
+  defp tick_event(t),
+    do: %Ledger.Event{seq: 0, tick: t, class: :meta, payload: %{kind: :tick_advance, to: t}}
+end
