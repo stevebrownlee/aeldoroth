@@ -680,6 +680,15 @@ initial_enemies:
     morale: 12
     is_alive: true
 
+coinage:
+  description: "Coin values expressed in copper pieces (AD&D 1E). Treasure value in gp = sum(count x value_in_cp) / 100. House rule: 1 gp of treasure value = 1 XP. Electrum (ep) is unused in this adventure."
+  value_in_cp:
+    pp: 500
+    gp: 100
+    ep: 50
+    sp: 10
+    cp: 1
+
 initial_treasure:
   healing_potion:
     id: "healing_potion"
@@ -726,11 +735,15 @@ initial_treasure:
   goblin_coins_guard_room:
     id: "goblin_coins_guard_room"
     name: "Goblin Treasure (Guard Room)"
-    description: "A mix of copper, silver, and gold coins looted from village raids, scattered among the four goblins. Each goblin carries about 10 gp worth. Total value 40 gp."
+    description: "Loot from village raids carried by the four goblin guards. Each guard carries an identical pouch holding 5 gp, 30 sp, and 200 cp (10 gp value per pouch, 40 gp total)."
     value: 40
+    coins:
+      gp: 20
+      sp: 120
+      cp: 800
     type: "currency"
     location_room_id: "guard_room"
-    location_description: "10 gp on each of the four goblins (in pouches and pockets)"
+    location_description: "one pouch per goblin guard (each pouch: 5 gp, 30 sp, 200 cp — splits evenly four ways)"
     weight: 0.4
     is_hidden: false
     is_magical: false
@@ -754,11 +767,20 @@ initial_treasure:
   chiefs_treasure_hoard:
     id: "chiefs_treasure_hoard"
     name: "Chief's Treasure Hoard"
-    description: "A collection of loot from raids stored in a crude chest next to Grisk's throne. Contains 150 gp in mixed coins, stolen jewelry, and village valuables. This is the obvious treasure."
+    description: "A sack of raid loot beside Grisk's throne-crate: mixed coins plus small valuables stolen from Thornhollow. Coins total 130 gp, valuables 20 gp, total 150 gp."
     value: 150
+    coins:
+      gp: 80
+      sp: 400
+      cp: 1000
+    valuables:
+      - name: "Silver locket (stolen from a Thornhollow farmhouse)"
+        value_gp: 12
+      - name: "Pair of silver candlesticks (from the village chapel)"
+        value_gp: 8
     type: "currency"
     location_room_id: "chiefs_room"
-    location_description: "in a crude wooden chest next to Grisk's throne (obvious)"
+    location_description: "in a crude sack next to Grisk's throne (coins loose, valuables wrapped in cloth)"
     weight: 1.5
     is_hidden: false
     is_magical: false
@@ -795,11 +817,15 @@ initial_treasure:
   chiefs_bodyguard_coins:
     id: "chiefs_bodyguard_coins"
     name: "Bodyguard Coins"
-    description: "Gold and silver coins carried by Grisk's two bodyguards, 10 gp each. Total 20 gp."
+    description: "Coins carried by Grisk's two bodyguards, 10 gp each. Each carries 4 gp, 40 sp, and 200 cp. Total 20 gp."
     value: 20
+    coins:
+      gp: 8
+      sp: 80
+      cp: 400
     type: "currency"
     location_room_id: "chiefs_room"
-    location_description: "on the two goblin bodyguards (10 gp each)"
+    location_description: "on the two goblin bodyguards (each: 4 gp, 40 sp, 200 cp — splits evenly two ways)"
     weight: 0.2
     is_hidden: false
     is_magical: false
@@ -808,8 +834,11 @@ initial_treasure:
   hidden_wall_cache:
     id: "hidden_wall_cache"
     name: "Vaelith's Hidden Wall Cache"
-    description: "Behind a carefully concealed loose stone (the third from the corner, behind where the crate sits), Vaelith hid his most precious emergency funds. Contains 250 gp in old platinum coins and three gems worth 50 gp each. Total value 400 gp. Requires journal clue to know where to look, or very careful searching."
+    description: "Behind a carefully concealed loose stone (the third from the corner, behind where the crate sits), Vaelith hid his most precious emergency funds: 50 old platinum pieces (250 gp) and three gems (tracked separately as 'three_gems', 150 gp). Total value 400 gp. Requires journal clue to know where to look, or very careful searching."
     value: 400
+    coins:
+      pp: 50
+    contains: ["three_gems"]
     type: "treasure_cache"
     location_room_id: "chiefs_room"
     location_description: "behind the third stone from the corner, behind the crate throne, two feet LEFT of the false cache (DC 15 to find without journal clue, DC 10 with clue)"
@@ -822,8 +851,10 @@ initial_treasure:
   three_gems:
     id: "three_gems"
     name: "Three Gems"
-    description: "Three semi-precious gems (amethyst, citrine, jade) worth 50 gp each. Found in the hidden wall cache."
+    description: "Three semi-precious gems of 50 gp each: an amethyst, a citrine, and a piece of jade. Found in the hidden wall cache; each gem is a discrete item for party division."
     value: 150
+    quantity: 3
+    value_each: 50
     type: "treasure"
     location_room_id: "chiefs_room"
     location_description: "inside the hidden wall cache"
@@ -918,8 +949,13 @@ initial_treasure:
   old_coins_ritual_chamber:
     id: "old_coins_ritual_chamber"
     name: "Old Coins (Ritual Chamber)"
-    description: "50 gp in very old coins, pre-Darkening era. Found in the secret workbench compartment."
+    description: "50 gp in very old coins of pre-Darkening mintage, kept in the secret workbench compartment: 5 old platinum pieces, 20 gold, 40 silver, and 100 copper coins."
     value: 50
+    coins:
+      pp: 5
+      gp: 20
+      sp: 40
+      cp: 100
     type: "currency"
     location_room_id: "ritual_chamber"
     location_description: "in the secret compartment of the workbench, with the Darkened Grimoire"
