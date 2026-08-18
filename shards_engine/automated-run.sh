@@ -17,7 +17,7 @@ SEED="${2:-${SEED:-1234}}"
 export YAML SEED
 
 usage() {
-  sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'
   exit 1
 }
 
