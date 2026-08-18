@@ -21,7 +21,11 @@ defmodule EngineCore.Fold do
 
       :death ->
         update_agent(world, p.agent_id, fn a ->
-          %{a | capabilities: [], body: %{a.body | conditions: Enum.uniq([:dead | a.body.conditions])}}
+          %{
+            a
+            | capabilities: [],
+              body: %{a.body | conditions: Enum.uniq([:dead | a.body.conditions])}
+          }
         end)
 
       :morale_break ->
@@ -89,6 +93,30 @@ defmodule EngineCore.Fold do
           place_map = Map.put(a.beliefs[p.place_id] || %{}, p.about, merged)
           %{a | beliefs: Map.put(a.beliefs, p.place_id, place_map)}
         end)
+
+      :commitment_created ->
+        c = struct!(EngineCore.Types.Commitment, Map.to_list(p.commitment))
+
+        update_agent(world, p.commitment.debtor, fn a ->
+          %{a | commitments: a.commitments ++ [c]}
+        end)
+
+      :commitment_due ->
+        update_commitment(world, p.id, &%{&1 | status: :due})
+
+      :commitment_kept ->
+        update_commitment(world, p.id, fn c ->
+          if p.rearm_due,
+            do: %{c | status: :pending, due: p.rearm_due},
+            else: %{c | status: :kept}
+        end)
+
+      :commitment_violated ->
+        update_commitment(world, p.id, &%{&1 | status: :violated})
+
+      :commitment_renegotiated ->
+        update_commitment(world, p.id, &%{&1 | due: p.due, status: :pending})
+
       other ->
         raise ArgumentError, "unknown payload kind: #{inspect(other)}"
     end
@@ -96,11 +124,29 @@ defmodule EngineCore.Fold do
 
   def apply(world, %Ledger.Event{}), do: world
 
-  @spec update_agent(World.t(), String.t(), (EngineCore.Types.Agent.t() -> EngineCore.Types.Agent.t())) :: World.t()
+  @spec update_agent(World.t(), String.t(), (EngineCore.Types.Agent.t() ->
+                                               EngineCore.Types.Agent.t())) :: World.t()
   def update_agent(world, id, fun) do
     case World.agent(world, id) do
       nil -> world
       a -> %{world | agents: Map.put(world.agents, id, fun.(a))}
     end
+  end
+
+  defp update_commitment(world, id, fun) do
+    %{
+      world
+      | agents:
+          Map.new(world.agents, fn {aid, a} ->
+            {aid,
+             %{
+               a
+               | commitments:
+                   Enum.map(a.commitments, fn c ->
+                     if c.id == id, do: fun.(c), else: c
+                   end)
+             }}
+          end)
+    }
   end
 end
