@@ -23,6 +23,7 @@ defmodule EngineCore.Perception do
     |> Kernel.-(if agent.statblock.int <= 6, do: 1, else: 0)
     |> max(0)
     |> then(fn f -> if arrival.intensity >= 9, do: max(f, 3), else: f end)
+    |> min(5)
   end
 
   @spec resolve_fidelity(non_neg_integer(), Types.Arrival.t(), :rand.state()) ::

@@ -44,6 +44,8 @@ defmodule EngineCore.PerceptionTest do
     assert Perception.base_fidelity(arrival(7), agent(1)) == 3
     # auto-high: deafening alarm is at least F3 for everyone
     assert Perception.base_fidelity(arrival(10, hops: 1), agent(1, :dormant)) == 3
+    # ceiling: int 17 bonus cannot exceed F5
+    assert Perception.base_fidelity(arrival(9.5), agent(17)) == 5
   end
 
   test "marginal signals resolve by d6 awareness" do
