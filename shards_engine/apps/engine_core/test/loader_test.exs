@@ -112,6 +112,7 @@ defmodule EngineCore.LoaderTest do
     assert w.agents["wolf_1"].tier == 2 and w.agents["wolf_1"].group == "wolf"
     assert w.agents["wolf_1"].cadence == %{every: 5, next_due: nil}
     assert w.agents["shadow_touched_skeleton"].attention == :dormant
+    assert w.agents["shadow_touched_skeleton"].cadence == %{every: 2, next_due: nil}
 
     assert Enum.find(w.edges, &(&1.id == :entry_hall__guard_room)).label == "east"
   end

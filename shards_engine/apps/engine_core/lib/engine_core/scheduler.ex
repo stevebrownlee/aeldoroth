@@ -56,7 +56,8 @@ defmodule EngineCore.Scheduler do
   defp hazard_phase(world, rng, moves) do
     Enum.reduce(moves, {[], world, rng}, fn mv, {evs, w, r} ->
       {:ok, e, w2, r2} = Cognition.Hazard.check_move(w, r, mv.payload)
-      {evs ++ e, w2, r2}
+      {:ok, e3, w3, r3} = Cognition.Hazard.check_presence(w2, r2, mv.payload.agent_id)
+      {evs ++ e ++ e3, w3, r3}
     end)
   end
 
@@ -196,6 +197,37 @@ defmodule EngineCore.Scheduler do
 
     Enum.reduce(due, {[], world, rng}, fn a, {evs, w, r} ->
       case a.tier do
+        0 ->
+          ev = %Ledger.Event{
+            seq: 0,
+            tick: t,
+            class: :meta,
+            payload: %{kind: :cadence_tick, agent_id: a.id, due: t, next_due: t + a.cadence.every}
+          }
+
+          w_armed = fold_cadence(w, ev)
+
+          # One strike pattern per place per tick: only the first due tier-0 agent runs it.
+          first_t0 = Enum.find(due, fn d -> d.tier == 0 and d.place_id == a.place_id end)
+
+          if first_t0.id == a.id do
+            intruder =
+              w_armed.agents
+              |> Map.values()
+              |> Enum.filter(&(&1.place_id == a.place_id and &1.tier != 0 and alive?(&1)))
+              |> Enum.sort_by(& &1.id)
+              |> List.first()
+
+            if intruder do
+              {:ok, e2, w3, r2} = Cognition.Hazard.check_presence(w_armed, r, intruder.id)
+              {evs ++ [ev] ++ e2, w3, r2}
+            else
+              {evs ++ [ev], w_armed, r}
+            end
+          else
+            {evs ++ [ev], w_armed, r}
+          end
+
         2 ->
           {:ok, e, w2, r2} = Cognition.Pack.decide(w, r, a)
           {evs ++ e, w2, r2}
@@ -217,6 +249,12 @@ defmodule EngineCore.Scheduler do
     Fold.update_agent(world, ev.payload.agent_id, fn a ->
       %{a | cadence: %{a.cadence | next_due: ev.payload.next_due}}
     end)
+  end
+
+  defp alive?(%Types.Agent{body: body}) do
+    hp = (body && body.hp) || 0
+    conds = (body && body.conditions) || []
+    hp > 0 and :dead not in conds
   end
 
   defp sleep_phase(world) do

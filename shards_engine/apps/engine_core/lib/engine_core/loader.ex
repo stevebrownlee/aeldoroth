@@ -144,6 +144,7 @@ defmodule EngineCore.Loader do
     }
   end
 
+  defp cadence_for(0), do: %{every: 2, next_due: nil}
   defp cadence_for(3), do: %{every: 10, next_due: nil}
   defp cadence_for(2), do: %{every: 5, next_due: nil}
   defp cadence_for(_), do: nil
