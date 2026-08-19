@@ -12,6 +12,7 @@ defmodule ClientTUI.MixProject do
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
       deps: [
+        {:bandit, "~> 1.0"},
         {:jason, "~> 1.4"},
         {:websockex, "~> 0.4"},
         {:engine_core, in_umbrella: true},

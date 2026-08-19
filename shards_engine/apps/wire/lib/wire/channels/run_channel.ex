@@ -11,7 +11,7 @@ defmodule Wire.RunChannel do
 
   use Phoenix.Channel
 
-  alias EngineCore.{Ledger, World}
+  alias EngineCore.Ledger
   alias EngineCore.Ledger.Writer
   alias EngineCore.World.Server
   alias Referee.{Run.Session, Slice}

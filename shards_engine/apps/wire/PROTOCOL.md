@@ -8,12 +8,13 @@ with no protocol change.
 
 WebSocket at `/socket/websocket?vsn=2.0.0` (Phoenix Channels, JSON serializer).
 
-Message envelope (vsn 2.0.0):
+Message envelope (vsn 2.0.0) — a JSON **array**, topic before event:
 
 ```json
-{"topic": "<topic>", "event": "<event>", "payload": <payload>, "ref": <ref>}
+[<join_ref>, <ref>, "<topic>", "<event>", <payload>]
 ```
 
+- `join_ref` is null on this client's frames; the server echoes its own value.
 - Client→server joins and pushes carry a unique `ref`; server replies reuse it.
 - Heartbeat: clients send `phx_heartbeat` on topic `phoenix` every ~30s.
 

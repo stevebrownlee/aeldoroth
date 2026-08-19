@@ -89,7 +89,7 @@ defmodule ClientTUI.CLI do
 
   defp command(_line), do: :say
 
-  defp handle_command(conn, "/ooc", nil), do: IO.puts("usage: /ooc <text>")
+  defp handle_command(_conn, "/ooc", nil), do: IO.puts("usage: /ooc <text>")
   defp handle_command(conn, "/ooc", text), do: Conn.send_event(conn, "ooc", %{"text" => text})
   defp handle_command(conn, "/sheet", _), do: Conn.send_event(conn, "sheet", %{"update" => %{}})
   defp handle_command(conn, "/pause", _), do: Conn.send_event(conn, "pause", %{})
@@ -117,14 +117,13 @@ defmodule ClientTUI.CLI do
   defp print_push("state_sync", %{"state" => %{"summary" => s}}) when is_binary(s), do: IO.puts("[state] #{s}")
   defp print_push("state_sync", %{"tick" => t}), do: IO.puts("[state] tick #{t}")
 
-  defp role_suffix(%{spectate: true}), do: " (spectating)"
-  defp role_suffix(%{character: char}), do: " as #{char}"
   defp print_push("ooc", %{"agent_id" => a, "text" => t}), do: IO.puts("[ooc] #{a}: #{t}")
   defp print_push("ledger_tail", %{"events" => events}) do
     Enum.each(events, fn ev -> IO.puts("[ledger] #{ev["seq"]} #{ev["tick"]} #{ev["class"]}") end)
   end
-  defp print_push(event, payload), do: IO.puts("[#{event}] #{brief(payload)}")
 
+  defp role_suffix(%{spectate: true}), do: " (spectating)"
+  defp role_suffix(%{character: char}), do: " as #{char}"
   defp brief(payload) do
     case payload do
       %{"reply" => text} when is_binary(text) -> text

@@ -68,7 +68,11 @@ defmodule EngineCore.RunSup do
       case Registry.lookup(EngineCore.RunReg, {kind, run_id}) do
         [{pid, _}] ->
           Process.unlink(pid)
-          GenServer.stop(pid, :normal)
+          try do
+            GenServer.stop(pid, :normal)
+          catch
+            :exit, _ -> :ok
+          end
 
         [] ->
           :ok

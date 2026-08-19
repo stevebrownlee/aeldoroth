@@ -60,11 +60,33 @@ defmodule ClientTUI.Conn do
 
   ## WebSockex callbacks
 
+  # WebSockex 0.4: handle_connect must return {:ok, state} — frames can only
+  # be sent as replies from frame/info/cast callbacks. The join goes out on
+  # the first self-message after the upgrade.
   @impl true
   def handle_connect(_conn, %__MODULE__{} = st) do
+    send(self(), :send_join)
+    {:ok, arm_heartbeat(st)}
+  end
+
+  @impl true
+  def handle_info(:send_join, %__MODULE__{} = st) do
     {ref, st} = fresh_ref(st)
     join = Channel.encode(st.topic, "phx_join", join_payload(st), ref)
-    {:reply, {:text, join}, arm_heartbeat(st)}
+    {:reply, {:text, join}, st}
+  end
+
+  def handle_info(:heartbeat, %__MODULE__{} = st) do
+    {ref, st} = fresh_ref(st)
+    hb = Channel.encode("phoenix", "heartbeat", %{}, ref)
+    {:reply, {:text, hb}, arm_heartbeat(st)}
+  end
+
+  @impl true
+  def handle_cast({:send_event, event, payload}, %__MODULE__{} = st) do
+    {ref, st} = fresh_ref(st)
+    frame = Channel.encode(st.topic, event, payload, ref)
+    {:reply, {:text, frame}, st}
   end
 
   @impl true
@@ -83,21 +105,6 @@ defmodule ClientTUI.Conn do
         {:ok, st}
     end
   end
-
-  @impl true
-  def handle_cast({:send_event, event, payload}, %__MODULE__{} = st) do
-    {ref, st} = fresh_ref(st)
-    {:reply, {:text, Channel.encode(st.topic, event, payload, ref)}, st}
-  end
-
-  @impl true
-  def handle_info(:heartbeat, %__MODULE__{} = st) do
-    {ref, st} = fresh_ref(st)
-    hb = Channel.encode("phoenix", "heartbeat", %{}, ref)
-    {:reply, {:text, hb}, arm_heartbeat(st)}
-  end
-
-  def handle_info(_msg, st), do: {:ok, st}
 
   ## Internals
 

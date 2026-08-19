@@ -2,3 +2,4 @@ _build/
 deps/
 .mix_tasks
 erl_crash.dump
+runs/

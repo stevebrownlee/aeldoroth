@@ -87,8 +87,17 @@ defmodule Referee.Run.Session do
   @spec stop(String.t()) :: :ok | {:error, :no_run}
   def stop(run_id) do
     case whereis(run_id) do
-      nil -> {:error, :no_run}
-      pid -> GenServer.stop(pid, :normal)
+      nil ->
+        {:error, :no_run}
+
+      pid ->
+        # Tolerate a concurrent exit (supervisor teardown races with this
+        # call): any exit reason achieves the stop.
+        try do
+          GenServer.stop(pid, :normal)
+        catch
+          :exit, _ -> :ok
+        end
     end
   end
 
