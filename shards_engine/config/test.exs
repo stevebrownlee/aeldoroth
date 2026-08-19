@@ -7,4 +7,10 @@ config :llm_gateway, routing: %{
   narrate: %{adapter: LLMGateway.Adapters.Scripted, temperature: 0.4, max_tokens: 512}
 }
 
+# Fake vendor keys for adapter build_request tests — never real, never committed elsewhere.
+config :llm_gateway, keys: %{
+  openai_main: "sk-test-1234",
+  anthropic_main: "ak-test-5678"
+}
+
 config :logger, level: :warning
