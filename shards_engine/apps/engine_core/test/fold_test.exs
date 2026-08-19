@@ -45,6 +45,42 @@ defmodule EngineCore.FoldTest do
     end
   end
 
+  test "agent_added folds a new agent into the world (PC injection)", %{w: w} do
+    pc = %{
+      id: "pc_torvald",
+      name: "Torvald",
+      tier: 3,
+      place_id: "entry_hall",
+      body: %{hp: 9, conditions: []},
+      capabilities: [:move, :strike, :shout, :wait]
+    }
+
+    w2 = Fold.apply(w, ev(1, 0, %{kind: :agent_added, agent: pc}))
+    assert %Types.Agent{id: "pc_torvald", place_id: "entry_hall"} = World.agent(w2, "pc_torvald")
+  end
+
+  test "belief_corrected drops the belief; no-op for missing keys", %{w: w} do
+    believed =
+      Fold.apply(w, ev(1, 1, %{kind: :signal_received, agent_id: "g1", place_id: "entry_hall",
+                             about: "pc_torvald", fidelity: 3, salience: 5.0, signal_kind: :sound}))
+
+    assert get_in(World.agent(believed, "g1").beliefs, ["entry_hall", "pc_torvald"]).count == 1
+
+    corrected =
+      Fold.apply(believed, ev(2, 2, %{kind: :belief_corrected, agent_id: "g1",
+                                      place_id: "entry_hall", about: "pc_torvald"}))
+
+    assert get_in(World.agent(corrected, "g1").beliefs, ["entry_hall", "pc_torvald"]) == nil
+    assert get_in(World.agent(corrected, "g1").beliefs, ["entry_hall"]) == %{}
+
+    # missing key is a no-op, not a crash
+    noop =
+      Fold.apply(corrected, ev(3, 3, %{kind: :belief_corrected, agent_id: "g1",
+                                        place_id: "entry_hall", about: "never_was"}))
+
+    assert World.agent(noop, "g1").beliefs == corrected |> World.agent("g1") |> Map.get(:beliefs)
+  end
+
   defp ev(seq, tick, payload),
     do: %Ledger.Event{seq: seq, tick: tick, class: :world, payload: payload}
 end

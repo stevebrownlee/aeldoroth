@@ -174,6 +174,16 @@ defmodule EngineCore.Fold do
           %{a | cadence: %{a.cadence | next_due: p.next_due}}
         end)
 
+      :agent_added ->
+        a = struct!(EngineCore.Types.Agent, Map.to_list(p.agent))
+        %{world | agents: Map.put(world.agents, a.id, a)}
+
+      :belief_corrected ->
+        update_agent(world, p.agent_id, fn a ->
+          place_map = Map.delete(a.beliefs[p.place_id] || %{}, p.about)
+          %{a | beliefs: Map.put(a.beliefs, p.place_id, place_map)}
+        end)
+
       other ->
         raise ArgumentError, "unknown payload kind: #{inspect(other)}"
     end
