@@ -3,11 +3,9 @@ defmodule Referee.Preferences do
   Referee preference stack: core 1E defaults < module (adventure) YAML < personal referee YAML.
 
   `resolve/2` deep-merges known-key trees only; unknown keys at any depth are
-  dropped with a warning. The resolved tree is plain data — `hash/1` gives a
-  stable, value-sensitive fingerprint for audit records.
+  dropped and reported as warning strings. `hash/1` is a stable,
+  value-sensitive md5 of the canonically ordered resolved tree.
   """
-
-  require Logger
 
   @core %{
     tone: "neutral",
@@ -20,10 +18,11 @@ defmodule Referee.Preferences do
   @spec core() :: map()
   def core, do: deep_copy(@core)
 
-  @spec resolve(map(), map()) :: map()
-  def resolve(module_prefs, personal_prefs)
-      when is_map(module_prefs) and is_map(personal_prefs) do
-    known(@core, module_prefs, []) |> known(personal_prefs, [])
+  @spec resolve(map() | nil, map() | nil) :: {map(), [String.t()]}
+  def resolve(module_prefs, personal_prefs) do
+    {m, w1} = known(@core, module_prefs || %{}, [])
+    {p, w2} = known(m, personal_prefs || %{}, [])
+    {p, w1 ++ w2}
   end
 
   @doc "Load a YAML layer; nil/missing path → empty map (layer absent)."
@@ -31,28 +30,29 @@ defmodule Referee.Preferences do
   def load(nil), do: %{}
   def load(path), do: YamlElixir.read_from_file(path) || %{}
 
-  @spec hash(map()) :: integer()
-  def hash(prefs), do: :erlang.phash2(sort_tree(prefs))
+  @spec hash(map()) :: binary()
+  def hash(prefs), do: :erlang.md5(:erlang.term_to_binary(sort_tree(prefs)))
 
   # Deep-merge `over` onto `base`, keeping only keys known in `base`'s schema.
-  # Nested maps recurse; scalars replace.
+  # Nested maps recurse; scalars replace. Returns {merged, warnings}.
   defp known(base, over, path) do
-    Enum.reduce(over, base, fn {k, v}, acc ->
+    Enum.reduce(over, {base, []}, fn {k, v}, {acc, warns} ->
       key = to_atom(k)
 
       case Map.get(base, key) do
         nil ->
-          Logger.warning("preferences: dropping unknown key #{Enum.join(path ++ [key], ".")}")
-          acc
+          dotted = path ++ [key] |> Enum.join(".") |> maybe_quote(k)
+          {acc, warns ++ ["unknown preference key: #{dotted}"]}
 
         %{} = nested when is_map(v) ->
-          Map.put(acc, key, known(nested, v, path ++ [key]))
+          {inner, w} = known(nested, v, path ++ [key])
+          {Map.put(acc, key, inner), warns ++ w}
 
         %{} = _nested ->
-          Map.put(acc, key, v)
+          {Map.put(acc, key, v), warns}
 
         _scalar ->
-          Map.put(acc, key, v)
+          {Map.put(acc, key, v), warns}
       end
     end)
   end
@@ -60,7 +60,10 @@ defmodule Referee.Preferences do
   defp to_atom(k) when is_atom(k), do: k
   defp to_atom(k) when is_binary(k), do: String.to_existing_atom(k)
 
-  # Canonical ordering so phash2 never distinguishes equal maps by key order.
+  defp maybe_quote(dotted, k) when is_binary(k), do: "'#{dotted}'"
+  defp maybe_quote(dotted, _k), do: dotted
+
+  # Canonical ordering so the hash never distinguishes equal maps by key order.
   defp sort_tree(m) when is_map(m), do: Map.new(m, fn {k, v} -> {k, sort_tree(v)} end)
   defp sort_tree(v) when is_list(v), do: Enum.map(v, &sort_tree/1)
   defp sort_tree(v), do: v
