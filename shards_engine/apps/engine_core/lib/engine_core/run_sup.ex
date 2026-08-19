@@ -6,6 +6,7 @@ defmodule EngineCore.RunSup do
   """
 
   alias EngineCore.Ledger.Writer
+  alias EngineCore.{World, World.Server}
 
   @doc """
   Idempotently start the ledger writer for `run_id`. Registry name release
@@ -33,7 +34,34 @@ defmodule EngineCore.RunSup do
     end
   end
 
-  @doc "Stop every per-run process (writer; world server once Task 3 adds it). Test teardown."
+  @doc """
+  Idempotently start a whole run: ledger writer first, then the world
+  server seeded from `world` (spec §12.1 start order).
+  """
+  @spec ensure_run(String.t(), World.t(), keyword()) :: {:ok, pid()} | {:error, term()}
+  def ensure_run(run_id, %World{} = world, writer_opts \\ []) do
+    with {:ok, _writer} <- ensure_writer(run_id, writer_opts) do
+      case EngineCore.whereis_world(run_id) do
+        nil ->
+          case DynamicSupervisor.start_child(EngineCore.RunSup, {Server, {run_id, world}}) do
+            {:ok, pid} -> {:ok, pid}
+            {:error, {:already_started, pid}} -> {:ok, pid}
+            {:error, {:already_registered, pid}} -> {:ok, pid}
+            error -> error
+          end
+
+        pid ->
+          if Process.alive?(pid) do
+            {:ok, pid}
+          else
+            Process.sleep(1)
+            ensure_run(run_id, world, writer_opts)
+          end
+      end
+    end
+  end
+
+  @doc "Stop every per-run process (world server, then writer). Test teardown."
   @spec stop_run(String.t()) :: :ok
   def stop_run(run_id) do
     Enum.each([:world, :writer], fn kind ->

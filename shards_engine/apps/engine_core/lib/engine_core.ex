@@ -16,4 +16,13 @@ defmodule EngineCore do
       [] -> nil
     end
   end
+
+  @doc "Pid of the world server for `run_id`, or nil."
+  @spec whereis_world(String.t()) :: pid() | nil
+  def whereis_world(run_id) do
+    case Registry.lookup(EngineCore.RunReg, {:world, run_id}) do
+      [{pid, _}] -> pid
+      [] -> nil
+    end
+  end
 end

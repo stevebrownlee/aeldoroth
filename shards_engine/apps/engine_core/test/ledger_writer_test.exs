@@ -48,7 +48,7 @@ defmodule EngineCore.LedgerWriterTest do
     start_writer!(id)
     parent = self()
 
-    sub =
+    _sub =
       spawn_link(fn ->
         :ok = Writer.subscribe(id)
         send(parent, :subscribed)
