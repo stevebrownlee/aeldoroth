@@ -148,7 +148,7 @@ shards_engine/
 - [ ] **Step 2:** implement. `boundaries/1` maps `world.boundaries` to `%{id => %{state: b.state, reason: b.reason}}` (use actual Boundary struct fields).
 - [ ] **Step 3:** `mix test apps/engine_core` green. Commit `engine_core: World.Server authoritative fold with snapshot reads`.
 
-> **Known rare intermittent (deferred):** full-suite runs occasionally fail `LedgerWriterTest` with `(EXIT) shutdown` on a writer mid-call (~2 in 10 before Task 3 landed). Never reproduces in isolation, paired files, or a 400-pass concurrent reproducer. No `Application.stop`/supervisor-killer exists in the suite. Revisit at Task 10's full-suite determinism proof; do not re-litigate mid-task.
+> **Known rare intermittent (RESOLVED in Task 5):** full-suite runs occasionally failed `LedgerWriterTest` with `(EXIT) shutdown` on a writer mid-call (~2 in 10 before Task 3 landed). Root causes found and fixed during Task 5: (1) `World.Server`'s default `:permanent` child_spec restart-looped against a dying writer when `stop_run` stopped it — now `:transient` with a graceful no-writer stop; (2) a zero-timeout `assert_received` racing a two-hop subscriber forward in the writer test — now `assert_receive`; (3) sessions linked to callers via `start_link` died with test processes — now under `Referee.SessionSup` (`:temporary`). Full umbrella suites green repeatedly since, including Task 10's determinism runs.
 
 ### Task 4: `Referee.Dossier` — `:summarize` class, template fallback
 
