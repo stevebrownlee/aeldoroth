@@ -5,7 +5,12 @@ defmodule EngineCore.Application do
 
   @impl true
   def start(_type, _args) do
-    children = []
+    children = [
+      EngineCore.Ledger.Ets,
+      {Registry, keys: :unique, name: EngineCore.RunReg},
+      {DynamicSupervisor, name: EngineCore.RunSup}
+    ]
+
     opts = [strategy: :one_for_one, name: EngineCore.Supervisor]
     Supervisor.start_link(children, opts)
   end
