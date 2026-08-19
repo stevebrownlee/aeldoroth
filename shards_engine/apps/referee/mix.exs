@@ -13,7 +13,8 @@ defmodule Referee.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: [
         {:engine_core, in_umbrella: true},
-        {:llm_gateway, in_umbrella: true}
+        {:llm_gateway, in_umbrella: true},
+        {:yaml_elixir, "~> 2.11"}
       ]
     ]
   end

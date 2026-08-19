@@ -5,6 +5,16 @@ difficulty_level: "balanced"
 starting_room: "entry_hall"
 opening_narrative: "You stand in the warm common room of Mara's inn in Thornhollow, listening to Mayor Grevik's worried voice. 'The livestock disappearances grow worse,' he says, his weathered face grave. 'Strange lights flicker from the old wizard's tower on the hill—ruins that have stood silent for thirty years. The villagers are terrified. Will you investigate and stop this threat? I can offer 100 gold pieces for your aid.' Through the window, you can see the crumbled silhouette of the tower against the autumn sky."
 
+# --- Referee preference module layer (spec section 10; core < module < personal) ---
+preferences:
+  tone: "grim-but-heroic"
+  narration_style: "terse"
+  lethality: "standard"
+  dice_visibility: "open"
+  xp:
+    gold_per_xp: 1
+    creative_bonus: true
+
 home_base:
   name: "Thornhollow"
   description: "A small farming community of hardworking folk, surrounded by autumn fields ready for harvest. The village has about 150 souls, mostly farmers and craftspeople who rarely see trouble. Until now."
