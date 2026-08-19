@@ -10,9 +10,11 @@ defmodule Referee.Run do
   third rejection in one tick stalls the moment (plan Task 9).
   """
 
-  alias EngineCore.{Fold, Ledger, Loader, Scheduler}
+  alias Agents
+  alias Agents.{Adopt, Salience}
+  alias EngineCore.{Commitments, Dice, Envelopes, Fold, Ledger, Loader, Scheduler, World}
   alias LLMGateway.{Audit, Ctx}
-  alias Referee.{Interpret, Narrate, PC, Preferences, Resolve, Spend, Validate}
+  alias Referee.{Interpret, Narrate, PC, Preferences, Resolve, Slice, Spend, Validate}
 
   defstruct [:world, :prefs, :ctx, :rng, :pcs, events: [], seq: 0, rejections: %{}]
 
@@ -86,13 +88,16 @@ defmodule Referee.Run do
   end
 
   @doc """
-  Run one tick of autonomous world time; narrate what each PC newly perceived.
+  Advance the world one tick: scheduler arrivals, commitments, cadence,
+  sleep — then envelope delivery, order adoption, tier-3 deliberation, and
+  narration of what each PC newly perceived.
   """
   @spec advance(t()) :: {:ok, %{String.t() => String.t()}, t()}
   def advance(run) do
+    seq0 = run.seq
+
     {:ok, events, w2, r2} = Scheduler.advance(run.world, run.rng)
     {:ok, reaction, w3, r3} = Scheduler.react(w2, r2, events)
-
     all = events ++ reaction
 
     run =
@@ -101,7 +106,226 @@ defmodule Referee.Run do
       |> Map.put(:rng, r3)
       |> append_world(all)
 
-    received = Enum.filter(all, &(&1.payload[:kind] == :signal_received))
+    {run, delivered} = deliver_phase(run)
+    {run, _} = adoption_phase(run, delivered)
+    run = deliberation_phase(run, all)
+
+    narrate_new_receipts(run, seq0)
+  end
+
+  # Envelopes deliver when their target holds a receipt for the voicing
+  # signal: agent id + signal ref must match (spec 8). Idempotent — a
+  # pending-check gates re-delivery.
+  defp deliver_phase(run) do
+    receipts =
+      events(run)
+      |> Enum.map(& &1.payload)
+      |> Enum.filter(&(&1[:kind] == :signal_received))
+
+    pre = run.world.envelopes
+
+    {:ok, delivered_events, w2} = Envelopes.deliver_due(run.world, receipts)
+    run = %{run | world: w2} |> append_world(delivered_events)
+
+    delivered_ids = MapSet.new(delivered_events, & &1.payload[:id])
+
+    delivered =
+      pre
+      |> Enum.filter(&(&1.type == :order and &1.id in delivered_ids))
+      |> Enum.sort_by(& &1.id)
+
+    {run, delivered}
+  end
+
+  # A delivered order becomes the subordinate's own commitment only through
+  # the subordinate's decision: one d20 (rolled here, in Run) against a
+  # reliability target from morale, INT, and engine feasibility. The dice row
+  # lands after the brain replies, recording decision and roll atomically.
+  defp adoption_phase(run, delivered) do
+    Enum.reduce(delivered, {run, []}, fn env, {acc, _} ->
+      {roll, rng2} = Dice.roll(acc.rng, 20)
+      acc = %{acc | rng: rng2}
+
+      feasible = Adopt.feasible?(acc.world, env)
+      slice = Slice.for_actor(acc.world, env.to)
+      debtor = World.agent(acc.world, env.to)
+
+      case Agents.adopt(env.to, %{
+             envelope: Map.from_struct(env),
+             slice: slice,
+             ctx: acc.ctx,
+             roll: roll,
+             debtor: debtor,
+             feasible: feasible
+           }) do
+        {:ok, d} ->
+          acc =
+            acc
+            |> Map.put(:ctx, d.ctx)
+            |> append_audit(d.audit)
+            |> push(:dice, acc.world.tick, %{
+              purpose: :adoption,
+              sides: 20,
+              roll: roll,
+              target: Adopt.reliability(debtor, feasible),
+              adopted: d.adopted
+            })
+
+          {:ok, acc} =
+            if d.adopted do
+              acc = adopt_commitment(acc, env, d)
+              {:ok, acc}
+            else
+              {:ok, reject_or_deceive(acc, env, d)}
+            end
+
+          {acc, []}
+
+        {:error, _brain_unavailable} ->
+          {acc, []}
+      end
+    end)
+  end
+
+  defp adopt_commitment(run, env, d) do
+    adopted = [%Ledger.Event{seq: 0, tick: run.world.tick, class: :envelope,
+      payload: %{kind: :envelope_adopted, id: env.id}}]
+
+    run =
+      run
+      |> Map.put(:world, Fold.fold(run.world, adopted))
+      |> append_world(adopted)
+
+
+    {:ok, created, w2} =
+      Commitments.create(run.world, %{
+        id: "adopted:#{env.id}",
+        debtor: env.to,
+        creditor: env.from,
+        deed: d.deed,
+        due: nil,
+        every: nil,
+        priority: 7
+      })
+
+    %{run | world: w2} |> append_world(created)
+  end
+
+  defp reject_or_deceive(run, env, d) do
+    rejected = [%Ledger.Event{seq: 0, tick: run.world.tick, class: :envelope,
+      payload: %{kind: :envelope_rejected, id: env.id}}]
+
+    run =
+      run
+      |> Map.put(:world, Fold.fold(run.world, rejected))
+      |> append_world(rejected)
+
+    if d.deceive and is_binary(d.inform) and d.inform != "" do
+      {:ok, inform_events, w2} =
+        Envelopes.send(run.world, env.to, env.from, :inform, d.inform, truth: false)
+
+      %{run | world: w2} |> append_world(inform_events)
+    else
+      run
+    end
+  end
+
+  # Tier-3 cadence ticks: the salience gate buys LLM deliberation only under
+  # pressure; closed gates skip with a row and zero spend. Every path leaves
+  # a decision row — the ledger records what each brain chose or could not.
+  defp deliberation_phase(run, scheduler_events) do
+    ticks = Enum.filter(scheduler_events, &(&1.payload[:kind] == :cadence_tick))
+
+    Enum.reduce(ticks, run, fn ev, acc ->
+      agent = World.agent(acc.world, ev.payload.agent_id)
+
+      if agent == nil or agent.tier != 3 or dead?(agent) do
+        acc
+      else
+        unless Salience.escalate?(agent, acc.world.tick) do
+          push(acc, :deliberation, acc.world.tick, %{
+            agent_id: ev.payload.agent_id,
+            decision: :skipped,
+            verb: nil,
+            reason: "salience below threshold"
+          })
+        else
+          deliberate_one(acc, agent)
+        end
+      end
+    end)
+  end
+
+  defp deliberate_one(run, agent) do
+    slice = Slice.for_actor(run.world, agent.id)
+
+    case Agents.deliberate(agent.id, %{slice: slice, ctx: run.ctx}) do
+      {:ok, d} ->
+        run =
+          run
+          |> Map.put(:ctx, d.ctx)
+          |> append_audit(d.audit)
+
+        case Validate.check(run.world, d.action) do
+          {:reject, reason} ->
+            push(run, :deliberation, run.world.tick, %{
+              agent_id: agent.id,
+              decision: :rejected,
+              verb: d.action.verb,
+              reason: reason
+            })
+
+          :ok ->
+            run
+            |> push(:deliberation, run.world.tick, %{
+              agent_id: agent.id,
+              decision: :proposed,
+              verb: d.action.verb,
+              reason: d.reason
+            })
+            |> resolve_action(d.action)
+        end
+
+      {:hesitate, h} ->
+        run
+        |> Map.put(:ctx, h.ctx)
+        |> append_audit(h.audit)
+        |> push(:deliberation, run.world.tick, %{
+          agent_id: agent.id,
+          decision: :hesitated,
+          verb: nil,
+          reason: h.reason
+        })
+
+      {:error, _brain_unavailable} ->
+        push(run, :deliberation, run.world.tick, %{
+          agent_id: agent.id,
+          decision: :hesitated,
+          verb: nil,
+          reason: "brain unavailable"
+        })
+    end
+  end
+
+  # One validated action through the engine rules, world + rng carried
+  # forward. Called only after the decision row is ledgered, so effects
+  # always follow their decision in seq order.
+  defp resolve_action(run, action) do
+    case Resolve.act(run.world, run.rng, action) do
+      {verdict, world_events, w2, r2} when verdict in [:ok, :diegetic_fail] ->
+        {:ok, reaction, w3, r3} = Scheduler.react(w2, r2, world_events)
+
+        run
+        |> Map.put(:world, w3)
+        |> Map.put(:rng, r3)
+        |> append_world(world_events ++ reaction)
+    end
+  end
+
+  defp narrate_new_receipts(run, seq0) do
+    received =
+      events(run)
+      |> Enum.filter(&(&1.seq > seq0 and &1.payload[:kind] == :signal_received))
 
     {narrations, run} =
       Enum.reduce(run.pcs, {%{}, run}, fn pc_map, {texts, acc} ->
@@ -118,6 +342,11 @@ defmodule Referee.Run do
       end)
 
     {:ok, narrations, run}
+  end
+
+  defp dead?(agent) do
+    hp = (agent.body && agent.body.hp) || 0
+    hp <= 0 or :dead in ((agent.body && agent.body.conditions) || [])
   end
 
   @doc "Ledger events of this run, in seq order."

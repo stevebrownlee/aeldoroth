@@ -12,6 +12,7 @@ defmodule Referee.MixProject do
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
       deps: [
+        {:agents, in_umbrella: true},
         {:engine_core, in_umbrella: true},
         {:llm_gateway, in_umbrella: true},
         {:yaml_elixir, "~> 2.11"}

@@ -11,14 +11,14 @@ defmodule Agents.AdoptTest do
     %{w: w}
   end
 
-  defp order(w, over \\ %{}) do
+  defp order(over \\ %{}) do
     Map.merge(%{id: "env-0-1", from: "grisk_the_snatcher", to: "goblin_bodyguard_1",
-                type: :order, payload_nl: "Kill the intruder!", sent_tick: 3,
+                type: :order, payload_nl: "Kill him!", sent_tick: 0,
                 delivery_place: "chiefs_room", signal_ref: 1}, over)
   end
 
   test "feasible when co-present and awake", %{w: w} do
-    assert Adopt.feasible?(w, order(w))
+    assert Adopt.feasible?(w, order())
   end
 
   test "infeasible when the debtor is fleeing", %{w: w} do
@@ -28,13 +28,18 @@ defmodule Agents.AdoptTest do
       |> put_in([Access.key!(:body), :conditions], [:fleeing])
 
     w = %{w | agents: Map.put(w.agents, "goblin_bodyguard_1", bodyguard)}
-    refute Adopt.feasible?(w, order(w))
+    refute Adopt.feasible?(w, order())
   end
 
   test "infeasible when the creditor is elsewhere and not believed", %{w: w} do
     grisk = %{World.agent(w, "grisk_the_snatcher") | place_id: "guard_room"}
-    w = %{w | agents: Map.put(w.agents, "grisk_the_snatcher", grisk)}
-    refute Adopt.feasible?(w, order(w))
+
+    # strip the loader's co-presence seed: the debtor no longer believes the creditor
+    bodyguard = World.agent(w, "goblin_bodyguard_1")
+    stripped = %{bodyguard | beliefs: Map.delete(bodyguard.beliefs, "chiefs_room")}
+
+    w = %{w | agents: w.agents |> Map.put("grisk_the_snatcher", grisk) |> Map.put("goblin_bodyguard_1", stripped)}
+    refute Adopt.feasible?(w, order())
   end
 
   test "feasible when the creditor is elsewhere but believed here", %{w: w} do
@@ -43,7 +48,7 @@ defmodule Agents.AdoptTest do
     beliefs = Map.put(bodyguard.beliefs, "chiefs_room", %{"grisk_the_snatcher" => %{salience: 4.0}})
     bodyguard = %{bodyguard | beliefs: beliefs}
     w = %{w | agents: w.agents |> Map.put("grisk_the_snatcher", grisk) |> Map.put("goblin_bodyguard_1", bodyguard)}
-    assert Adopt.feasible?(w, order(w))
+    assert Adopt.feasible?(w, order())
   end
 
   defp guard(int), do: %{statblock: %{morale: 8, int: int}}

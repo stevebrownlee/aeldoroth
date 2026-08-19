@@ -51,7 +51,7 @@ defmodule Agents.Brain do
 
   @impl true
   def handle_call({:adopt, msg}, _from, agent_id) do
-    %{envelope: envelope, slice: slice, ctx: ctx, roll: roll} = msg
+    %{envelope: envelope, slice: slice, ctx: ctx} = msg
 
     {system, user, schema} = Agents.Prompt.adopt(slice, envelope)
 

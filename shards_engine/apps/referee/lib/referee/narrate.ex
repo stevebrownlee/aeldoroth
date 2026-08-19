@@ -155,7 +155,8 @@ defmodule Referee.Narrate do
       kind: p[:signal_kind],
       intensity: p[:intensity],
       content_core: %{class: :voices},
-      about: p[:about]
+      about: p[:about],
+      content_nl: nil
     }
 
     Narrate.render(view, p[:fidelity] || 1, nil)

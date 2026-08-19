@@ -72,7 +72,28 @@ defmodule EngineCore.Loader do
     |> put_hazards(yaml)
     |> put_commitments(yaml)
     |> apply_dormancy()
+    |> seed_presence_beliefs()
   end
+
+  # A loaded agent knows its co-located companions: a calm, familiar belief
+  # (fidelity 3 sight, salience 1.0) that never opens the salience gate or
+  # trips reflexes, but satisfies belief-gated validation (e.g. :order).
+  defp seed_presence_beliefs(world) do
+    agents =
+      Map.new(world.agents, fn {id, a} ->
+        others =
+          world.agents
+          |> Map.values()
+          |> Enum.reject(&(&1.id == id or &1.place_id != a.place_id or &1.body.hp == 0))
+          |> Map.new(fn o ->
+            {o.id, %{count: 1, last_tick: 0, last_fidelity: 3, salience: 1.0, seen: true}}
+          end)
+
+        {id, %{a | beliefs: Map.put(a.beliefs, a.place_id, others)}}
+      end)
+
+    %{world | agents: agents}
+   end
 
   defp extract_elements(yaml, keys) do
     keys

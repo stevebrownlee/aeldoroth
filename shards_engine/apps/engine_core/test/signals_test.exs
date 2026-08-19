@@ -78,6 +78,7 @@ defmodule EngineCore.SignalsTest do
     entry = w2.agents["goblin_guard_1"].beliefs["guard_room"]["pc1"]
     assert entry.count == 1 and entry.last_tick == 7 and entry.last_fidelity == 3
     assert entry.seen == false and entry.salience == 8.0
-    assert g1.beliefs == %{}
+    # seed aside, pc1 was unknown to g1 before the receipt
+    assert get_in(g1.beliefs, ["guard_room", "pc1"]) == nil
   end
 end

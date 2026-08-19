@@ -29,7 +29,7 @@ defmodule Agents.AdoptBrainTest do
 
   defp entry(content), do: %{agent_id: "goblin_bodyguard_1", content: content}
 
-  defp msg(over \\ %{}) do
+  defp msg(over) do
     Map.merge(%{envelope: @env, slice: slice(), ctx: ctx([]), roll: 5,
                 feasible: true, debtor: %{statblock: %{morale: 8, int: 10}}}, over)
   end

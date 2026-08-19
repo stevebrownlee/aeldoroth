@@ -14,12 +14,12 @@ defmodule Agents.Adopt do
     creditor = World.agent(world, env.from)
 
     alive?(debtor) and :fleeing not in (debtor.body.conditions || []) and
-      creditor_near?(world, debtor, creditor)
+      creditor_near?(debtor, creditor)
   end
 
-  defp creditor_near?(_world, _debtor, nil), do: true
+  defp creditor_near?(_debtor, nil), do: true
 
-  defp creditor_near?(world, debtor, creditor) do
+  defp creditor_near?(debtor, creditor) do
     creditor.place_id == debtor.place_id or
       get_in(debtor.beliefs, [debtor.place_id, creditor.id]) != nil or
       get_in(debtor.beliefs, [creditor.place_id, creditor.id]) != nil

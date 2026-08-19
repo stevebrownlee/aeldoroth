@@ -65,6 +65,24 @@ defmodule EngineCore.LoaderTest do
     refute :order in w.agents["giant_rat_1"].capabilities
   end
 
+  test "load seeds co-presence beliefs: familiar, low salience, no self/ghost beliefs" do
+    {:ok, w} = EngineCore.Loader.load(@yaml)
+    grisk = w.agents["grisk_the_snatcher"]
+
+    assert get_in(grisk.beliefs, ["chiefs_room", "goblin_bodyguard_1"]) == %{
+             count: 1,
+             last_tick: 0,
+             last_fidelity: 3,
+             salience: 1.0,
+             seen: true
+           }
+
+    refute Map.has_key?(grisk.beliefs["chiefs_room"], "grisk_the_snatcher")
+    refute Map.has_key?(grisk.beliefs, "entry_hall")
+    guard1 = w.agents["goblin_guard_1"]
+    assert get_in(guard1.beliefs, ["guard_room", "goblin_guard_2"]) != nil
+  end
+
   test "loads boundaries, hazards, commitments, groups, cadences" do
     {:ok, w} = EngineCore.Loader.load(@yaml)
 
