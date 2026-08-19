@@ -6,6 +6,7 @@
 #   ./automated-run.sh fight [seed]    # full battle report for one dice seed
 #   ./automated-run.sh cascade [seed]  # alarm cascade scenario + signals/scheduler
 #   ./automated-run.sh survey          # 10 different seeds, one-line outcome each
+#   ./automated-run.sh brains [seed]    # tier-3 brains: order -> adoption -> strike chain + spend
 #   ./automated-run.sh referee [seed]   # full referee pipeline: interpret->validate->resolve->narrate
 #   ./automated-run.sh inventory       # rooms / monsters / treasure loaded from the YAML
 #   ./automated-run.sh all             # everything, in order
@@ -103,6 +104,8 @@ w.items |> Enum.sort() |> Enum.each(fn {_, i} -> IO.puts("  #{i.name} (#{i.value
 ELIXIR
 }
 
+brains() { mix run scripts/brains_smoke.exs; }
+
 referee() { elixir <<'ELIXIR'
 seed = String.to_integer(System.get_env("SEED"))
 yaml = System.get_env("YAML")
@@ -168,6 +171,7 @@ case "${1:-fight}" in
   cascade)   cascade ;;
   referee)   referee ;;
   survey)    survey ;;
+  brains)    brains ;;
   inventory) inventory ;;
   all)       inventory; echo; fight; echo; cascade; echo; referee; echo; survey ;;
   help|-h|--help) usage ;;
