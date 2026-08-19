@@ -16,6 +16,8 @@ defmodule Referee.Slice do
           place: map(),
           believed: [String.t()],
           salient: [String.t()],
+          commitments: [map()],
+          capabilities: [atom()],
           summary: String.t()
         }
   def for_actor(%World{} = world, agent_id) do
@@ -46,8 +48,18 @@ defmodule Referee.Slice do
       },
       believed: believed,
       salient: salient,
+      commitments: commitments(agent),
+      capabilities: agent.capabilities,
       summary: summarize(place, believed, world)
     }
+  end
+
+  defp commitments(agent) do
+    agent.commitments
+    |> Enum.map(fn c ->
+      %{id: c.id, deed: c.deed, status: c.status, priority: c.priority, creditor: c.creditor}
+    end)
+    |> Enum.sort_by(& &1.id)
   end
 
   @doc "Stable content reference for audit rows: lowercase md5 hex of the slice term."

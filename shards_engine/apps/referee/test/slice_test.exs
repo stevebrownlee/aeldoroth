@@ -94,6 +94,33 @@ defmodule Referee.SliceTest do
     refute Slice.prompt_slice_ref(a) == Slice.prompt_slice_ref(d)
   end
 
+  @yaml Path.expand("../../../../the-ruined-tower/ruined_tower.yaml", __DIR__)
+
+  test "slice carries commitments (5-field maps, id-sorted) and capabilities" do
+    {:ok, w} = EngineCore.Loader.load(@yaml)
+
+    grisk = EngineCore.World.agent(w, "grisk_the_snatcher")
+    s = Slice.for_actor(w, "grisk_the_snatcher")
+    assert s.commitments ==
+             Enum.sort_by(
+               Enum.map(grisk.commitments, fn c ->
+                 %{id: c.id, deed: c.deed, status: c.status, priority: c.priority, creditor: c.creditor}
+               end),
+               & &1.id
+             )
+    assert "grisk_relocation_deadline" in Enum.map(s.commitments, & &1.id)
+
+    for c <- s.commitments do
+      assert Map.keys(c) |> Enum.sort() == [:creditor, :deed, :id, :priority, :status]
+    end
+
+    assert s.capabilities == grisk.capabilities
+
+    pc = struct!(Types.Agent, id: "pc_x", name: "X", tier: 3, place_id: "entry_hall")
+    w2 = %{w | agents: Map.put(w.agents, "pc_x", pc)}
+    assert Slice.for_actor(w2, "pc_x").commitments == []
+  end
+
   test "summary mentions the place and believed agent names" do
     s = Slice.for_actor(world(), "pc")
 
