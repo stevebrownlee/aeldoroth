@@ -1,7 +1,7 @@
 ---
 identifier: active_context
 title: Active Context
-created: 2026-08-19T05:33:47Z
+created: 2026-08-19T22:55:49Z
 ---
 # Active Context
 
@@ -9,7 +9,13 @@ created: 2026-08-19T05:33:47Z
 {
   "content": {
     "current_focus": "Campaign ready to play - The Ruined Tower authored, not yet run; Shadow Weaver Cult arc (Act 1, Discovery) selected and documented",
-    "current_plan": "Plan 4 (agent brains) complete",
+    "current_plan": "Plan 5 (protocol-live-runs) COMPLETE",
+    "decisions": [
+      47,
+      48,
+      49,
+      50
+    ],
     "expanded": {
       "content": {
         "current_focus": "Plan 3 (spec phase 5) DONE: llm_gateway + referee pipeline landed headless, 185 tests green, golden replay determinism + referee CLI smoke proven",
@@ -20,7 +26,12 @@ created: 2026-08-19T05:33:47Z
         ]
       }
     },
-    "next": "Plan 5 - spec 12.4 phase 7: Phoenix channels run:<id>, per-PC isolation at push, spectate console, terminal WS reference client, PC dossiers (summarize class), OTP supervision tree promotion (World.Server, Ledger.Writer, Run.Session)",
+    "flaws_fixed": [
+      "World.Server transient restart loop",
+      "zero-timeout assert race",
+      "caller-linked sessions"
+    ],
+    "next": "post-v1: client_web LiveView client (spec §11), then v2 campaign memory (decision 34) / platform seams (decision 35)",
     "next_session": "Session 1: Thornhollow hook -> Ruined Tower Rooms 1-2 (possibly 3)",
     "open_questions": [
       "Innkeeper canon: Mara/The Tired Traveler (README, world guide) vs Vara/The Broken Wheel (npc.md)",
@@ -29,7 +40,7 @@ created: 2026-08-19T05:33:47Z
       "Wolf HP: 2d4+2 (xp-reference) vs 2d8 (yaml)",
       "Regenerate degraded ruined_tower.yaml from README before automated use?"
     ],
-    "phase": "Plan 2 (spec 12.4 phases 3-4) DONE — signals, perception, commitments, boundaries, cognition tiers, scheduler. Next: Plan 3 (phases 5-8): llm_gateway chokepoint, referee pipeline stages, tier-3 brains + salience gate, envelopes/adoption, Phoenix channels + terminal client. :cadence_tick events are the deliberation plug-in point. HEAD 12ed2c4, 89 tests.",
+    "phase": "spec 12.4 phase 7 done",
     "progress_state": "All enemies alive, no treasure collected, session log empty (as of 2026-08-17)",
     "session_checklist": [
       "Update ruined_tower.yaml is_alive/is_collected after play",
@@ -39,10 +50,11 @@ created: 2026-08-19T05:33:47Z
     ],
     "spec": "docs/superpowers/specs/agent-engine-spec.md",
     "tests": "232 green umbrella (engine_core 97, llm_gateway 38, agents 25, referee 72)",
+    "v1_status": "all 8 spec phases complete (plans 1-6); acceptance harness green, exits 0",
     "watch": "Party's choice for the Shadow-Crystal (keep/sell/study/destroy) is the Act 1 pacing lever"
   },
   "name": "default",
-  "updated_at": "2026-08-19T05:33:47Z",
-  "version": 4
+  "updated_at": "2026-08-19T22:55:49Z",
+  "version": 6
 }
 ```
