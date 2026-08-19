@@ -46,6 +46,45 @@ defmodule LLMGateway.ScriptedTest do
     assert {:error, :missing_scripts} = Scripted.complete(req(:interpret), %{})
   end
 
+  test "agent-keyed entries pop only for their agent, in order" do
+    scripts = %{
+      deliberate: [
+        %{agent_id: "grisk", content: ~s({"verb":"wait","reason":"bored"})},
+        %{agent_id: "goblin_bodyguard_1", content: ~s({"verb":"strike","reason":"orders"})},
+        %{agent_id: "grisk", content: ~s({"verb":"shout","reason":"alarmed"})}
+      ],
+      salt: System.unique_integer()
+    }
+
+    cfg = %{scripts: scripts}
+
+    assert {:ok, %LLMGateway.Result{content: ~s({"verb":"strike","reason":"orders"})}} =
+             Scripted.complete(req(:deliberate, agent_id: "goblin_bodyguard_1"), cfg)
+
+    assert {:ok, %LLMGateway.Result{content: ~s({"verb":"wait","reason":"bored"})}} =
+             Scripted.complete(req(:deliberate, agent_id: "grisk"), cfg)
+
+    assert {:ok, %LLMGateway.Result{content: ~s({"verb":"shout","reason":"alarmed"})}} =
+             Scripted.complete(req(:deliberate, agent_id: "grisk"), cfg)
+
+    assert {:error, :script_exhausted} = Scripted.complete(req(:deliberate, agent_id: "grisk"), cfg)
+    assert {:error, :script_exhausted} = Scripted.complete(req(:deliberate, agent_id: "willem"), cfg)
+  end
+
+  test "binary entries still match any agent (back-compat)" do
+    scripts = %{interpret: ["one", "two"], salt: System.unique_integer()}
+    cfg = %{scripts: scripts}
+
+    assert {:ok, %LLMGateway.Result{content: "one"}} =
+             Scripted.complete(req(:interpret, agent_id: "anyone"), cfg)
+
+    assert {:ok, %LLMGateway.Result{content: "two"}} =
+             Scripted.complete(req(:interpret, agent_id: "anyone"), cfg)
+
+    assert {:error, :script_exhausted} =
+             Scripted.complete(req(:interpret, agent_id: "anyone"), cfg)
+  end
+
   defp req(class, opts \\ []) do
     struct!(Request, [class: class, system: "sys", user: "usr"] ++ opts)
   end

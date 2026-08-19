@@ -31,11 +31,11 @@ defmodule LLMGateway.Adapters.Scripted do
   def complete(%Request{} = req, %{scripts: scripts}) do
     Process.put({__MODULE__, :requests}, [req | Process.get({__MODULE__, :requests}) || []])
 
-    case remaining(scripts) |> Map.get(req.class, []) do
-      [] ->
+    case pop_for(remaining(scripts) |> Map.get(req.class, []), req.agent_id) do
+      :none ->
         {:error, :script_exhausted}
 
-      [content | rest] ->
+      {:ok, content, rest} ->
         put_remaining(scripts, Map.put(remaining(scripts), req.class, rest))
 
         {:ok,
@@ -51,6 +51,20 @@ defmodule LLMGateway.Adapters.Scripted do
   end
 
   def complete(_req, _cfg), do: {:error, :missing_scripts}
+
+  defp pop_for([], _agent_id), do: :none
+
+  defp pop_for(entries, agent_id) do
+    idx = Enum.find_index(entries, &(is_binary(&1) or &1[:agent_id] == agent_id))
+
+    case idx do
+      nil -> :none
+      idx -> {:ok, entries |> Enum.at(idx) |> content_of(), List.delete_at(entries, idx)}
+    end
+  end
+
+  defp content_of(%{content: c}), do: c
+  defp content_of(c) when is_binary(c), do: c
 
   defp remaining(scripts) do
     case Process.get(__MODULE__) do
