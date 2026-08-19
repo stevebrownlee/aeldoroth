@@ -31,11 +31,19 @@ defmodule Referee.Grammar do
     "hold" => :wait
   }
 
+  # Leading filler a player types before the verb: "I go north", "let's wait".
+  @filler ~w(i we you lets let's let)
+
   @spec parse(World.t(), String.t(), String.t()) ::
           Types.Action.t() | {:ambiguous, [String.t()]} | {:unclear, String.t()}
   def parse(world, actor_id, utterance) do
     text = utterance |> String.trim() |> String.replace(~r/\s+/, " ")
-    words = String.split(text, " ", trim: true)
+
+    words =
+      text
+      |> String.split(" ", trim: true)
+      |> Enum.drop_while(fn w -> String.downcase(w) in @filler end)
+
 
     case words do
       [verb | rest] ->
