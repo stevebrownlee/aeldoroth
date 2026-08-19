@@ -135,7 +135,7 @@ defmodule Referee.Grammar do
   end
 
   defp name_tokens(name) do
-    name |> String.downcase() |> String.split(~r/[^a-z0-9_]+/, trim: true)
+    name |> String.downcase() |> String.split(~r/[^a-z0-9]+/, trim: true)
   end
 
   defp overlap(object, tokens) do
