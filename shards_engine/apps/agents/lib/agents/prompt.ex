@@ -42,7 +42,48 @@ defmodule Agents.Prompt do
     """
 
     {system, user, schema}
-  end
+end
+
+  @doc """
+  Adoption prompt. The envelope is stripped to its deniable face — id, from,
+  to, type, spoken text, tick — so `truth` never reaches the LLM (truth
+  barrier; llm-proposes-engine-disposes).
+  """
+  @spec adopt(map(), map()) :: {String.t(), String.t(), map()}
+  def adopt(slice, envelope) do
+    schema = %{
+      type: :object,
+      properties: %{
+        adopted: %{type: :boolean},
+        deed: %{type: :string},
+        deceive: %{type: :boolean},
+        inform: %{type: :string, nullable: true},
+        reason: %{type: :string}
+      },
+      required: [:adopted, :reason]
+    }
+
+    system = """
+    You are the brain of #{slice.agent.name} (#{slice.agent.id}), a character in a
+    tabletop RPG world. #{envelope.from} has given you an order. You decide
+    ALONE whether to take it on as your own commitment. You may obey, refuse,
+    or pretend to obey. Respond ONLY with a JSON object:
+    {"adopted": boolean, "deed": string, "deceive": boolean,
+    "inform": string | null, "reason": string}.
+    If you pretend to obey, set deceive true and put the lying words you will
+    send back in inform. Reason is your private motive, in your own voice.
+    """
+
+    user = """
+    You are #{slice.agent.name} (#{slice.agent.id}) in #{slice.place.name}.
+    Order from #{envelope.from}: "#{envelope.payload_nl}"
+    Your capabilities: #{Enum.join(slice.capabilities, ", ")}
+
+    Summary: #{slice.summary}
+    """
+
+    {system, user, schema}
+end
 
   defp commitment_lines([]), do: "none"
   defp commitment_lines(cs) do

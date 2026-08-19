@@ -61,23 +61,36 @@ defmodule Agents do
           {:ok, map()} | {:hesitate, map()} | {:error, :brain_unavailable}
   def deliberate(agent_id, msg) do
     case ensure_brain(agent_id) do
-      :ok -> call_brain(agent_id, msg)
+      :ok -> call_brain(agent_id, {:deliberate, msg})
       {:error, _reason} -> {:error, :brain_unavailable}
     end
   end
 
-  defp call_brain(agent_id, msg) do
-
+  defp call_brain(agent_id, call) do
     case whereis(agent_id) do
       nil ->
         {:error, :brain_unavailable}
 
       pid ->
         try do
-          GenServer.call(pid, {:deliberate, msg}, 5000)
+          GenServer.call(pid, call, 5000)
         catch
           :exit, _ -> {:error, :brain_unavailable}
         end
+    end
+  end
+
+  @doc """
+  Adopt an order through one agent's brain: LLM-first with a deterministic
+  heuristic fallback (morale/INT/feasibility vs. the coordinator's ledgered
+  d20). `{:ok, d}` is always a decision — flat `%{adopted, deed, deceive,
+  inform, reason, request, ctx, audit}`.
+  """
+  @spec adopt(String.t(), map()) :: {:ok, map()} | {:error, :brain_unavailable}
+  def adopt(agent_id, msg) do
+    case ensure_brain(agent_id) do
+      :ok -> call_brain(agent_id, {:adopt, msg})
+      {:error, _reason} -> {:error, :brain_unavailable}
     end
   end
 end

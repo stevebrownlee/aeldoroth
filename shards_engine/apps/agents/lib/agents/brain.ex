@@ -49,6 +49,57 @@ defmodule Agents.Brain do
     {:reply, reply, agent_id}
   end
 
+  @impl true
+  def handle_call({:adopt, msg}, _from, agent_id) do
+    %{envelope: envelope, slice: slice, ctx: ctx, roll: roll} = msg
+
+    {system, user, schema} = Agents.Prompt.adopt(slice, envelope)
+
+    req = %LLMGateway.Request{class: :adopt, agent_id: agent_id,
+      system: system, user: user, schema: schema}
+
+    reply =
+      case LLMGateway.Router.complete(ctx, req) do
+        {:ok, %LLMGateway.Result{parsed: %{} = parsed}, audit, ctx2} ->
+          {:ok, %{adopted: bool(parsed["adopted"]),
+                  deed: parsed["deed"], deceive: bool(parsed["deceive"]),
+                  inform: parsed["inform"], reason: parsed["reason"],
+                  request: req, ctx: ctx2, audit: audit}}
+
+        {_ok_or_error, _reason, audit, ctx2} ->
+          {:ok, heuristic_reply(msg, req, audit, ctx2)}
+      end
+
+    {:reply, reply, agent_id}
+  end
+
+  # Deterministic fallback (decision 30): LLM proposes, engine disposes —
+  # and when the LLM cannot propose at all, morale + INT + feasibility
+  # against the ledgered roll decides. Audit mirrors Interpret's fallback.
+  defp heuristic_reply(%{roll: roll, debtor: debtor, feasible: feasible} = msg, req, audit, ctx2) do
+    target = Agents.Adopt.reliability(debtor, feasible)
+
+    case Agents.Adopt.decide(roll, target) do
+      :adopt ->
+        %{adopted: true, deed: msg.envelope.payload_nl, deceive: false,
+          inform: nil, reason: "heuristic adoption: reliability #{target} held at roll #{roll}",
+          request: req, ctx: ctx2, audit: fallback_audit(audit)}
+
+      :reject ->
+        %{adopted: false, deed: nil, deceive: false,
+          inform: nil, reason: "heuristic rejection: reliability #{target} failed at roll #{roll}",
+          request: req, ctx: ctx2, audit: fallback_audit(audit)}
+    end
+  end
+  defp fallback_audit(nil),
+    do: %LLMGateway.Audit{class: :adopt, adapter: :heuristic, parse_verdict: :fallback, ok: true}
+
+  defp fallback_audit(%LLMGateway.Audit{} = a),
+    do: %LLMGateway.Audit{a | class: :adopt, adapter: :heuristic, parse_verdict: :fallback, ok: true}
+
+  defp bool(true), do: true
+  defp bool(_), do: false
+
   defp verb_from(verb, caps) when is_binary(verb),
     do: Enum.find(caps, &(Atom.to_string(&1) == verb))
   defp verb_from(_verb, _caps), do: nil
