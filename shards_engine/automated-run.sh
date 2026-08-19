@@ -6,6 +6,7 @@
 #   ./automated-run.sh fight [seed]    # full battle report for one dice seed
 #   ./automated-run.sh cascade [seed]  # alarm cascade scenario + signals/scheduler
 #   ./automated-run.sh survey          # 10 different seeds, one-line outcome each
+#   ./automated-run.sh referee [seed]   # full referee pipeline: interpret->validate->resolve->narrate
 #   ./automated-run.sh inventory       # rooms / monsters / treasure loaded from the YAML
 #   ./automated-run.sh all             # everything, in order
 #
@@ -102,12 +103,73 @@ w.items |> Enum.sort() |> Enum.each(fn {_, i} -> IO.puts("  #{i.name} (#{i.value
 ELIXIR
 }
 
+referee() { elixir <<'ELIXIR'
+seed = String.to_integer(System.get_env("SEED"))
+yaml = System.get_env("YAML")
+alias LLMGateway.Adapters.Scripted
+alias Referee.Run
+
+interpret = [
+  ~s({"verb":"shout","target_id":null,"params":{"message":"HELLO?"},"assumptions":[]}),
+  # garbage x2: "attack the goblin guard" falls back to grammar -> ambiguity ->
+  # clarify question (no narrate consumption on a clarify)
+  "garbage {",
+  "garbage {",
+  # garbage x2: "strike goblin guard 1" falls back to grammar -> unique match ->
+  # stale belief corrected, swing spent
+  "garbage {",
+  "garbage {",
+  ~s({"verb":"move","target_id":null,"params":{"direction":"north"},"assumptions":[]}),
+  ~s({"verb":"wait","target_id":null,"params":{},"assumptions":[]})
+]
+# One narrate response only: the shout is LLM-narrated; the queue then runs
+# dry and later action narration falls back to engine templates (diegetic).
+scripts = %{interpret: interpret, narrate: ["You cup your hands and bellow \"HELLO?\" into the gloom; somewhere in the dark, claws go still."], salt: 99}
+pcs = [
+  %{id: "pc_thistle", name: "Thistle", place_id: "entry_hall", int: 13, ac: 5, hd: 1, hp: 7, thac0: 20, damage: "1d8"},
+  %{id: "pc_bramble", name: "Bramble", place_id: "entry_hall", int: 9, ac: 6, hd: 1, hp: 6, thac0: 20, damage: "1d6"}
+]
+{:ok, run} = Run.new(yaml, seed, pcs, routing: %{interpret: %{adapter: Scripted, scripts: scripts}, narrate: %{adapter: Scripted, scripts: scripts}})
+
+# Seed two stale beliefs (both guards actually stand in guard_room): "attack
+# the goblin guard" ties -> clarify; "strike goblin guard 1" resolves uniquely.
+belief = %{count: 1, last_tick: 0, last_fidelity: 3, seen: false, salience: 0.7}
+run =
+  Enum.reduce(["goblin_guard_1", "goblin_guard_2"], run, fn gid, acc ->
+    pc = acc.world.agents["pc_thistle"]
+    here = Map.put(pc.beliefs["entry_hall"] || %{}, gid, belief)
+    pc2 = %{pc | beliefs: Map.put(pc.beliefs, "entry_hall", here)}
+    %{acc | world: %{acc.world | agents: Map.put(acc.world.agents, "pc_thistle", pc2)}}
+  end)
+
+IO.puts("=== REFEREE PIPELINE — tower YAML, seed #{seed}, scripted LLM queues ===")
+run =
+  Enum.reduce(["I shout HELLO?", "I attack the goblin guard", "I strike goblin guard 1", "I head north", "I wait"], run, fn utterance, run ->
+    case Run.declare(run, "pc_thistle", utterance) do
+      {:ok, text, run2} -> IO.puts("  > #{utterance}\n    #{text}"); run2
+      {:stall, msg, run2} -> IO.puts("  > #{utterance}\n    [#{msg}]"); run2
+    end
+  end)
+
+{:ok, narrations, run} = Run.advance(run)
+IO.puts("=== WORLD TIME PASSES (tick #{run.world.tick}) ===")
+narrations |> Enum.each(fn {pc_id, text} -> IO.puts("  #{pc_id} perceives: #{text}") end)
+
+IO.puts("=== SPEND REPORT ===")
+r = Run.spend_report(run)
+IO.puts("  total:    #{r.total.calls} calls, #{r.total.tokens_in} in / #{r.total.tokens_out} out")
+for {class, s} <- r.by_class, do: IO.puts("  #{class}:  #{s.calls} calls, #{s.tokens_in} in / #{s.tokens_out} out")
+for {agent, s} <- r.by_agent, do: IO.puts("  #{agent}: #{s.calls} calls, #{s.tokens_in} in / #{s.tokens_out} out")
+ELIXIR
+}
+
 case "${1:-fight}" in
   fight)     fight ;;
   cascade)   cascade ;;
+  referee)   referee ;;
   survey)    survey ;;
   inventory) inventory ;;
-  all)       inventory; echo; fight; echo; cascade; echo; survey ;;
+  all)       inventory; echo; fight; echo; cascade; echo; referee; echo; survey ;;
   help|-h|--help) usage ;;
   *)         echo "Unknown command: $1"; echo; usage ;;
 esac
