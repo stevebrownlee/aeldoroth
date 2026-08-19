@@ -61,6 +61,18 @@ defmodule Referee.SliceTest do
     assert s.salient == ["goblin_guard_1"]
   end
 
+  test "hidden items never appear anywhere in the slice" do
+    s = Slice.for_actor(world(), "pc")
+
+    # direct: visible_items lists only the unconcealed item at the place
+    assert s.place.visible_items == ["sword"]
+
+    # whole-term: no field of the slice leaks the hidden gem — the slice is
+    # the only world data a prompt may reference (acceptance criterion 5)
+    refute inspect(s) =~ "gem"
+    refute to_string(:erlang.term_to_binary(s)) =~ "gem"
+  end
+
   test "prompt_slice_ref is a stable lowercase md5 hex, sensitive to content" do
     w = world()
     a = Slice.for_actor(w, "pc")
