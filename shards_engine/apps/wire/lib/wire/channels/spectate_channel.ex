@@ -1,0 +1,83 @@
+defmodule Wire.SpectateChannel do
+  @moduledoc """
+  GM/observer surface (spec §11; plan 5 Task 8). Join snapshot carries the
+  engine truth: tick, boundary states, LLM spend, and the raw ledger tail.
+  Every writer tail streams unfiltered — spectators see all classes; dice
+  visibility is the referee preference stack's call, not the wire's.
+  `pause`/`resume`/`spend` map to `Run.Session` calls.
+  """
+
+  use Phoenix.Channel
+
+  alias EngineCore.Ledger.Writer
+  alias EngineCore.World.Server
+  alias Referee.Run.Session
+  alias Referee.Spend
+
+  @tail_cap 50
+
+  @impl true
+  def join("spectate:" <> run_id, _params, %{assigns: assigns} = socket) do
+    with %{run_id: ^run_id, role: :spectate} <- assigns,
+         %{} = state <- Session.state(run_id),
+         :ok <- Writer.subscribe(run_id) do
+      snapshot = %{
+        tick: state.tick,
+        boundaries: Server.boundaries(run_id),
+        spend: Spend.report(Writer.events(run_id)),
+        tail: Writer.events(run_id) |> Enum.take(-@tail_cap)
+      }
+
+      {:ok, snapshot, socket}
+    else
+      _other -> {:error, %{reason: "unauthorized"}}
+    end
+  end
+
+  def join(_topic, _params, _socket), do: {:error, %{reason: "unauthorized"}}
+
+  @impl true
+  def handle_in("pause", _params, socket) do
+    case Session.pause(run_id(socket)) do
+      {:ok, %{dossiers: dossiers}} -> {:reply, {:ok, %{dossiers: dossiers}}, socket}
+      {:error, :already_paused} -> {:reply, {:error, %{reason: "already_paused"}}, socket}
+    end
+  end
+
+  def handle_in("resume", _params, socket) do
+    case Session.resume(run_id(socket)) do
+      :ok -> {:reply, {:ok, %{}}, socket}
+      {:error, :not_paused} -> {:reply, {:error, %{reason: "not_paused"}}, socket}
+    end
+  end
+
+  def handle_in("spend", _params, socket) do
+    {:reply, {:ok, %{spend: Spend.report(Writer.events(run_id(socket)))}}, socket}
+  end
+
+  def handle_in(_event, _params, socket),
+    do: {:reply, {:error, %{reason: "unknown_event"}}, socket}
+
+  @impl true
+  def handle_info({:ledger_events, _run_id, events}, socket) do
+    :ok = push(socket, "ledger_tail", %{events: events})
+    push_state_sync(socket)
+    {:noreply, socket}
+  end
+
+  def handle_info(_msg, socket), do: {:noreply, socket}
+
+  defp push_state_sync(socket) do
+    run_id = run_id(socket)
+    :ok = push(socket, "state_sync", %{tick: tick_of(run_id), boundaries: Server.boundaries(run_id)})
+  end
+
+  defp tick_of(run_id) do
+    case Session.state(run_id) do
+      %{} = state -> state.tick
+      nil -> 0
+    end
+  end
+
+  defp run_id(socket), do: socket.assigns.run_id
+end

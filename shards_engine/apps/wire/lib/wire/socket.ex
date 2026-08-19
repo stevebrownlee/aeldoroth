@@ -8,7 +8,7 @@ defmodule Wire.Socket do
   use Phoenix.Socket
 
   channel "run:*", Wire.RunChannel
-
+  channel "spectate:*", Wire.SpectateChannel
   @impl true
   def connect(%{"run_id" => run_id} = params, socket, _connect_info)
       when is_binary(run_id) and run_id != "" do

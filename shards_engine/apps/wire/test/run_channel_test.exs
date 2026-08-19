@@ -14,7 +14,6 @@ defmodule Wire.RunChannelTest do
   alias EngineCore.Ledger.Writer
   alias LLMGateway.Adapters.Scripted
   alias Referee.Run.Session
-  alias Wire.Claims
 
   @yaml Path.expand("../../../../the-ruined-tower/ruined_tower.yaml", __DIR__)
 
