@@ -7,27 +7,26 @@ defmodule Wire.Socket do
 
   use Phoenix.Socket
 
-  # Channels are attached in their plan tasks; the socket is stable.
+  channel "run:*", Wire.RunChannel
 
   @impl true
   def connect(%{"run_id" => run_id} = params, socket, _connect_info)
       when is_binary(run_id) and run_id != "" do
-    role =
+    character_id =
       case params["character_id"] do
-        char_id when is_binary(char_id) and char_id != "" -> {:pc, char_id}
-        _ -> :spectate
+        char_id when is_binary(char_id) and char_id != "" -> char_id
+        _ -> nil
       end
 
-    {:ok, assign(socket, run_id: run_id, role: role)}
+    role = if character_id, do: :pc, else: :spectate
+    {:ok, assign(socket, run_id: run_id, character_id: character_id, role: role)}
   end
 
   def connect(_params, _socket, _connect_info), do: {:error, :missing_run_id}
 
   @impl true
   def id(socket) do
-    case socket.assigns.role do
-      {:pc, char_id} -> "run:#{socket.assigns.run_id}:pc:#{char_id}"
-      :spectate -> "run:#{socket.assigns.run_id}:spectate:#{inspect(self())}"
-    end
+    char = socket.assigns.character_id || "spectate"
+    "#{socket.assigns.run_id}:#{char}"
   end
 end

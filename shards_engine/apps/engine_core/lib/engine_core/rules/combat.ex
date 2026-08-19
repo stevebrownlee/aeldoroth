@@ -31,9 +31,10 @@ defmodule EngineCore.Rules.Combat do
     end
   end
 
-  defp resolve(false, world, rng, _a, t, roll) do
+  defp resolve(false, world, rng, a, t, roll) do
     ev = dice_event(world.tick, %{purpose: :to_hit, sides: 20, roll: roll,
-                                  target_ac: t.statblock.ac, hit: false})
+                                  target_ac: t.statblock.ac, hit: false,
+                                  agent_id: a.id})
     {:ok, [ev], world, rng}
   end
 
@@ -45,7 +46,8 @@ defmodule EngineCore.Rules.Combat do
     ev_dice =
       dice_event(world.tick, %{purpose: :to_hit, sides: 20, roll: roll,
                                target_ac: t.statblock.ac, hit: true,
-                               dmg_rolls: rolls, amount: amount})
+                               dmg_rolls: rolls, amount: amount,
+                               agent_id: a.id})
 
     ev_dmg = %Ledger.Event{seq: 0, tick: world.tick, class: :world,
                            payload: %{kind: :damage, target_id: t.id, amount: amount}}

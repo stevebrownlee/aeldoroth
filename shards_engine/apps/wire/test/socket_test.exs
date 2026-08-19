@@ -15,7 +15,8 @@ defmodule Wire.SocketTest do
              connect(Wire.Socket, %{"run_id" => "r1", "character_id" => "pc_thistle"})
 
     assert socket.assigns.run_id == "r1"
-    assert socket.assigns.role == {:pc, "pc_thistle"}
+    assert socket.assigns.character_id == "pc_thistle"
+    assert socket.assigns.role == :pc
   end
 
   test "connect without character id assigns spectate role" do

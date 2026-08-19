@@ -37,6 +37,14 @@ defmodule Referee.Run.Session do
   `data_dir: nil | Path.t()` (nil = no checkpoint/journal).
   """
   @spec start_link(String.t(), Path.t(), integer(), [map()], keyword()) :: GenServer.on_start()
+  # Supervision entry: the child tuple carries one init_arg; the run_id in it
+  # is also the Registry name. The 5-arity form is the human-facing wrapper.
+  def start_link({:new, run_id, _, _, _, _} = init_arg),
+    do: GenServer.start_link(__MODULE__, init_arg, name: via(run_id))
+
+  def start_link({:restore, run_id, _, _, _} = init_arg),
+    do: GenServer.start_link(__MODULE__, init_arg, name: via(run_id))
+
   def start_link(run_id, yaml_path, seed, pcs, opts \\ []) do
     start_named(run_id, {:new, run_id, yaml_path, seed, pcs, opts})
   end
@@ -62,6 +70,27 @@ defmodule Referee.Run.Session do
   @doc "Resume a paused session."
   @spec resume(String.t()) :: :ok | {:error, :not_paused | :no_run}
   def resume(run_id), do: call(run_id, :resume)
+
+  @doc "Out-of-character table talk: ledgers an `:ooc` event, touches no pipeline."
+  @spec ooc(String.t(), String.t(), String.t()) :: :ok | {:error, :no_run}
+  def ooc(run_id, pc_id, text), do: call(run_id, {:ooc, pc_id, text})
+
+  @doc "This run's PC ids (from the immutable seed spec)."
+  @spec pcs(String.t()) :: {:ok, [String.t()]} | {:error, :no_run}
+  def pcs(run_id), do: call(run_id, :pcs)
+
+  @doc "Resolved preference stack for this run's ruleset."
+  @spec prefs(String.t()) :: {:ok, map()} | {:error, :no_run}
+  def prefs(run_id), do: call(run_id, :prefs)
+
+  @doc "Stop the session process (engine per-run processes stay up; see `EngineCore.RunSup.stop_run/1`)."
+  @spec stop(String.t()) :: :ok | {:error, :no_run}
+  def stop(run_id) do
+    case whereis(run_id) do
+      nil -> {:error, :no_run}
+      pid -> GenServer.stop(pid, :normal)
+    end
+  end
 
   @doc "Session status: `%{status, tick, seq, run_id}` or nil when absent."
   @spec state(String.t()) :: map() | nil
@@ -193,6 +222,16 @@ defmodule Referee.Run.Session do
      %{run_id: st.run_id, status: st.status, tick: st.run.world.tick, seq: st.run.seq}, st}
   end
 
+  # OOC works in every status: it is table talk, not a pipeline op.
+  def handle_call({:ooc, pc_id, text}, _from, st),
+    do: {:reply, :ok, hold(st, Run.ooc(st.run, pc_id, text))}
+
+  def handle_call(:pcs, _from, st),
+    do: {:reply, {:ok, Enum.map(st.run.pcs, & &1.id)}, st}
+
+  def handle_call(:prefs, _from, st),
+    do: {:reply, {:ok, st.run.prefs}, st}
+
   ## Internals
 
   defp hold(st, run2) do
@@ -288,21 +327,31 @@ defmodule Referee.Run.Session do
     end
   end
 
-  # Registry name release is asynchronous to process exit (Task 2 lesson):
-  # a just-stopped session may still be registered. Poll until the entry
-  # is gone or a live pid emerges before starting.
+  # Sessions live under `Referee.SessionSup` (spec §12.1), so they outlive
+  # the process that started them (a test process, a channel, a script).
+  # `:temporary` — a crashed session is recovered explicitly via
+  # `restore/2`; auto-restart would replay {:new, ...} against a journal
+  # that already holds those seqs.
+  def child_spec(init_arg) do
+    %{id: {__MODULE__, make_ref()}, start: {__MODULE__, :start_link, [init_arg]}, restart: :temporary}
+  end
+
   defp start_named(run_id, init_arg) do
     case Registry.lookup(@registry, {:session, run_id}) do
       [{pid, _}] ->
         if Process.alive?(pid) do
           {:error, {:already_started, pid}}
         else
+          # Registry name release is async to exit; poll for the cleanup.
           Process.sleep(5)
           start_named(run_id, init_arg)
         end
 
       [] ->
-        GenServer.start_link(__MODULE__, init_arg, name: via(run_id))
+        case DynamicSupervisor.start_child(Referee.SessionSup, {__MODULE__, init_arg}) do
+          {:ok, pid} -> {:ok, pid}
+          {:error, {:already_started, pid}} -> {:error, {:already_started, pid}}
+        end
     end
   end
 

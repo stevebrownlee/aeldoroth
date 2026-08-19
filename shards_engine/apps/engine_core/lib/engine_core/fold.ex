@@ -208,6 +208,7 @@ defmodule EngineCore.Fold do
       :narration -> world
       :llm_call -> world
       :dossier -> world
+      :ooc -> world
 
       other ->
         raise ArgumentError, "unknown payload kind: #{inspect(other)}"

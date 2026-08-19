@@ -166,6 +166,7 @@ defmodule Referee.Run do
             |> append_audit(d.audit)
             |> push(:dice, acc.world.tick, %{
               purpose: :adoption,
+              agent_id: env.to,
               sides: 20,
               roll: roll,
               target: Adopt.reliability(debtor, feasible),
@@ -358,6 +359,14 @@ defmodule Referee.Run do
   @doc "LLM spend report from this run's ledger."
   @spec spend_report(t()) :: map()
   def spend_report(run), do: Spend.report(events(run))
+
+  @doc """
+  Out-of-character table talk (spec §11): ledgers the event, touches no
+  pipeline, no world state.
+  """
+  @spec ooc(t(), String.t(), String.t()) :: t()
+  def ooc(run, pc_id, text),
+    do: push(run, :ooc, run.world.tick, %{kind: :ooc, agent_id: pc_id, text: text})
 
   ## Internals
 

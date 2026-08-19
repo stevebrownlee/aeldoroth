@@ -104,7 +104,7 @@ defmodule Referee.Resolve do
           seq: 0,
           tick: world.tick,
           class: :dice,
-          payload: %{purpose: :stale_swing, sides: 20, roll: roll, hit: false}
+          payload: %{purpose: :stale_swing, sides: 20, roll: roll, hit: false, agent_id: actor_id}
         }
 
       w2 = Fold.fold(world, [corrected])
