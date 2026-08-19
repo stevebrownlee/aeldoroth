@@ -21,6 +21,13 @@ defmodule EngineCore.World.Server do
     )
   end
 
+  # :transient — teardown (GenServer.stop :normal) must not restart the
+  # fold against a writer that is itself stopping (restart loops here can
+  # take down the whole EngineCore supervision tree).
+  def child_spec({run_id, _world} = arg) do
+    %{id: {__MODULE__, run_id}, start: {__MODULE__, :start_link, [arg]}, restart: :transient}
+  end
+
   @doc "Current world snapshot (cached fold)."
   @spec snapshot(String.t()) :: World.t()
   def snapshot(run_id) do
@@ -35,14 +42,28 @@ defmodule EngineCore.World.Server do
     end)
   end
 
+  @doc """
+  Cast: fold `events` into the snapshot (restore path). The first new
+  event's seq must be `last_seq + 1`; a gap crashes the server — the
+  ledger is the only truth and must never be spliced.
+  """
+  @spec adopt(String.t(), [Ledger.Event.t()]) :: :ok
+  def adopt(run_id, events) do
+    GenServer.cast(via(run_id), {:adopt, events})
+  end
+
   @impl true
   def init({run_id, %World{} = world}) do
     # Catch up with anything already in the ledger, then follow the tail.
     existing = Writer.events(run_id)
     state = %__MODULE__{run_id: run_id, world: Fold.fold(world, existing), last_seq: 0}
     state = %{state | last_seq: last_seq(state.world, existing)}
-    :ok = Writer.subscribe(run_id)
-    {:ok, state}
+    case Writer.subscribe(run_id) do
+      :ok -> {:ok, state}
+      # No writer means teardown is already underway; exit quietly rather
+      # than crash-looping into the DynamicSupervisor's restart intensity.
+      {:error, :no_writer} -> {:stop, :normal}
+    end
   end
 
   @impl true
@@ -54,10 +75,24 @@ defmodule EngineCore.World.Server do
 
   def handle_info({:DOWN, _ref, :process, _pid, _reason}, st), do: {:noreply, st}
 
-  def handle_info(_other, st), do: {:noreply, st}
-
   @impl true
   def handle_call(:snapshot, _from, st), do: {:reply, st.world, st}
+
+  @impl true
+  def handle_cast({:adopt, events}, %__MODULE__{} = st) do
+    new = Enum.reject(events, &(&1.seq <= st.last_seq))
+
+    case new do
+      [] ->
+        {:noreply, st}
+
+      [%Ledger.Event{seq: first} | _] when first == st.last_seq + 1 ->
+        {:noreply, %{st | world: Fold.fold(st.world, new), last_seq: max_seq(st.last_seq, new)}}
+
+      [%Ledger.Event{seq: got} | _] ->
+        raise ArgumentError, "world adopt seq gap: expected #{st.last_seq + 1}, got #{got}"
+    end
+  end
 
   ## Internals
 

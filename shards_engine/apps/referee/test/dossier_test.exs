@@ -8,10 +8,10 @@ defmodule Referee.DossierTest do
   alias LLMGateway.{Ctx, Adapters.Scripted}
   alias Referee.Dossier
 
-  defp ctx(scripts \\ %{}),
+  defp ctx(scripts),
     do: Ctx.from_config(%{summarize: %{adapter: Scripted, scripts: scripts}})
 
-  defp pc(beliefs \\ %{}) do
+  defp pc(beliefs) do
     %{
       id: "pc_thistle",
       name: "Thistle",

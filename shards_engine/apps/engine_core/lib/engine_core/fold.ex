@@ -201,6 +201,14 @@ defmodule EngineCore.Fold do
       :envelope_adopted -> update_envelope(world, p.id, &%{&1 | status: :adopted, adopted: true})
       :envelope_rejected -> update_envelope(world, p.id, &%{&1 | status: :rejected, adopted: false})
 
+      # Non-mutating record kinds (spec §12.3: world = fold(whole ledger);
+      # these classes document, they never change world state).
+      :prefs_stack -> world
+      :clarify -> world
+      :narration -> world
+      :llm_call -> world
+      :dossier -> world
+
       other ->
         raise ArgumentError, "unknown payload kind: #{inspect(other)}"
     end

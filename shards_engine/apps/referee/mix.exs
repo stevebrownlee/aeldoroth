@@ -20,5 +20,5 @@ defmodule Referee.MixProject do
     ]
   end
 
-  def application, do: [extra_applications: [:logger]]
+  def application, do: [extra_applications: [:logger], mod: {Referee.Application, []}]
 end

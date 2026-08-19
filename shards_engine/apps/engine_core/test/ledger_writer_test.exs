@@ -64,9 +64,9 @@ defmodule EngineCore.LedgerWriterTest do
     :ok = Writer.append(id, [ev(1)])
     :ok = Writer.append(id, [ev(2), ev(3)])
 
-    assert_received {:sub_events, ^id, [e1]}
+    assert_receive {:sub_events, ^id, [e1]}
     assert e1.seq == 1
-    assert_received {:sub_events, ^id, [e2, e3]}
+    assert_receive {:sub_events, ^id, [e2, e3]}
     assert e2.seq == 2 and e3.seq == 3
     refute_received {:sub_events, _, _}
   end
