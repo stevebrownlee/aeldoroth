@@ -11,3 +11,10 @@ config :llm_gateway, keys: %{}
 if config_env() == :test do
   import_config "test.exs"
 end
+
+# Channels-only endpoint (plan 5 Task 6): never boots a listener unless a
+# deployment explicitly turns it on; Bandit adapter is wired in runtime.exs.
+config :wire, Wire.Endpoint,
+  adapter: Bandit.PhoenixAdapter,
+  server: false,
+  pubsub_server: Wire.PubSub
