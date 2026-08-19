@@ -80,4 +80,34 @@ defmodule Referee.ValidateTest do
 
     assert {:reject, _} = Validate.check(w, a)
   end
+
+  test "order with nil target is diegetically rejected" do
+    a = struct!(Types.Action, actor_id: "pc", verb: :order, target_id: nil)
+    assert {:reject, msg} = Validate.check(put_caps(world(), :order), a)
+    assert msg =~ "no one to order"
+  end
+
+  test "order on a believed present target passes" do
+    w = put_caps(world(), :order)
+    a = struct!(Types.Action, actor_id: "pc", verb: :order, target_id: "gob")
+    assert :ok = Validate.check(w, a)
+  end
+
+  test "order on an unbelieved target is diegetically rejected" do
+    w = put_caps(world(), :order)
+    a = struct!(Types.Action, actor_id: "pc", verb: :order, target_id: "rat_1")
+    assert {:reject, msg} = Validate.check(w, a)
+    assert msg =~ "no such creature"
+  end
+
+  test "order without the capability is rejected" do
+    a = struct!(Types.Action, actor_id: "pc", verb: :order, target_id: "gob")
+    assert {:reject, msg} = Validate.check(world(), a)
+    assert msg =~ "no way"
+  end
+
+  defp put_caps(w, verb) do
+    pc = w.agents["pc"]
+    %{w | agents: Map.put(w.agents, "pc", %{pc | capabilities: [verb | pc.capabilities]})}
+  end
 end

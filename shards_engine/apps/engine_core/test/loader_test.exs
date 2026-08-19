@@ -58,6 +58,13 @@ defmodule EngineCore.LoaderTest do
     assert library_edge.sealed == true
   end
 
+  test "tier-3 chiefs carry :order; vermin do not" do
+    {:ok, w} = EngineCore.Loader.load(@yaml)
+    assert :order in w.agents["grisk_the_snatcher"].capabilities
+    assert :order in w.agents["goblin_bodyguard_1"].capabilities
+    refute :order in w.agents["giant_rat_1"].capabilities
+  end
+
   test "loads boundaries, hazards, commitments, groups, cadences" do
     {:ok, w} = EngineCore.Loader.load(@yaml)
 

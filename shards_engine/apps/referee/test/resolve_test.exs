@@ -116,4 +116,25 @@ defmodule Referee.ResolveTest do
     {:ok, events_b, _w3, r3} = Resolve.act(world(), rng(), a)
     assert events == events_b and r2 == r3
   end
+
+  test "order sends a true envelope keyed to its voicing signal" do
+    a =
+      struct!(Types.Action,
+        actor_id: "pc",
+        verb: :order,
+        target_id: "gob",
+        params: %{message: "Slay the intruder!"}
+      )
+
+    assert {:ok, [sig_ev, env_ev], w2, r2} = Resolve.act(world(), rng(), a)
+    assert sig_ev.payload.kind == :signal_emitted
+    assert env_ev.payload.kind == :envelope_sent
+    env = env_ev.payload.envelope
+    assert env.type == :order
+    assert env.truth == true
+    assert env.signal_ref == sig_ev.payload.ref
+    assert env.to == "gob"
+    assert hd(w2.envelopes).id == env.id
+    assert r2 == rng()
+  end
 end

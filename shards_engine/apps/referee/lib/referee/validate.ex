@@ -37,6 +37,9 @@ defmodule Referee.Validate do
       verb == :strike ->
         check_strike(actor, action)
 
+      verb == :order ->
+        check_order(actor, action)
+
       true ->
         :ok
     end
@@ -55,6 +58,17 @@ defmodule Referee.Validate do
     do: {:reject, "You see nothing there to strike."}
 
   defp check_strike(actor, %Types.Action{target_id: target_id}) do
+    if get_in(actor.beliefs, [actor.place_id, target_id]) != nil do
+      :ok
+    else
+      {:reject, "You see no such creature here."}
+    end
+  end
+
+  defp check_order(_actor, %Types.Action{target_id: nil}),
+    do: {:reject, "You have no one to order."}
+
+  defp check_order(actor, %Types.Action{target_id: target_id}) do
     if get_in(actor.beliefs, [actor.place_id, target_id]) != nil do
       :ok
     else

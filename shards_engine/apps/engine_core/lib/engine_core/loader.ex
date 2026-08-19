@@ -202,7 +202,7 @@ defmodule EngineCore.Loader do
     }
   end
 
-  defp caps(3), do: [:move, :strike, :wait, :shout, :hide, :parley, :obey, :flee]
+  defp caps(3), do: [:move, :strike, :wait, :shout, :hide, :parley, :obey, :flee, :order]
   defp caps(2), do: [:move, :strike, :wait, :flee]
   defp caps(_), do: [:move, :strike, :wait]
 

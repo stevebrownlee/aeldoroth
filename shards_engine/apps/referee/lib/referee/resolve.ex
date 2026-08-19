@@ -11,7 +11,7 @@ defmodule Referee.Resolve do
   belief corrected mid-swing still spends the moment and emits its events.
   """
 
-  alias EngineCore.{Dice, Fold, Ledger, Rules, Signals, Types, World}
+  alias EngineCore.{Dice, Envelopes, Fold, Ledger, Rules, Signals, Types, World}
 
   @shout_intensity 6.0
 
@@ -61,6 +61,7 @@ defmodule Referee.Resolve do
       :move -> act_move(world, rng, action)
       :strike -> act_strike(world, rng, action)
       :shout -> act_shout(world, rng, action)
+      :order -> act_order(world, rng, action)
       other -> raise ArgumentError, "unresolvable verb: #{inspect(other)}"
     end
   end
@@ -130,6 +131,15 @@ defmodule Referee.Resolve do
         @shout_intensity,
         message
       )
+
+    {:ok, events, w2, rng}
+  end
+
+  defp act_order(world, rng, %Types.Action{actor_id: actor_id, target_id: target_id, params: params}) do
+    message = Map.get(params, :message, "")
+
+    {:ok, events, w2} =
+      Envelopes.send(world, actor_id, target_id, :order, message, truth: true)
 
     {:ok, events, w2, rng}
   end
