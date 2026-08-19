@@ -113,7 +113,9 @@ defmodule LLMGateway.Ctx do
              key_ref: Map.get(cfg, :key_ref),
              temperature: Map.get(cfg, :temperature, 0.1),
              max_tokens: Map.get(cfg, :max_tokens, 512)
-           }}
+           }
+           # adapter-specific keys (e.g. Scripted's :scripts) pass through
+           |> Map.merge(Map.drop(cfg, [:adapter, :model, :endpoint, :key_ref, :temperature, :max_tokens]))}
         end)
     }
   end

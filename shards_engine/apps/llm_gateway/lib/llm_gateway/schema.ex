@@ -16,7 +16,7 @@ defmodule LLMGateway.Schema do
   end
 
   defp check(value, %{type: :object} = schema, path) do
-    with :ok <- type_check(value, :object, path) do
+    with :ok <- type_check(value, :object, schema, path) do
       sv = stringify(value)
       req = schema |> Map.get(:required, []) |> Enum.map(&to_string/1)
       props = stringify(Map.get(schema, :properties, %{}))
@@ -45,7 +45,7 @@ defmodule LLMGateway.Schema do
   end
 
   defp check(value, %{type: :array} = schema, path) do
-    with :ok <- type_check(value, :array, path),
+    with :ok <- type_check(value, :array, schema, path),
          :ok <- enum_check(value, schema, path) do
       items = Map.get(schema, :items, %{type: :string})
 
@@ -61,12 +61,14 @@ defmodule LLMGateway.Schema do
   end
 
   defp check(value, schema, path) do
-    with :ok <- type_check(value, Map.get(schema, :type), path) do
+    with :ok <- type_check(value, Map.get(schema, :type), schema, path) do
       enum_check(value, schema, path)
     end
   end
 
-  defp type_check(value, type, path) do
+  defp type_check(nil, _type, %{nullable: true}, _path), do: :ok
+
+  defp type_check(value, type, _schema, path) do
     ok =
       case type do
         nil -> true
@@ -103,5 +105,5 @@ defmodule LLMGateway.Schema do
   defp typename(v) when is_integer(v), do: "integer"
   defp typename(v) when is_float(v), do: "float"
   defp typename(v) when is_boolean(v), do: "boolean"
-  defp typename(_), do: inspect("unknown")
+  defp typename(_), do: "null"
 end

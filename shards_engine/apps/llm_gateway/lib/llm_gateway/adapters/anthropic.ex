@@ -51,7 +51,7 @@ defmodule LLMGateway.Adapters.Anthropic do
   def complete(%Request{} = req, cfg) do
     {url, headers, body} = build_request(req, cfg)
 
-    case :httpc.request(:post, {~c"#{url}", headers, ~c"application/json", Json.encode!(body)}, ssl: [], timeout: 30_000) do
+    case :httpc.request(:post, {~c"#{url}", headers, ~c"application/json", Json.encode!(body)}, [ssl: []], timeout: 30_000) do
       {:ok, {{_, status, _}, _, resp_body}} ->
         parse_response(status, IO.iodata_to_binary(resp_body))
 

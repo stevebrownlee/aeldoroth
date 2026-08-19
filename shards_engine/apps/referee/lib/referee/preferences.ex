@@ -28,7 +28,12 @@ defmodule Referee.Preferences do
   @doc "Load a YAML layer; nil/missing path → empty map (layer absent)."
   @spec load(Path.t() | nil) :: map()
   def load(nil), do: %{}
-  def load(path), do: YamlElixir.read_from_file(path) || %{}
+  def load(path) do
+    case YamlElixir.read_from_file(path) do
+      {:ok, map} when is_map(map) -> map
+      _ -> %{}
+    end
+  end
 
   @spec hash(map()) :: binary()
   def hash(prefs), do: :erlang.md5(:erlang.term_to_binary(sort_tree(prefs)))

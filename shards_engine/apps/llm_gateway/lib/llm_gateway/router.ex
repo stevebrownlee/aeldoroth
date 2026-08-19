@@ -79,12 +79,7 @@ defmodule LLMGateway.Router do
 
   defp check_schema(%Result{parsed: nil}, _schema), do: {:error, :not_json}
 
-  defp check_schema(%Result{parsed: parsed}, schema) do
-    case Schema.validate(parsed, schema) do
-      :ok -> :ok
-      {:error, _path, msg} -> {:error, msg}
-    end
-  end
+  defp check_schema(%Result{parsed: parsed}, schema), do: Schema.validate(parsed, schema)
 
   defp succeed(%Ctx{} = ctx, req, cfg, %Result{} = res, verdict) do
     tokens_in = res.usage.tokens_in

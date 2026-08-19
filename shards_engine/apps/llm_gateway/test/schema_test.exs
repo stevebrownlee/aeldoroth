@@ -52,4 +52,15 @@ defmodule LLMGateway.SchemaTest do
   test "rejects non-object at root when object required" do
     assert {:error, _} = Schema.validate(["nope"], @schema)
   end
+
+  test "accepts nil for nullable properties" do
+    schema = %{type: :object, required: [:verb], properties: %{verb: %{type: :string}, target_id: %{type: :string, nullable: true}}}
+
+    assert Schema.validate(%{"verb" => "move", "target_id" => nil}, schema) == :ok
+  end
+
+  test "rejects nil when property is not nullable" do
+    assert {:error, msg} = Schema.validate(%{"verb" => "move", "target" => nil}, @schema)
+    assert msg =~ "target" and msg =~ "string"
+  end
 end

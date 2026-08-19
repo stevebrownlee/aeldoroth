@@ -5,7 +5,7 @@ defmodule LLMGateway.Adapters.Scripted do
   Queue state lives in the process dictionary keyed by the `:scripts` map;
   replays run single-process, so pops are deterministic. Each test process
   starts with empty state, and a fresh scripts map starts a fresh set of
-  queues.
+  queues. Requests are captured so tests can assert on prompt content.
   """
 
   @behaviour LLMGateway.Adapter
@@ -14,11 +14,23 @@ defmodule LLMGateway.Adapters.Scripted do
   @spec reset() :: :ok
   def reset do
     Process.delete(__MODULE__)
+    Process.delete({__MODULE__, :requests})
     :ok
+  end
+
+  @doc """
+  Drains captured requests (newest first) so tests can assert on prompt
+  content — the truth-barrier property in particular.
+  """
+  @spec take_requests() :: [Request.t()]
+  def take_requests do
+    Process.delete({__MODULE__, :requests}) || []
   end
 
   @impl true
   def complete(%Request{} = req, %{scripts: scripts}) do
+    Process.put({__MODULE__, :requests}, [req | Process.get({__MODULE__, :requests}) || []])
+
     case remaining(scripts) |> Map.get(req.class, []) do
       [] ->
         {:error, :script_exhausted}
