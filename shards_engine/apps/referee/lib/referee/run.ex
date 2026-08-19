@@ -70,7 +70,8 @@ defmodule Referee.Run do
   def declare(run, pc_id, utterance) do
     case Interpret.nl_to_action(run.ctx, run.world, pc_id, utterance) do
       {:clarify, question, ctx2, _audit} ->
-        {:ok, question, %{run | ctx: ctx2}}
+        run = push(%{run | ctx: ctx2}, :clarify, run.world.tick, %{kind: :clarify, agent_id: pc_id, question: question})
+        {:ok, question, run}
 
       {:ok, action, assumptions, ctx2, audit} ->
         run
@@ -337,6 +338,7 @@ defmodule Referee.Run do
           {text, ctx2, _audit} =
             Narrate.received(acc.ctx, acc.prefs, pc_map.id, Enum.map(mine, & &1.payload))
 
+          acc = push(acc, :narration, acc.world.tick, %{kind: :narration, agent_id: pc_map.id, text: text})
           {Map.put(texts, pc_map.id, text), %{acc | ctx: ctx2}}
         end
       end)
@@ -376,6 +378,7 @@ defmodule Referee.Run do
           |> Map.put(:ctx, ctx2)
           |> append_world(world_events ++ reaction)
           |> append_audit(naudit)
+          |> push(:narration, w3.tick, %{kind: :narration, agent_id: pc_id, text: text})
 
         {:ok, text, run}
     end
@@ -387,9 +390,10 @@ defmodule Referee.Run do
     run = %{run | rejections: Map.put(run.rejections, key, count)}
 
     if count >= @stall_limit do
-      {:stall, "The moment passes — you cannot gather yourself to act again.", run}
+      text = "The moment passes — you cannot gather yourself to act again."
+      {:stall, text, push(run, :narration, run.world.tick, %{kind: :narration, agent_id: pc_id, text: text})}
     else
-      {:ok, reason, run}
+      {:ok, reason, push(run, :narration, run.world.tick, %{kind: :narration, agent_id: pc_id, text: reason})}
     end
   end
 

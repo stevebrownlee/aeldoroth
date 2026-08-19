@@ -120,4 +120,89 @@ defmodule Referee.RunTest do
 
     assert :erlang.term_to_binary(Run.events(a2)) == :erlang.term_to_binary(Run.events(b2))
   end
+
+
+  test "declare clarification is ledgered as a clarify event" do
+    # PC in the guard room believing two indistinguishable guards; the
+    # scripted interpret garbage forces the grammar fallback, whose
+    # lethal-verb ambiguity (decision 21) yields a clarify, not a guess.
+    pcs = [%{id: "pc_thistle", name: "Thistle", place_id: "guard_room", int: 13, ac: 5, hd: 1, hp: 12, thac0: 20, damage: "1d8"}]
+    scripts = %{interpret: ["{not json"], narrate: [], salt: System.unique_integer()}
+    {:ok, run} = Run.new(@yaml, 42, pcs, routing: %{interpret: %{adapter: Scripted, scripts: scripts},
+                                                    narrate: %{adapter: Scripted, scripts: scripts}})
+    pc = run.world.agents["pc_thistle"]
+    believed = Map.put(pc.beliefs, "guard_room", %{
+      "goblin_guard_1" => %{count: 1, seen: true, last_fidelity: 5, last_tick: 0, salience: 6.0},
+      "goblin_guard_2" => %{count: 1, seen: true, last_fidelity: 5, last_tick: 0, salience: 6.0}
+    })
+    run = %{run | world: %{run.world | agents: Map.put(run.world.agents, "pc_thistle", %{pc | beliefs: believed})}}
+
+    assert {:ok, question, run2} = Run.declare(run, "pc_thistle", "attack the goblin")
+    assert question =~ "which one"
+
+    clarifies = Run.events(run2) |> Enum.filter(&(&1.class == :clarify))
+    assert length(clarifies) == 1
+    [ev] = clarifies
+    assert ev.payload.kind == :clarify
+    assert ev.payload.agent_id == "pc_thistle"
+    assert ev.payload.question == question
+  end
+
+  test "declare resolution narration is ledgered" do
+    {:ok, run} =
+      new_run(
+        [interpret_json("move", %{"params" => %{"direction" => "north"}})],
+        ["You push north into the library."]
+      )
+
+    assert {:ok, text, run2} = Run.declare(run, "pc_thistle", "I head north")
+
+    narrations = Run.events(run2) |> Enum.filter(&(&1.class == :narration))
+    assert length(narrations) == 1
+    [ev] = narrations
+    assert ev.payload.kind == :narration
+    assert ev.payload.agent_id == "pc_thistle"
+    assert ev.payload.text == text
+    # narration lands after the world events it describes
+    move = Run.events(run2) |> Enum.find(&(&1.payload[:kind] == :move))
+    assert ev.seq > move.seq
+  end
+
+  test "rejected declarations ledger their refusal narration" do
+    {:ok, run} = new_run([interpret_json("move", %{"params" => %{"direction" => "up"}})], [])
+
+    assert {:ok, reason, run2} = Run.declare(run, "pc_thistle", "I go up")
+
+    narrations = Run.events(run2) |> Enum.filter(&(&1.class == :narration))
+    assert length(narrations) == 1
+    assert hd(narrations).payload.text == reason
+  end
+
+  test "advance narrations are ledgered per receiving PC and derive the texts map" do
+    pcs = [
+      %{id: "pc_thistle", name: "Thistle", place_id: "entry_hall", int: 13, ac: 5, hd: 1, hp: 12, thac0: 20, damage: "1d8"},
+      %{id: "pc_bramble", name: "Bramble", place_id: "entry_hall", int: 12, ac: 6, hd: 1, hp: 8, thac0: 20, damage: "1d6"}
+    ]
+    scripts = %{interpret: [], narrate: [], salt: System.unique_integer()}
+    {:ok, run} = Run.new(@yaml, 99, pcs, routing: %{interpret: %{adapter: Scripted, scripts: scripts},
+                                                    narrate: %{adapter: Scripted, scripts: scripts}})
+
+    assert {:ok, texts, run2} = Run.advance(run)
+
+    narrations = Run.events(run2) |> Enum.filter(&(&1.class == :narration))
+    derived = Map.new(narrations, &{&1.payload.agent_id, &1.payload.text})
+    assert derived == texts
+  end
+
+  test "advance with no receipts ledgers no narration events" do
+    {:ok, run} = new_run([interpret_json("move", %{"params" => %{"direction" => "north"}})], ["north text"])
+    {:ok, _, run2} = Run.declare(run, "pc_thistle", "I head north")
+    {:ok, _, run3} = Run.advance(run2)
+    seq0 = run3.seq
+
+    # quiet tick: no new receipts ⇒ no new narration events
+    {:ok, _, run4} = Run.advance(run3)
+    quiet = Run.events(run4) |> Enum.filter(&(&1.seq > seq0 and &1.class == :narration))
+    assert quiet == []
+  end
 end
