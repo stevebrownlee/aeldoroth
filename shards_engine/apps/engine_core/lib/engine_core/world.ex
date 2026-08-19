@@ -7,6 +7,7 @@ defmodule EngineCore.World do
             tick: 0,
             boundaries: %{},
             in_flight: [],
+            envelopes: [],
             hazards: %{},
             signal_seq: 0
 

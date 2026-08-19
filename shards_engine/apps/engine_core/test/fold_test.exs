@@ -81,6 +81,26 @@ defmodule EngineCore.FoldTest do
     assert World.agent(noop, "g1").beliefs == corrected |> World.agent("g1") |> Map.get(:beliefs)
   end
 
+  test "envelope_adopted and envelope_rejected mutate envelope status", %{w: w} do
+    env = struct!(Types.Envelope,
+      id: "env-0-1", from: "g1", to: "pc1", type: :order, payload_nl: "go",
+      sent_tick: 0, delivery_place: "entry_hall", signal_ref: 7
+    )
+    w = %{w | envelopes: [env]}
+
+    adopted =
+      Fold.apply(w, ev(1, 1, %{kind: :envelope_adopted, id: "env-0-1", roll: 15, adopted: true}))
+
+    assert hd(adopted.envelopes).adopted == true
+    assert hd(adopted.envelopes).status == :adopted
+
+    rejected =
+      Fold.apply(w, ev(2, 2, %{kind: :envelope_rejected, id: "env-0-1", reason: "cowardice"}))
+
+    assert hd(rejected.envelopes).adopted == false
+    assert hd(rejected.envelopes).status == :rejected
+  end
+
   defp ev(seq, tick, payload),
     do: %Ledger.Event{seq: seq, tick: tick, class: :world, payload: payload}
 end

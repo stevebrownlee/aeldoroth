@@ -109,6 +109,17 @@ defmodule EngineCore.Types do
     ]
   end
 
+  defmodule Envelope do
+    @moduledoc """
+    A typed agent-to-agent message (e.g. an order). Delivery is keyed to the
+    sound signal it travelled with: `signal_ref` must be received by `to`
+    at `delivery_place` before the envelope's contents become a belief.
+    """
+    @enforce_keys [:id, :from, :to, :type, :payload_nl, :sent_tick, :delivery_place, :signal_ref]
+    defstruct [:id, :from, :to, :type, :payload_nl, :sent_tick, :delivery_place, :signal_ref,
+      truth: :unverified, adopted: nil, status: :pending]
+  end
+
   defmodule Hazard do
     @moduledoc "Tier-0 pattern: alarm hazards broadcast, damage hazards bite (decision 21)."
     @enforce_keys [:id, :kind, :place_id]

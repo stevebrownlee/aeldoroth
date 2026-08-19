@@ -184,6 +184,23 @@ defmodule EngineCore.Fold do
           %{a | beliefs: Map.put(a.beliefs, p.place_id, place_map)}
         end)
 
+      :envelope_sent ->
+        %{world | envelopes: world.envelopes ++ [struct!(EngineCore.Types.Envelope, Map.to_list(p.envelope))]}
+
+      :envelope_delivered ->
+        env = envelope_by_id(world, p.id)
+
+        world
+        |> update_envelope(p.id, fn e -> %{e | status: :delivered} end)
+        |> update_agent(env.to, fn a ->
+          entry = %{count: 1, last_tick: tick, last_fidelity: 3, salience: 6.0, seen: false}
+          place_map = Map.put(a.beliefs[p.place_id] || %{}, "#{env.type}:#{env.id}", entry)
+          %{a | beliefs: Map.put(a.beliefs, p.place_id, place_map)}
+        end)
+
+      :envelope_adopted -> update_envelope(world, p.id, &%{&1 | status: :adopted, adopted: true})
+      :envelope_rejected -> update_envelope(world, p.id, &%{&1 | status: :rejected, adopted: false})
+
       other ->
         raise ArgumentError, "unknown payload kind: #{inspect(other)}"
     end
@@ -197,6 +214,21 @@ defmodule EngineCore.Fold do
     case World.agent(world, id) do
       nil -> world
       a -> %{world | agents: Map.put(world.agents, id, fun.(a))}
+    end
+  end
+
+  @spec envelope_by_id(World.t(), String.t()) :: EngineCore.Types.Envelope.t() | nil
+  def envelope_by_id(world, id), do: Enum.find(world.envelopes, &(&1.id == id))
+
+  @spec update_envelope(World.t(), String.t(), (EngineCore.Types.Envelope.t() ->
+                                                EngineCore.Types.Envelope.t())) :: World.t()
+  def update_envelope(world, id, fun) do
+    case envelope_by_id(world, id) do
+      nil ->
+        world
+
+      _env ->
+        %{world | envelopes: Enum.map(world.envelopes, fn e -> if e.id == id, do: fun.(e), else: e end)}
     end
   end
 
