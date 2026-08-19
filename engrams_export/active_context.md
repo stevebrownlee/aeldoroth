@@ -1,7 +1,7 @@
 ---
 identifier: active_context
 title: Active Context
-created: 2026-08-19T02:09:22Z
+created: 2026-08-19T05:33:47Z
 ---
 # Active Context
 
@@ -9,6 +9,7 @@ created: 2026-08-19T02:09:22Z
 {
   "content": {
     "current_focus": "Campaign ready to play - The Ruined Tower authored, not yet run; Shadow Weaver Cult arc (Act 1, Discovery) selected and documented",
+    "current_plan": "Plan 4 (agent brains) complete",
     "expanded": {
       "content": {
         "current_focus": "Plan 3 (spec phase 5) DONE: llm_gateway + referee pipeline landed headless, 185 tests green, golden replay determinism + referee CLI smoke proven",
@@ -19,6 +20,7 @@ created: 2026-08-19T02:09:22Z
         ]
       }
     },
+    "next": "Plan 5 - spec 12.4 phase 7: Phoenix channels run:<id>, per-PC isolation at push, spectate console, terminal WS reference client, PC dossiers (summarize class), OTP supervision tree promotion (World.Server, Ledger.Writer, Run.Session)",
     "next_session": "Session 1: Thornhollow hook -> Ruined Tower Rooms 1-2 (possibly 3)",
     "open_questions": [
       "Innkeeper canon: Mara/The Tired Traveler (README, world guide) vs Vara/The Broken Wheel (npc.md)",
@@ -35,10 +37,12 @@ created: 2026-08-19T02:09:22Z
       "Tick treasure-checklist.md boxes",
       "Log session progress + decisions into engrams"
     ],
+    "spec": "docs/superpowers/specs/agent-engine-spec.md",
+    "tests": "232 green umbrella (engine_core 97, llm_gateway 38, agents 25, referee 72)",
     "watch": "Party's choice for the Shadow-Crystal (keep/sell/study/destroy) is the Act 1 pacing lever"
   },
   "name": "default",
-  "updated_at": "2026-08-19T02:09:22Z",
-  "version": 3
+  "updated_at": "2026-08-19T05:33:47Z",
+  "version": 4
 }
 ```
