@@ -1,14 +1,14 @@
 ---
 identifier: active_context
 title: Active Context
-created: 2026-08-20T12:41:34Z
+created: 2026-08-20T13:01:14Z
 ---
 # Active Context
 
 ```json
 {
   "content": {
-    "current_focus": "Added prominent How to Play guide to primary nav, sidebar, and landing page; verified with agent-browser",
+    "current_focus": "Grammar parser enhanced and tested for natural player actions (bare directions, room targets, exploration/search verbs)",
     "current_plan": "Plan 5 (protocol-live-runs) COMPLETE",
     "decisions": [
       47,
@@ -62,7 +62,7 @@ created: 2026-08-20T12:41:34Z
     "watch": "Party's choice for the Shadow-Crystal (keep/sell/study/destroy) is the Act 1 pacing lever"
   },
   "name": "default",
-  "updated_at": "2026-08-20T12:41:34Z",
-  "version": 10
+  "updated_at": "2026-08-20T13:01:14Z",
+  "version": 11
 }
 ```
