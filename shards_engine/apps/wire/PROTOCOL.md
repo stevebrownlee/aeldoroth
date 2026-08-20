@@ -111,7 +111,7 @@ Reply: `{:ok, snapshot}` with
 | Event | Reply |
 |---|---|
 | `pause` | `{:ok, %{"dossiers": {pc_id: text}}}` · `{:error, %{"reason": "already_paused"}}` |
-| `resume` | `{:ok, %{}}` · `{:error, %{"reason": "not_paused"}}` |
+| `resume` | `{:ok, %{"resumed": true}}` (distinct from heartbeat acks `{}`) · `{:error, %{"reason": "not_paused"}}` |
 | `spend` | `{:ok, %{"spend": report}}` |
 
 ### Server → client

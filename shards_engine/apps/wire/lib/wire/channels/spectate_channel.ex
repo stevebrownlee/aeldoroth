@@ -47,7 +47,8 @@ defmodule Wire.SpectateChannel do
 
   def handle_in("resume", _params, socket) do
     case Session.resume(run_id(socket)) do
-      :ok -> {:reply, {:ok, %{}}, socket}
+      # `resumed: true` distinguishes this ack from heartbeat acks ({}).
+      :ok -> {:reply, {:ok, %{resumed: true}}, socket}
       {:error, :not_paused} -> {:reply, {:error, %{reason: "not_paused"}}, socket}
     end
   end

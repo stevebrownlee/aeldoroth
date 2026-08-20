@@ -31,7 +31,7 @@ defmodule ClientWeb.Endpoint do
 
   plug Plug.Static,
     at: "/assets",
-    from: {:client_web, "static/assets"},
+    from: {:client_web, "priv/static/assets"},
     gzip: false,
     only: ~w(phoenix.min.js phoenix_live_view.min.js)
 

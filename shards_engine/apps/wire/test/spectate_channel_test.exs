@@ -97,8 +97,10 @@ defmodule Wire.SpectateChannelTest do
 
     assert %{status: :paused} = Session.state(id)
 
+    # The reply carries `resumed: true` so clients can tell it apart from
+    # heartbeat acks (additive — bare %{} matchers still match).
     ref2 = push(chan, "resume", %{})
-    assert_reply ref2, :ok
+    assert_reply ref2, :ok, %{resumed: true}
     assert %{status: :running} = Session.state(id)
   end
 
