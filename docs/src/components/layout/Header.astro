@@ -9,12 +9,12 @@ const { class: className = '' } = Astro.props;
 const pathname = Astro.url.pathname;
 
 const navItems = [
-  { label: 'Handbook', href: '/handbook' },
-  { label: 'Pipeline', href: '/pipeline' },
-  { label: 'Dice 3D', href: '/dice-3d' },
-  { label: 'Ledger', href: '/ledger' },
-  { label: 'BDI Brains', href: '/bdi-brains' },
-  { label: 'Dungeon Map', href: '/dungeon-map' },
+  { label: 'Handbook', href: '/docs/01-overview' },
+  { label: 'Pipeline', href: '/visualizers/referee' },
+  { label: 'Dice 3D', href: '/visualizers/dice' },
+  { label: 'Ledger', href: '/visualizers/replay' },
+  { label: 'BDI Brains', href: '/visualizers/brains' },
+  { label: 'Dungeon Map', href: '/visualizers/dungeon' },
 ];
 
 const githubUrl = 'https://github.com/stevebrownlee/aeldoroth';
@@ -30,7 +30,10 @@ const githubUrl = 'https://github.com/stevebrownlee/aeldoroth';
     <nav class="header-nav" aria-label="Primary">
       <ul class="nav-list">
         {navItems.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const isActive =
+            item.href === '/docs/01-overview'
+              ? pathname.startsWith('/docs')
+              : pathname === item.href || pathname.startsWith(`${item.href}/`);
           return (
             <li class="nav-item">
               <a

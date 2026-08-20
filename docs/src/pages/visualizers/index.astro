@@ -1,0 +1,188 @@
+---
+// docs/src/pages/visualizers/index.astro
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Icons from '../../components/icons/Icons.astro';
+import OrnamentalDivider from '../../components/ui/OrnamentalDivider.astro';
+
+const visualizers = [
+  {
+    title: 'Referee Adjudication Pipeline',
+    href: '/visualizers/referee',
+    icon: 'swords',
+    badge: 'Core Engine',
+    desc: 'Interactive 5-stage debugger demonstrating how natural language player intent is parsed, diegetically validated, resolved with seeded rolls, and folded into append-only ledger truth.',
+  },
+  {
+    title: 'Arcane 3D Dice Engine',
+    href: '/visualizers/dice',
+    icon: 'd20',
+    badge: '3D CSS Physics',
+    desc: 'Hardware-accelerated CSS 3D tumbling d20, d8, and d6 with AD&D 1E attack matrix resolution (THAC0 vs Armor Class) and damage calculations.',
+  },
+  {
+    title: 'Ledger Time-Travel Scrubber',
+    href: '/visualizers/replay',
+    icon: 'scroll',
+    badge: 'Determinism',
+    desc: 'Time-travel timeline scrubber proving that world state is a pure fold over the append-only event ledger with emergence and fork-diff comparison.',
+  },
+  {
+    title: 'Agent BDI Brain Explorer',
+    href: '/visualizers/brains',
+    icon: 'brain',
+    badge: 'Autonomous Actors',
+    desc: 'Inspect perceived belief stores, threat salience escalation threshold meters, and autonomous order adoption algorithms for tier-3 sapient NPCs.',
+  },
+  {
+    title: 'Ruined Tower Spatial Map',
+    href: '/visualizers/dungeon',
+    icon: 'shield',
+    badge: 'Spatial Activation',
+    desc: 'Interactive 7-room dungeon floorplan showing awake vs dormant compute gating and sound/light waveform propagation with edge door attenuation.',
+  },
+];
+---
+
+<BaseLayout
+  title="Interactive Engine Visualizers"
+  description="Explore the five interactive simulators and rule sandboxes for The Shattered Kingdoms platform."
+>
+  <main class="hub-container">
+    <header class="hub-header">
+      <div class="hub-badge">Platform Simulators</div>
+      <h1 class="hub-title">Interactive Visualizer Hub</h1>
+      <p class="hub-lead">
+        Hands-on interactive tools demonstrating the deterministic rules engine, BDI agent brains, 3D CSS dice physics, and spatial compute gating.
+      </p>
+    </header>
+
+    <OrnamentalDivider />
+
+    <div class="visualizer-grid">
+      {
+        visualizers.map((tool) => (
+          <a href={tool.href} class="tool-card runic-border-beam">
+            <div class="tool-card-top">
+              <div class="tool-icon">
+                <Icons name={tool.icon as any} size={24} />
+              </div>
+              <span class="tool-badge">{tool.badge}</span>
+            </div>
+            <h2 class="tool-title">{tool.title}</h2>
+            <p class="tool-desc">{tool.desc}</p>
+            <div class="tool-cta">
+              <span>Launch Simulator</span>
+              <span class="arrow">→</span>
+            </div>
+          </a>
+        ))
+      }
+    </div>
+  </main>
+</BaseLayout>
+
+<style>
+  .hub-container {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 3rem 1.5rem 6rem;
+  }
+  .hub-header {
+    text-align: center;
+    max-width: 48rem;
+    margin: 0 auto 2rem;
+  }
+  .hub-badge {
+    display: inline-block;
+    font-family: var(--font-display);
+    font-size: 0.75rem;
+    color: var(--gold-dark);
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    padding: 0.25rem 0.75rem;
+    border: 1px solid var(--border-gold);
+    border-radius: 1rem;
+    margin-bottom: 1rem;
+  }
+  .hub-title {
+    margin-bottom: 1rem;
+  }
+  .hub-lead {
+    font-size: 1.15rem;
+    color: #94a3b8;
+    line-height: 1.6;
+  }
+  .visualizer-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.75rem;
+    margin-top: 2rem;
+  }
+  .tool-card {
+    padding: 1.75rem;
+    display: flex;
+    flex-direction: column;
+    color: inherit;
+    text-decoration: none;
+    transition: transform 0.2s ease;
+  }
+  .tool-card:hover {
+    transform: translateY(-4px);
+  }
+  .tool-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
+  }
+  .tool-icon {
+    width: 2.75rem;
+    height: 2.75rem;
+    background: rgba(223, 177, 91, 0.1);
+    border: 1px solid var(--border-gold);
+    border-radius: 0.5rem;
+    display: grid;
+    place-items: center;
+    color: var(--gold-bright);
+  }
+  .tool-badge {
+    font-family: var(--font-display);
+    font-size: 0.75rem;
+    color: var(--amber-rune);
+    border: 1px solid rgba(255, 157, 66, 0.3);
+    padding: 0.2rem 0.6rem;
+    border-radius: 1rem;
+  }
+  .tool-title {
+    font-size: 1.25rem;
+    color: var(--gold-bright);
+    margin: 0 0 0.75rem;
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+  .tool-desc {
+    font-size: 0.95rem;
+    color: #94a3b8;
+    line-height: 1.55;
+    flex: 1;
+    margin-bottom: 1.5rem;
+  }
+  .tool-cta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--font-display);
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--gold-primary);
+  }
+  .tool-card:hover .tool-cta {
+    color: var(--gold-bright);
+  }
+  .arrow {
+    transition: transform 0.15s ease;
+  }
+  .tool-card:hover .arrow {
+    transform: translateX(4px);
+  }
+</style>
