@@ -75,6 +75,10 @@ defmodule Referee.Run.Session do
   @spec ooc(String.t(), String.t(), String.t()) :: :ok | {:error, :no_run}
   def ooc(run_id, pc_id, text), do: call(run_id, {:ooc, pc_id, text})
 
+  @doc "GM table-wide announcement, ledgered as an `:ooc` event from the GM."
+  @spec gm_chat(String.t(), String.t()) :: :ok | {:error, :no_run}
+  def gm_chat(run_id, text), do: call(run_id, {:gm_chat, text})
+
   @doc "This run's PC ids (from the immutable seed spec)."
   @spec pcs(String.t()) :: {:ok, [String.t()]} | {:error, :no_run}
   def pcs(run_id), do: call(run_id, :pcs)
@@ -124,10 +128,10 @@ defmodule Referee.Run.Session do
 
   @doc """
   Who the table is waiting on (GM-console introspection, same family as
-  `roster/1` — not on the seat wire): one row per PC with their most
-  recent declared intent (ephemeral session state, not ledgered) and any
-  outstanding clarify prompt — a clarify ledger event newer than that PC's
-  latest narration.
+  `roster/1` — not on the seat wire): one row per PC with their current
+  vitals, place name, most recent declared intent (ephemeral session
+  state, not ledgered) and any outstanding clarify prompt — a clarify
+  ledger event newer than that PC's latest narration.
   """
   @spec awaiting(String.t()) ::
           {:ok,
@@ -135,6 +139,12 @@ defmodule Referee.Run.Session do
              %{
                id: String.t(),
                name: String.t(),
+               hp: integer() | nil,
+               hp_max: integer() | nil,
+               ac: integer() | nil,
+               thac0: integer() | nil,
+               place_id: String.t() | nil,
+               place_name: String.t() | nil,
                last_intent: %{text: String.t(), tick: integer()} | nil,
                prompt: %{question: String.t(), tick: integer()} | nil
              }
@@ -286,9 +296,18 @@ defmodule Referee.Run.Session do
   def handle_call(:awaiting, _from, st) do
     rows =
       Enum.map(st.run.pcs, fn pc ->
+        agent = World.agent(st.run.world, pc.id)
+        place = World.place(st.run.world, pc.place_id) || %{name: nil}
+
         %{
           id: pc.id,
           name: pc.name,
+          hp: agent && agent.body && agent.body.hp,
+          hp_max: agent && agent.statblock && agent.statblock.hp_max,
+          ac: agent && agent.statblock && agent.statblock.ac,
+          thac0: agent && agent.statblock && agent.statblock.thac0,
+          place_id: pc.place_id,
+          place_name: place.name,
           last_intent: Map.get(st.last_intents, pc.id),
           prompt: outstanding_prompt(st.run, pc.id)
         }
@@ -300,6 +319,9 @@ defmodule Referee.Run.Session do
   # OOC works in every status: it is table talk, not a pipeline op.
   def handle_call({:ooc, pc_id, text}, _from, st),
     do: {:reply, :ok, hold(st, Run.ooc(st.run, pc_id, text))}
+
+  def handle_call({:gm_chat, text}, _from, st),
+    do: {:reply, :ok, hold(st, Run.ooc(st.run, "GM", text))}
 
   def handle_call(:pcs, _from, st),
     do: {:reply, {:ok, Enum.map(st.run.pcs, & &1.id)}, st}
