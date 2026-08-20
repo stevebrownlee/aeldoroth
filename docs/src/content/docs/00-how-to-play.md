@@ -65,27 +65,32 @@ When you select a character, the **Truth Barrier** activates: your screen receiv
 
 To act, simply type what you want your character to do into the **Declare** box and press Enter or click **Declare**.
 
-### What You Can Say
+### How to Declare Actions
 
-You are not restricted to predefined verb menus. You can declare anything a fantasy adventurer could attempt:
+The platform supports two interpretation modes: **Deterministic Local Mode** (default, 100% offline with zero API keys) and **Frontier LLM Mode** (when connected to a live model gateway).
 
-#### Exploration & Movement
-* `"I walk carefully through the north doorway into the corridor."`
-* `"I examine the stone runes carved into the library fireplace."`
-* `"I search the floorboards near the door for tripwires or pressure plates."`
-* `"I light a torch from my backpack and hold it high."`
+#### 1. Exploration & Movement
+To move between rooms in the ruins:
+* **Bare Directions:** `"north"`, `"south"`, `"east"`, `"west"`, `"up"`, `"down"` (or shorthand `"n"`, `"s"`, `"e"`, `"w"`)
+* **Natural Movement:** `"I head north"`, `"go to the library"`, `"walk east"`, `"step into the guard room"`
+* **Room Names:** `"library"`, `"guard_room"`, `"enter library"`
 
-#### Combat & Tactics
-* `"I draw my longsword and strike the goblin guard in front of me."`
-* `"I take cover behind the overturned oak table and ready my bow."`
-* `"I attempt to disarm the chief before he can drink his potion."`
-* `"I step back and parry defensively while Bramble circles around."`
+#### 2. Observation & Scouting
+To pause, listen, or search your surroundings:
+* `"look around"` or `"examine room"`
+* `"search"` or `"search for traps"`
+* `"listen"` or `"listen at the doorway"`
+* `"wait"` or `"hold"` (spends the moment observing quietly)
 
-#### Interaction & Dialogue
-* `"I call out to the prisoner in the iron cell and ask who locked them up."`
-* `"I shout at the goblin: 'Drop your daggers and surrender, or face my blade!'"`
-* `"I offer the guard 5 gold coins if he opens the iron portcullis."`
+#### 3. Combat & Attacks
+When hostile creatures are present in your character's room:
+* `"attack the goblin guard"` or `"strike the sentry with my longsword"`
+* `"shoot the goblin"` or `"stab the guard"`
+*(Note: If you declare an attack in an empty room where no enemies are believed to be present, the referee will indicate there is nothing to strike.)*
 
+#### 4. Speech & Communication
+* **In-World Speech:** `"shout 'To me, Bramble!'"` or `"call 'Who is in there?'"` (can be heard by nearby rooms depending on sound attenuation).
+* **Out-of-Character Table Talk:** Type in the **OOC** box below the declare box to coordinate tactics with your fellow players without taking an in-world action.
 ---
 
 ## 4. The 5-Stage Referee Adjudication Cycle
