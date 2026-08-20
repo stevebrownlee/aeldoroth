@@ -111,6 +111,18 @@ defmodule Referee.Run.Session do
   end
 
   @doc """
+  Seat list `[%{id, name}]` for the web picker (GM-console introspection,
+  not on the wire). `nil` when the run doesn't exist.
+  """
+  @spec roster(String.t()) :: [%{id: String.t(), name: String.t()}] | nil
+  def roster(run_id) do
+    case whereis(run_id) do
+      nil -> nil
+      pid -> GenServer.call(pid, :roster)
+    end
+  end
+
+  @doc """
   Restart `run_id` from its checkpoint + journal (both under `data_dir`).
   The writer replays the journal first; a checkpoint that disagrees with
   the journal's last seq, or a seed-fold that disagrees with the
@@ -230,6 +242,9 @@ defmodule Referee.Run.Session do
     {:reply,
      %{run_id: st.run_id, status: st.status, tick: st.run.world.tick, seq: st.run.seq}, st}
   end
+
+  def handle_call(:roster, _from, st),
+    do: {:reply, Enum.map(st.run.pcs, &%{id: &1.id, name: &1.name}), st}
 
   # OOC works in every status: it is table talk, not a pipeline op.
   def handle_call({:ooc, pc_id, text}, _from, st),

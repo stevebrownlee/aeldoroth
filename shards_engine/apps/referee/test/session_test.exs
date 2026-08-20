@@ -66,6 +66,19 @@ defmodule Referee.SessionTest do
     end)
   end
 
+  test "roster lists seats for the web picker", ctx do
+    with_session(ctx.test, fn id, _dir, _pid ->
+      assert Session.roster(id) == [
+               %{id: "pc_thistle", name: "Thistle"},
+               %{id: "pc_bramble", name: "Bramble"}
+             ]
+    end)
+  end
+
+  test "roster of an unknown run is nil" do
+    assert Session.roster("nope") == nil
+  end
+
   test "advance through session mirrors the pure path", ctx do
     with_session(ctx.test, fn id, _dir, _pid ->
       {:ok, base} = Run.new(@yaml, 42, @pcs, routing: routing())
