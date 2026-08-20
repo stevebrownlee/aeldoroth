@@ -41,7 +41,11 @@ defmodule EngineCore.Types do
       cadence: nil,
       dossier: %{},
       attention: :alert,
-      group: nil
+      group: nil,
+      # PCs are player-owned tier-3 agents (UX spec §5: truth-barrier-safe
+      # party membership for "believed hostiles"). Read via Map.get — old
+      # binary snapshots predate the field.
+      pc: false
     ]
   end
 
@@ -116,8 +120,19 @@ defmodule EngineCore.Types do
     at `delivery_place` before the envelope's contents become a belief.
     """
     @enforce_keys [:id, :from, :to, :type, :payload_nl, :sent_tick, :delivery_place, :signal_ref]
-    defstruct [:id, :from, :to, :type, :payload_nl, :sent_tick, :delivery_place, :signal_ref,
-      truth: :unverified, adopted: nil, status: :pending]
+    defstruct [
+      :id,
+      :from,
+      :to,
+      :type,
+      :payload_nl,
+      :sent_tick,
+      :delivery_place,
+      :signal_ref,
+      truth: :unverified,
+      adopted: nil,
+      status: :pending
+    ]
   end
 
   defmodule Hazard do

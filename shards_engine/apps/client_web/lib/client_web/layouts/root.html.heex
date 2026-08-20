@@ -83,7 +83,14 @@
       details.advanced { margin: 0.6rem 0; }
       details.advanced summary { cursor: pointer; color: #9aa3af; }
       .roster-row { display: grid; grid-template-columns: repeat(8, 1fr); gap: 0.3rem; margin-bottom: 0.3rem; }
-      .roster-row input { padding: 0.2rem 0.35rem; font-size: 0.85rem; }
+      .ledger-preview { list-style: none; margin: 0.3rem 0; padding: 0; border: 1px solid #2a2e36; border-radius: 4px; max-height: 22rem; overflow-y: auto; }
+      .ledger-preview > li { padding: 0.25rem 0.6rem; border-bottom: 1px solid #232730; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.85rem; }
+      .ledger-preview > li:last-child { border-bottom: none; }
+      .ledger-preview .lc-narration { color: #d6d9de; }
+      .ledger-preview .lc-dice { color: #8fb7e8; }
+      .ledger-preview .lc-llm { color: #9a8fb8; }
+      .ledger-preview .lc-meta { color: #6f7885; }
+      .ledger-preview .lc-world { color: #7ec98f; }
       .dim { color: #6f7885; }
       @media (max-width: 900px) {
         .layout-seat, .layout-gm { grid-template-columns: 1fr; }
@@ -93,10 +100,18 @@
     <script defer src="/assets/phoenix.min.js"></script>
     <script defer src="/assets/phoenix_live_view.min.js"></script>
     <script>
-      // Mounted on DOMContentLoaded (assets are deferred, so LiveSocket is defined by now).
+      // Chronicle auto-scroll (UX spec §4): stream updates pin the newest
+      // row into view; a player who scrolled up is not yanked (only the
+      // stream container itself scrolls, and only forward).
       window.addEventListener("DOMContentLoaded", () => {
         const liveSocket = new LiveView.LiveSocket("/live", Phoenix.Socket, {
-          params: { _csrf_token: document.querySelector("meta[name='csrf-token']")?.content }
+          params: { _csrf_token: document.querySelector("meta[name='csrf-token']")?.content },
+          hooks: {
+            ChronicleScroll: {
+              mounted() { this.el.scrollTop = this.el.scrollHeight; },
+              updated() { this.el.scrollTop = this.el.scrollHeight; }
+            }
+          }
         });
         liveSocket.connect();
       });

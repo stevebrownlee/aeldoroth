@@ -19,7 +19,7 @@ defmodule Referee.PC do
       id: pc_map.id,
       name: pc_map.name,
       tier: 3,
-      place_id: Map.fetch!(pc_map, :place_id),
+      place_id: pc_map.place_id,
       statblock: %{
         ac: pc_map[:ac] || 10,
         hd: pc_map[:hd] || 1,
@@ -34,7 +34,8 @@ defmodule Referee.PC do
       beliefs: %{},
       commitments: [],
       cadence: nil,
-      attention: :alert
+      attention: :alert,
+      pc: true
     )
   end
 
@@ -58,7 +59,11 @@ defmodule Referee.PC do
   defp parse_damage(notation) when is_binary(notation) do
     case Regex.run(~r/^(\d+)d(\d+)(?:\+(\d+))?$/, notation) do
       [_, dice, sides, plus] ->
-        %{dice: String.to_integer(dice), sides: String.to_integer(sides), plus: String.to_integer(plus)}
+        %{
+          dice: String.to_integer(dice),
+          sides: String.to_integer(sides),
+          plus: String.to_integer(plus)
+        }
 
       [_, dice, sides] ->
         %{dice: String.to_integer(dice), sides: String.to_integer(sides), plus: 0}

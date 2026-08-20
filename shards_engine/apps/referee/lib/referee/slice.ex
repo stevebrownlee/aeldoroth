@@ -44,7 +44,7 @@ defmodule Referee.Slice do
             items: [%{id: String.t(), name: String.t()}]
           },
           believed: [String.t()],
-          believed_agents: [%{id: String.t(), name: String.t()}],
+          believed_agents: [%{id: String.t(), name: String.t(), pc: boolean()}],
           salient: [String.t()],
           commitments: [map()],
           capabilities: [atom()],
@@ -114,13 +114,10 @@ defmodule Referee.Slice do
   defp believed_agents(world, believed) do
     believed
     |> Enum.map(fn id ->
-      name =
-        case World.agent(world, id) do
-          nil -> id
-          agent -> agent.name
-        end
-
-      %{id: id, name: name}
+      case World.agent(world, id) do
+        nil -> %{id: id, name: id, pc: false}
+        agent -> %{id: id, name: agent.name, pc: Map.get(agent, :pc, false)}
+      end
     end)
     |> Enum.sort_by(& &1.id)
   end

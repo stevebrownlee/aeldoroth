@@ -165,9 +165,11 @@ defmodule Referee.SliceTest do
              hd: 1
            }
 
+    # pc flags mark party vs. monster — truth-barrier-safe hostility proxy
+    # (UX spec §5); ghost (unknown agent) reads pc: false via Map.get.
     assert s.believed_agents == [
-             %{id: "ghost", name: "ghost"},
-             %{id: "goblin_guard_1", name: "GOBLIN_GUARD_1"}
+             %{id: "ghost", name: "ghost", pc: false},
+             %{id: "goblin_guard_1", name: "GOBLIN_GUARD_1", pc: false}
            ]
 
     assert s.place.items == [%{id: "sword", name: "Sword"}]

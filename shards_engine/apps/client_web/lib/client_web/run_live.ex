@@ -3,9 +3,9 @@ defmodule ClientWeb.RunLive do
   Player seat over the wire protocol (UX spec §4): seat lobby when no PC is
   chosen, then a play surface built from the truth-barrier slice — scene
   panel (believed agents as chips, direction-labeled exits as one-click
-  moves), typed chronicle, character rail, status ribbon, verb palette, and
-  prompt-answer mode. Every play interaction is wire traffic; this module
-  never touches the engine.
+  moves), typed chronicle with auto-scroll, character + party rail, status
+  ribbon, verb palette, prompt-answer mode, and seat auto-rejoin. Every
+  play interaction is wire traffic; this module never touches the engine.
   """
 
   use ClientWeb, :live_view
@@ -78,7 +78,8 @@ defmodule ClientWeb.RunLive do
     {:noreply, socket}
   end
 
-  # Verb palette / believed-agent chips scaffold into the compose box.
+  # Verb palette / believed-agent chips scaffold into the compose box —
+  # grammar teaching (spec §4): Attack chip + name chip = "attack giant rat".
   def handle_event("scaffold", %{"text" => add}, socket) do
     {:noreply, update(socket, :compose, &(&1 <> add))}
   end
@@ -146,12 +147,39 @@ defmodule ClientWeb.RunLive do
   def handle_info({:chan, _topic, _event, _payload}, socket), do: {:noreply, socket}
   def handle_info({:chan_reply, _ref, _status, _payload}, socket), do: {:noreply, socket}
 
+  # Seat auto-rejoin (UX spec §4): the claim is process-owned, so a dropped
+  # conn releases it — a fresh Conn re-claims the same PC. The ribbon keeps
+  # the disconnected state visible until the rejoin lands.
+  def handle_info({:DOWN, _ref, :process, _pid, _reason}, %{assigns: %{pc: pc}} = socket)
+      when is_binary(pc) do
+    Process.send_after(self(), :rejoin, 1_000)
+    {:noreply, socket |> system_row("Connection lost — rejoining the seat…") |> assign(conn: nil)}
+  end
+
   def handle_info({:DOWN, _ref, :process, _pid, reason}, socket) do
     {:noreply,
      socket
      |> put_flash(:error, "wire connection lost: #{inspect(reason)}")
      |> assign(conn: nil)}
   end
+
+  def handle_info(:rejoin, %{assigns: %{conn: nil, pc: pc, run_id: run_id}} = socket)
+      when is_binary(pc) do
+    if url = wire_url() do
+      case Conn.start_link(url, run_id: run_id, character_id: pc, parent: self()) do
+        {:ok, pid} ->
+          {:noreply, monitor_conn(assign(socket, conn: pid)) |> system_row("Seat rejoined.")}
+
+        {:error, _reason} ->
+          Process.send_after(self(), :rejoin, 2_500)
+          {:noreply, socket}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_info(:rejoin, socket), do: {:noreply, socket}
 
   def handle_info(_msg, socket), do: {:noreply, socket}
 
@@ -201,8 +229,13 @@ defmodule ClientWeb.RunLive do
                 type="button"
                 class="chip"
                 phx-click="scaffold"
-                phx-value-text={who["name"] <> " — "}
+                phx-value-text={who["name"] <> " "}
               ><%= who["name"] %></button>
+            </p>
+
+            <p :if={party(@slice) != []} class="here">
+              <strong>Party:</strong>
+              <span :for={p <- party(@slice)} class="chip-static"><%= p["name"] %></span>
             </p>
 
             <p :if={@slice["place"]["items"] != []} class="here">
@@ -230,8 +263,8 @@ defmodule ClientWeb.RunLive do
 
           <section class="log panel">
             <h3>Chronicle</h3>
-            <ul id="log" phx-update="stream">
-              <li :for={{dom_id, row} <- @streams.log} id={dom_id} class={row.kind}>
+            <ul id="log" class="log chronicle" phx-hook="ChronicleScroll" phx-update="stream">
+              <li :for={{dom_id, row} <- @streams.log} id={dom_id} class={"kind-#{row.kind}"}>
                 <%= row.text %>
               </li>
             </ul>
@@ -315,6 +348,15 @@ defmodule ClientWeb.RunLive do
     do: %{id: "row-#{kind}-#{System.unique_integer([:positive])}", kind: kind, text: text}
 
   defp system_row(socket, text), do: stream_insert(socket, :log, log_row("system", text))
+
+  # Other player-owned agents among the believed (truth-barrier-safe party
+  # rail, UX spec §4): names only, own seat excluded.
+  defp party(slice) do
+    me = slice["agent"]["id"]
+
+    slice["believed_agents"]
+    |> Enum.filter(&(&1["pc"] == true and &1["id"] != me))
+  end
 
   defp verb_palette, do: @verb_palette
 
