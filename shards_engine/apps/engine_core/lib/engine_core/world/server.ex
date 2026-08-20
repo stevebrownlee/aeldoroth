@@ -42,6 +42,49 @@ defmodule EngineCore.World.Server do
     end)
   end
 
+  @doc "Full dungeon overview for referee console: all places, connections, and resident agents."
+  @spec dungeon_overview(String.t()) :: map()
+  def dungeon_overview(run_id) do
+    world = snapshot(run_id)
+
+    places =
+      world.places
+      |> Map.values()
+      |> Enum.sort_by(& &1.id)
+      |> Enum.map(fn place ->
+        %{
+          id: place.id,
+          name: place.name || place.id,
+          kind: place.kind,
+          connections: Enum.map(place.connections || [], &normalize_connection/1),
+          agents:
+            World.agents_in(world, place.id)
+            |> Enum.map(fn a ->
+              body = Map.get(a, :body, %{}) || %{}
+              statblock = Map.get(a, :statblock, %{}) || %{}
+
+              %{
+                id: a.id,
+                name: a.name,
+                pc: Map.get(a, :pc, false),
+                hp: body[:hp],
+                hp_max: statblock[:hp_max],
+                conditions: body[:conditions] || []
+              }
+            end)
+        }
+      end)
+
+    %{places: places}
+  end
+
+  defp normalize_connection(to) when is_binary(to), do: %{to: to, label: nil}
+
+  defp normalize_connection({to, label}), do: %{to: to, label: label}
+
+  defp normalize_connection(%{to: to, label: label}), do: %{to: to, label: label}
+
+
   @doc """
   Cast: fold `events` into the snapshot (restore path). The first new
   event's seq must be `last_seq + 1`; a gap crashes the server — the
