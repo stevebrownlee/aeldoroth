@@ -1,14 +1,14 @@
 ---
 identifier: active_context
 title: Active Context
-created: 2026-08-20T18:50:36Z
+created: 2026-08-20T23:11:57Z
 ---
 # Active Context
 
 ```json
 {
   "content": {
-    "current_focus": "Play surface & GM console UX redesign spec in user review (docs/superpowers/specs/2026-08-20-play-surface-ux-design.md)",
+    "current_focus": "GM Console & Tabletop Round Loop Redesign complete & verified",
     "current_plan": "Plan 5 (protocol-live-runs) COMPLETE",
     "decisions": [
       47,
@@ -35,7 +35,7 @@ created: 2026-08-20T18:50:36Z
     "last_session": {
       "date": "2026-08-20",
       "open": "Spec open questions for user: verb palette set, cap tuning, believed monster HP on GM board, roster scope",
-      "work": "UX spec fully implemented: Phases A/B/C + post-smoke fixes (commits b85f8eb, 4a81ce1, a2113fd). Player surface (scene/believed/party rail/verb palette/exit chips/prompt banner), GM console (flow board/advance-until-input cap 20/ledger previews/spend header), lobby (scenario card/roster builder/seat links). Wire: awaiting+paused/resumed additive events. 349 tests green across 6 apps"
+      "work": "GM console redesign fully implemented and browser-verified: 4-step round loop, End Round button with readiness badging, live PC intent & vitals cards, omniscient dungeon overview with resident monsters and exits, live GM table chat, and collapsible diagnostics drawer. All 358 tests green."
     },
     "next": "post-v1: client_web LiveView client (spec §11), then v2 campaign memory (decision 34) / platform seams (decision 35)",
     "next_session": "After spec approval: writing-plans for Phase A (player surface + lobby)",
@@ -67,7 +67,7 @@ created: 2026-08-20T18:50:36Z
     "watch": "Party's choice for the Shadow-Crystal (keep/sell/study/destroy) is the Act 1 pacing lever"
   },
   "name": "default",
-  "updated_at": "2026-08-20T18:50:36Z",
-  "version": 13
+  "updated_at": "2026-08-20T23:11:57Z",
+  "version": 14
 }
 ```
