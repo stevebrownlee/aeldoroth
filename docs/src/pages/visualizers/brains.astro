@@ -1,0 +1,91 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import BrainExplorer from '../../components/visualizers/BrainExplorer.astro';
+---
+
+<BaseLayout
+  title="Agent Brain Explorer"
+  description="Tier-3 BDI belief store and salience-gate explorer for The Shattered Kingdoms agents."
+>
+  <article class="visualizer-page">
+    <nav aria-label="Breadcrumb" class="breadcrumbs">
+      <ol>
+        <li><a href="/">Home</a></li>
+        <li><a href="/visualizers">Visualizers</a></li>
+        <li aria-current="page">Agent Brain Explorer</li>
+      </ol>
+    </nav>
+
+    <header class="page-header">
+      <h1 class="page-title">Agent Brain Explorer</h1>
+      <p class="lead">
+        Inspect a tier-3 BDI belief store: beliefs are ranked by salience, gated
+        by copresence, and colored by authority. Toggle salience thresholds to
+        watch which desires become intentions as attention narrows.
+      </p>
+    </header>
+
+    <BrainExplorer />
+  </article>
+</BaseLayout>
+
+<style>
+  .visualizer-page {
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    padding: calc(var(--header-height) + 2rem) var(--content-padding) 3rem;
+  }
+
+  .breadcrumbs {
+    margin-bottom: 1.5rem;
+    font-family: var(--font-body);
+    font-size: 0.875rem;
+    color: var(--gold-deep);
+  }
+
+  .breadcrumbs ol {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .breadcrumbs li:not(:last-child)::after {
+    content: '›';
+    margin-left: 0.5rem;
+    color: var(--border-stone);
+  }
+
+  .breadcrumbs a {
+    color: var(--gold-primary);
+    text-decoration: none;
+  }
+
+  .breadcrumbs a:hover {
+    color: var(--gold-bright);
+    text-decoration: underline;
+  }
+
+  .page-header {
+    margin-bottom: 2rem;
+  }
+
+  .page-title {
+    margin: 0 0 0.75rem;
+    font-family: var(--font-display);
+    font-size: clamp(1.75rem, 4vw, 2.5rem);
+    color: var(--gold-primary);
+    text-shadow: var(--shadow-gold-sm);
+  }
+
+  .lead {
+    max-width: 64ch;
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: 1.125rem;
+    line-height: 1.6;
+    color: var(--parchment-muted);
+  }
+</style>

@@ -1,0 +1,582 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Icon from '../components/icons/Icons.astro';
+import OrnamentalDivider from '../components/ui/OrnamentalDivider.astro';
+import RefereePipeline from '../components/visualizers/RefereePipeline.astro';
+import DiceRoller3D from '../components/visualizers/DiceRoller3D.astro';
+import SpatialMap from '../components/visualizers/SpatialMap.astro';
+import { getCollection } from 'astro:content';
+
+const docs = await getCollection('docs');
+
+const chapters = [...docs].sort((a, b) => {
+  if (a.data.order !== b.data.order) return a.data.order - b.data.order;
+  return a.data.title.localeCompare(b.data.title);
+});
+
+const visualizers = [
+  {
+    href: '/visualizers/referee',
+    title: 'Referee Pipeline',
+    icon: 'shield' as const,
+    description: 'Five illuminated stages from natural intent to ledger-bound truth.',
+  },
+  {
+    href: '/visualizers/dice',
+    title: 'Arcane Dice Engine',
+    icon: 'd20' as const,
+    description: 'Pure-CSS 3D polyhedral dice with AD&D 1E attack resolution.',
+  },
+  {
+    href: '/visualizers/replay',
+    title: 'Ledger Replay',
+    icon: 'flame' as const,
+    description: 'Reconstruct a run verbatim or fork it to witness emergent divergence.',
+  },
+  {
+    href: '/visualizers/brains',
+    title: 'BDI Brains',
+    icon: 'brain' as const,
+    description: 'Inspect belief stores, salience gates, and autonomous deliberation.',
+  },
+  {
+    href: '/visualizers/dungeon',
+    title: 'Dungeon Map',
+    icon: 'scroll' as const,
+    description: 'Spatial activation boundaries and attenuating signal cascades.',
+  },
+];
+
+const pillars = [
+  {
+    title: 'Deterministic Ground Truth',
+    icon: 'shield' as const,
+    body: 'World state is fold(ledger). Every action, signal, and die roll is recorded in an immutable, append-only journal so replay stays byte-identical and audits are trivial.',
+  },
+  {
+    title: 'BDI Autonomous Actors',
+    icon: 'brain' as const,
+    body: 'Each actor perceives only what it can sense, holds beliefs and commitments, and deliberates through a supervised brain—then proposes actions the referee validates.',
+  },
+  {
+    title: 'The Adventure Marketplace',
+    icon: 'scroll' as const,
+    body: 'Authors ship self-contained YAML modules. Players run them in isolated sandboxes with their own keys, while the engine meters every call through one transparent gateway.',
+  },
+];
+---
+
+<BaseLayout description="The Shattered Kingdoms — autonomous-agent roleplaying runtime, immutable ledger, and two-sided adventure marketplace.">
+  <div class="landing-root">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-backdrop" aria-hidden="true"></div>
+      <div class="hero-content">
+        <span class="hero-badge">Age of Reclamation</span>
+        <h1 id="hero-title" class="hero-title">The Shattered Kingdoms</h1>
+        <p class="hero-subtitle">
+          An autonomous-agent roleplaying runtime where every actor holds beliefs, commitments, and
+          perception; where an immutable ledger is the sole source of truth; and where a two-sided
+          marketplace connects adventure authors with player-run sandboxes.
+        </p>
+        <div class="hero-actions">
+          <a href="/docs/01-overview" class="btn btn-primary">
+            <Icon name="book" size={18} />
+            <span>Read the Handbook</span>
+          </a>
+          <a href="#live-showcase" class="btn btn-secondary">
+            <Icon name="d20" size={18} />
+            <span>Explore the Simulator</span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <div class="landing-container">
+      <OrnamentalDivider />
+
+      <section class="pillars" aria-labelledby="pillars-title">
+        <h2 id="pillars-title" class="section-title">Three Core Platform Pillars</h2>
+        <div class="pillars-grid">
+          {
+            pillars.map((pillar) => (
+              <article class="pillar-card runic-border-beam">
+                <div class="pillar-icon">
+                  <Icon name={pillar.icon} size={32} />
+                </div>
+                <h3 class="pillar-title">{pillar.title}</h3>
+                <p class="pillar-body">{pillar.body}</p>
+              </article>
+            ))
+          }
+        </div>
+      </section>
+
+      <OrnamentalDivider />
+
+      <section id="live-showcase" class="live-showcase" aria-labelledby="showcase-title">
+        <header class="section-header">
+          <h2 id="showcase-title" class="section-title">Live Interactive Showcase</h2>
+          <p class="section-subtitle">
+            Touch the machinery of the realm. These simulators run directly in your browser.
+          </p>
+        </header>
+
+        <div class="showcase-stack">
+          <div class="showcase-panel">
+            <RefereePipeline />
+          </div>
+          <div class="showcase-row">
+            <div class="showcase-panel">
+              <DiceRoller3D />
+            </div>
+            <div class="showcase-panel">
+              <SpatialMap />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <OrnamentalDivider />
+
+      <section class="visualizer-hub" aria-labelledby="hub-title">
+        <header class="section-header">
+          <h2 id="hub-title" class="section-title">Visualizer Hub</h2>
+          <p class="section-subtitle">
+            Deep-dive into every subsystem. Each room isolates one engine mechanism.
+          </p>
+        </header>
+        <div class="hub-grid">
+          {
+            visualizers.map((viz) => (
+              <a href={viz.href} class="hub-card runic-border-beam">
+                <span class="hub-icon">
+                  <Icon name={viz.icon} size={28} />
+                </span>
+                <h3 class="hub-card-title">{viz.title}</h3>
+                <p class="hub-card-body">{viz.description}</p>
+                <span class="hub-link">
+                  <span>Open</span>
+                  <Icon name="chevron" size={14} class="hub-chevron" />
+                </span>
+              </a>
+            ))
+          }
+        </div>
+      </section>
+
+      <OrnamentalDivider />
+
+      <section class="handbook-fast-track" aria-labelledby="fast-track-title">
+        <header class="section-header">
+          <h2 id="fast-track-title" class="section-title">Fast-Track Handbook</h2>
+          <p class="section-subtitle">
+            From system thesis to marketplace vision — nine chronicles in reading order.
+          </p>
+        </header>
+        <ol class="fast-track-grid">
+          {
+            chapters.map((chapter) => (
+              <li>
+                <a href={`/docs/${chapter.slug}`} class="fast-track-card runic-border-beam">
+                  <span class="fast-track-number" aria-hidden="true">
+                    {String(chapter.data.order).padStart(2, '0')}
+                  </span>
+                  <div class="fast-track-text">
+                    <h3 class="fast-track-title">{chapter.data.title}</h3>
+                    <p class="fast-track-desc">{chapter.data.description}</p>
+                  </div>
+                </a>
+              </li>
+            ))
+          }
+        </ol>
+      </section>
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .landing-root {
+    --section-pad: clamp(3rem, 8vw, 6rem);
+  }
+
+  .landing-container {
+    max-width: var(--content-max-width, 80rem);
+    margin: 0 auto;
+    padding-inline: var(--content-padding, 1.5rem);
+  }
+
+  /* Hero
+  --------------------------------------------------------------- */
+  .hero {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: 78vh;
+    padding: calc(var(--header-height, 4rem) + 2rem) var(--content-padding, 1.5rem)
+      var(--section-pad);
+    text-align: center;
+    overflow: hidden;
+  }
+
+  .hero-backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+      radial-gradient(ellipse at 50% 0%, rgba(223, 177, 91, 0.12) 0%, transparent 55%),
+      radial-gradient(ellipse at 50% 100%, rgba(229, 82, 56, 0.08) 0%, transparent 45%);
+    pointer-events: none;
+  }
+
+  .hero-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.25rem;
+    max-width: 60rem;
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35em 0.9em;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--amber-rune, #ff9d42);
+    background: rgba(255, 157, 66, 0.1);
+    border: 1px solid rgba(255, 157, 66, 0.35);
+    border-radius: var(--radius-md, 0.5rem);
+    box-shadow: 0 0 1rem rgba(255, 157, 66, 0.12);
+  }
+
+  .hero-title {
+    margin: 0;
+    font-family: var(--font-display, Georgia, serif);
+    font-size: clamp(2.5rem, 8vw, 5.5rem);
+    font-weight: 700;
+    line-height: 1.05;
+    color: var(--gold-bright, #f6d88e);
+    text-shadow:
+      0 0 0.375rem rgba(246, 216, 142, 0.35),
+      0 0 1.25rem rgba(223, 177, 91, 0.25);
+  }
+
+  .hero-subtitle {
+    max-width: 52rem;
+    margin: 0;
+    font-size: clamp(1.05rem, 2.2vw, 1.3rem);
+    line-height: 1.65;
+    color: var(--parchment-bg, #f5eedb);
+    opacity: 0.92;
+  }
+
+  .hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.875rem;
+    margin-top: 0.75rem;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.85em 1.35em;
+    font-family: var(--font-display, Georgia, serif);
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-decoration: none;
+    border-radius: var(--radius-md, 0.5rem);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  }
+
+  .btn:hover,
+  .btn:focus {
+    transform: translateY(-2px);
+  }
+
+  .btn-primary {
+    color: var(--bg-void, #06080c);
+    background: linear-gradient(135deg, var(--gold-primary, #dfb15b), var(--gold-bright, #f6d88e));
+    box-shadow: 0 0.25rem 1rem rgba(223, 177, 91, 0.25);
+  }
+
+  .btn-primary:hover,
+  .btn-primary:focus {
+    background: linear-gradient(135deg, var(--gold-bright, #f6d88e), var(--gold-primary, #dfb15b));
+    box-shadow: 0 0.5rem 1.5rem rgba(223, 177, 91, 0.4);
+  }
+
+  .btn-secondary {
+    color: var(--gold-bright, #f6d88e);
+    background: rgba(12, 16, 23, 0.6);
+    border: 1px solid rgba(223, 177, 91, 0.45);
+    box-shadow: 0 0 0.75rem rgba(223, 177, 91, 0.1);
+  }
+
+  .btn-secondary:hover,
+  .btn-secondary:focus {
+    background: rgba(223, 177, 91, 0.12);
+    box-shadow: 0 0 1.25rem rgba(223, 177, 91, 0.25);
+  }
+
+  /* Sections
+  --------------------------------------------------------------- */
+  .section-header {
+    text-align: center;
+    margin-bottom: 2.25rem;
+  }
+
+  .section-title {
+    margin: 0 0 0.5rem;
+    font-family: var(--font-display, Georgia, serif);
+    font-size: clamp(1.5rem, 4vw, 2.25rem);
+    font-weight: 600;
+    color: var(--gold-bright, #f6d88e);
+    text-shadow: 0 0 0.75rem rgba(223, 177, 91, 0.25);
+  }
+
+  .section-subtitle {
+    max-width: 44rem;
+    margin: 0 auto;
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--parchment-bg, #f5eedb);
+    opacity: 0.85;
+  }
+
+  .pillars,
+  .live-showcase,
+  .visualizer-hub,
+  .handbook-fast-track {
+    padding-block: var(--section-pad);
+  }
+
+  /* Pillars
+  --------------------------------------------------------------- */
+  .pillars-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+    gap: 1.25rem;
+  }
+
+  .pillar-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.875rem;
+    padding: 1.5rem;
+    background: var(--bg-surface, #0c1017);
+    border-radius: var(--radius-lg, 0.75rem);
+  }
+
+  .pillar-icon {
+    display: grid;
+    place-items: center;
+    width: 3rem;
+    height: 3rem;
+    color: var(--amber-rune, #ff9d42);
+    background: rgba(255, 157, 66, 0.1);
+    border: 1px solid rgba(255, 157, 66, 0.25);
+    border-radius: var(--radius-md, 0.5rem);
+    box-shadow: 0 0 0.75rem rgba(255, 157, 66, 0.12);
+  }
+
+  .pillar-title {
+    margin: 0;
+    font-family: var(--font-display, Georgia, serif);
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--gold-bright, #f6d88e);
+  }
+
+  .pillar-body {
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.7;
+    color: var(--parchment-bg, #f5eedb);
+    opacity: 0.88;
+  }
+
+  /* Live Showcase
+  --------------------------------------------------------------- */
+  .showcase-stack {
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  .showcase-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr));
+    gap: 1.5rem;
+  }
+
+  .showcase-panel {
+    min-width: 0;
+  }
+
+  .showcase-panel > :global(*) {
+    margin: 0;
+  }
+
+  /* Visualizer Hub
+  --------------------------------------------------------------- */
+  .hub-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    gap: 1rem;
+  }
+
+  .hub-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    padding: 1.25rem;
+    background: var(--bg-surface, #0c1017);
+    border-radius: var(--radius-lg, 0.75rem);
+    text-decoration: none;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .hub-card:hover,
+  .hub-card:focus {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-gold-sm, 0 0 0.5rem rgba(223, 177, 91, 0.4));
+  }
+
+  .hub-icon {
+    display: grid;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    color: var(--gold-primary, #dfb15b);
+    background: rgba(223, 177, 91, 0.1);
+    border: 1px solid rgba(223, 177, 91, 0.25);
+    border-radius: var(--radius-md, 0.5rem);
+  }
+
+  .hub-card-title {
+    margin: 0;
+    font-family: var(--font-display, Georgia, serif);
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--gold-bright, #f6d88e);
+  }
+
+  .hub-card-body {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--parchment-bg, #f5eedb);
+    opacity: 0.85;
+  }
+
+  .hub-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: auto;
+    padding-top: 0.75rem;
+    font-family: var(--font-display, Georgia, serif);
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--gold-primary, #dfb15b);
+  }
+
+  .hub-card:hover .hub-chevron,
+  .hub-card:focus .hub-chevron {
+    transform: translateX(3px);
+  }
+
+  .hub-chevron {
+    transition: transform 0.2s ease;
+  }
+
+  /* Fast-Track Handbook
+  --------------------------------------------------------------- */
+  .fast-track-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+    gap: 1rem;
+    list-style: none;
+  }
+
+  .fast-track-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem 1.15rem;
+    background: var(--bg-surface, #0c1017);
+    border-radius: var(--radius-lg, 0.75rem);
+    text-decoration: none;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .fast-track-card:hover,
+  .fast-track-card:focus {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-gold-sm, 0 0 0.5rem rgba(223, 177, 91, 0.4));
+  }
+
+  .fast-track-number {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 2.75rem;
+    height: 2.75rem;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--bg-void, #06080c);
+    background: linear-gradient(135deg, var(--gold-primary, #dfb15b), var(--gold-bright, #f6d88e));
+    border-radius: var(--radius-md, 0.5rem);
+    box-shadow: 0 0 0.5rem rgba(223, 177, 91, 0.25);
+  }
+
+  .fast-track-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 0;
+  }
+
+  .fast-track-title {
+    margin: 0;
+    font-family: var(--font-display, Georgia, serif);
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--gold-bright, #f6d88e);
+  }
+
+  .fast-track-desc {
+    margin: 0;
+    font-size: 0.85rem;
+    line-height: 1.55;
+    color: var(--parchment-bg, #f5eedb);
+    opacity: 0.82;
+  }
+
+  /* Responsive tweaks
+  --------------------------------------------------------------- */
+  @media (max-width: 640px) {
+    .hero-actions {
+      flex-direction: column;
+      width: 100%;
+    }
+
+    .btn {
+      justify-content: center;
+      width: 100%;
+    }
+
+    .showcase-row {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

@@ -1,0 +1,229 @@
+---
+import { getCollection } from 'astro:content';
+import DocLayout from '../../layouts/DocLayout.astro';
+
+export async function getStaticPaths() {
+  const docs = await getCollection('docs');
+  return docs.map((entry) => ({
+    params: { slug: entry.slug },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const { Content, headings } = await entry.render();
+
+const { title, description, category } = entry.data;
+const currentSlug = entry.slug;
+---
+
+<DocLayout
+  title={title}
+  description={description}
+  currentSlug={currentSlug}
+  headings={headings}
+>
+  <header class="chapter-header">
+    <span class="chapter-category">{category}</span>
+    <h1 class="chapter-title">{title}</h1>
+    {description && <p class="chapter-description">{description}</p>}
+  </header>
+
+  <div class="chapter-body">
+    <Content />
+  </div>
+</DocLayout>
+
+<style>
+  .chapter-header {
+    margin-bottom: 2.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-stone);
+  }
+
+  .chapter-category {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    margin-bottom: 1rem;
+    font-family: var(--font-display, Georgia, serif);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--amber-rune, #ff9d42);
+    background: color-mix(in srgb, var(--amber-rune, #ff9d42) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--amber-rune, #ff9d42) 35%, transparent);
+    border-radius: var(--radius-sm, 0.25rem);
+    box-shadow: 0 0 0.5rem color-mix(in srgb, var(--amber-rune, #ff9d42) 15%, transparent);
+  }
+
+  .chapter-title {
+    margin: 0 0 0.75rem;
+    font-size: clamp(2rem, 5vw, 3rem);
+    color: var(--gold-bright, #f6d88e);
+  }
+
+  .chapter-description {
+    margin: 0;
+    font-size: clamp(1.05rem, 2vw, 1.25rem);
+    line-height: 1.6;
+    color: var(--parchment-muted, #574e41);
+  }
+
+  .chapter-body {
+    font-size: 1.05rem;
+    line-height: 1.8;
+    color: var(--parchment-bg, #f5eedb);
+  }
+
+  .chapter-body :global(h2),
+  .chapter-body :global(h3),
+  .chapter-body :global(h4) {
+    margin-top: 2.25rem;
+    scroll-margin-top: calc(var(--header-height, 4rem) + 1rem);
+  }
+
+  .chapter-body :global(p) {
+    margin-bottom: 1.25rem;
+  }
+
+  .chapter-body :global(ul),
+  .chapter-body :global(ol) {
+    padding-left: 1.5rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .chapter-body :global(ul) {
+    list-style: disc;
+  }
+
+  .chapter-body :global(ol) {
+    list-style: decimal;
+  }
+
+  .chapter-body :global(li) {
+    margin-bottom: 0.5rem;
+  }
+
+  .chapter-body :global(a) {
+    color: var(--gold-primary, #dfb15b);
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
+  }
+
+  .chapter-body :global(a:hover),
+  .chapter-body :global(a:focus) {
+    color: var(--gold-bright, #f6d88e);
+  }
+
+  .chapter-body :global(blockquote) {
+    position: relative;
+    margin: 1.75rem 0;
+    padding: 1.25rem 1.5rem;
+    padding-left: 2.5rem;
+    color: var(--parchment-bg, #f5eedb);
+    background: var(--bg-surface-raised, #131822);
+    border-left: 3px solid var(--amber-rune, #ff9d42);
+    border-radius: 0 var(--radius-md, 0.5rem) var(--radius-md, 0.5rem) 0;
+    box-shadow: 0 0 1rem rgba(0, 0, 0, 0.25);
+  }
+
+  .chapter-body :global(blockquote::before) {
+    content: '“';
+    position: absolute;
+    top: 0.5rem;
+    left: 0.75rem;
+    font-family: var(--font-display, Georgia, serif);
+    font-size: 2.5rem;
+    line-height: 1;
+    color: var(--amber-rune, #ff9d42);
+    opacity: 0.35;
+  }
+
+  .chapter-body :global(blockquote p:first-of-type strong:only-child) {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--gold-bright, #f6d88e);
+  }
+
+  .chapter-body :global(blockquote p) {
+    margin-bottom: 0.75rem;
+  }
+
+  .chapter-body :global(blockquote p:last-child) {
+    margin-bottom: 0;
+  }
+
+  .chapter-body :global(table) {
+    width: 100%;
+    margin: 1.75rem 0;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+    background: var(--bg-surface-raised, #131822);
+    border: 1px solid var(--border-stone, #242e40);
+    border-radius: var(--radius-md, 0.5rem);
+    overflow: hidden;
+  }
+
+  .chapter-body :global(thead) {
+    background: var(--bg-surface-elevated, #1b2230);
+  }
+
+  .chapter-body :global(th),
+  .chapter-body :global(td) {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-stone, #242e40);
+  }
+
+  .chapter-body :global(th) {
+    font-family: var(--font-display, Georgia, serif);
+    font-weight: 600;
+    color: var(--gold-bright, #f6d88e);
+  }
+
+  .chapter-body :global(tr:last-child td) {
+    border-bottom: none;
+  }
+
+  .chapter-body :global(code) {
+    padding: 0.15em 0.35em;
+    font-size: 0.9em;
+    color: var(--mana-azure, #38bdf8);
+    background: var(--bg-surface-raised, #131822);
+    border: 1px solid var(--border-stone, #242e40);
+    border-radius: var(--radius-sm, 0.25rem);
+  }
+
+  .chapter-body :global(pre) {
+    padding: 1.25rem;
+    margin: 1.75rem 0;
+    overflow-x: auto;
+    background: var(--bg-surface-elevated, #1b2230);
+    border: 1px solid var(--border-stone, #242e40);
+    border-radius: var(--radius-md, 0.5rem);
+    box-shadow: inset 0 0 1rem rgba(0, 0, 0, 0.35);
+  }
+
+  .chapter-body :global(pre code) {
+    padding: 0;
+    color: var(--parchment-bg, #f5eedb);
+    background: transparent;
+    border: none;
+    border-radius: 0;
+  }
+
+  .chapter-body :global(hr) {
+    margin: 2.5rem 0;
+    border: none;
+    border-top: 1px solid var(--border-stone, #242e40);
+  }
+
+  .chapter-body :global(img) {
+    max-width: 100%;
+    height: auto;
+    margin: 1.5rem 0;
+    border-radius: var(--radius-md, 0.5rem);
+    box-shadow: 0 0 1rem rgba(0, 0, 0, 0.3);
+  }
+</style>
