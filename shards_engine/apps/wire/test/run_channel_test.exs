@@ -56,6 +56,22 @@ defmodule Wire.RunChannelTest do
     assert {:error, %{reason: "unauthorized"}} = join(stranger, "run:#{id}", %{})
   end
 
+  test "join reply reports paused: false on a fresh run", %{run_id: id} do
+    {:ok, _pid, socket} = start_run(id)
+    assert {:ok, %{paused: false}, _chan} = join(socket, "run:#{id}", %{})
+  end
+
+  test "pause and resume push paused/resumed to every seat", %{run_id: id} do
+    {:ok, _pid, socket} = start_run(id)
+    {:ok, _, _chan} = join(socket, "run:#{id}", %{})
+
+    assert {:ok, _} = Session.pause(id)
+    assert_push "paused", %{}
+
+    assert :ok = Session.resume(id)
+    assert_push "resumed", %{}
+  end
+
   test "declare_intent pushes perception and state_sync", %{run_id: id} do
     {:ok, _pid, socket} = start_run(id)
     {:ok, _, chan} = join(socket, "run:#{id}", %{})

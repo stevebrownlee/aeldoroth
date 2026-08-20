@@ -24,7 +24,7 @@ defmodule Referee.Run.Session do
   alias LLMGateway.{Audit, Ctx}
   alias Referee.{Dossier, Run}
 
-  defstruct [:run_id, :run, :seed, :status, :last_flushed, :data_dir]
+  defstruct [:run_id, :run, :seed, :status, :last_flushed, :data_dir, last_intents: %{}]
 
   @registry Referee.SessionReg
 
@@ -123,6 +123,26 @@ defmodule Referee.Run.Session do
   end
 
   @doc """
+  Who the table is waiting on (GM-console introspection, same family as
+  `roster/1` — not on the seat wire): one row per PC with their most
+  recent declared intent (ephemeral session state, not ledgered) and any
+  outstanding clarify prompt — a clarify ledger event newer than that PC's
+  latest narration.
+  """
+  @spec awaiting(String.t()) ::
+          {:ok,
+           [
+             %{
+               id: String.t(),
+               name: String.t(),
+               last_intent: %{text: String.t(), tick: integer()} | nil,
+               prompt: %{question: String.t(), tick: integer()} | nil
+             }
+           ]}
+          | {:error, :no_run}
+  def awaiting(run_id), do: call(run_id, :awaiting)
+
+  @doc """
   Restart `run_id` from its checkpoint + journal (both under `data_dir`).
   The writer replays the journal first; a checkpoint that disagrees with
   the journal's last seq, or a seed-fold that disagrees with the
@@ -179,15 +199,27 @@ defmodule Referee.Run.Session do
         run
       end
 
-    st = %__MODULE__{run_id: run_id, run: run, seed: nil, status: :running, last_flushed: run.seq, data_dir: data_dir}
+    st = %__MODULE__{
+      run_id: run_id,
+      run: run,
+      seed: nil,
+      status: :running,
+      last_flushed: run.seq,
+      data_dir: data_dir
+    }
+
     {:ok, st}
   end
-
 
   @impl true
   def handle_call({:declare, pc_id, text}, _from, %{status: :running} = st) do
     case Run.declare(st.run, pc_id, text) do
       {tag, reply, run2} when tag in [:ok, :stall] ->
+        st = %{
+          st
+          | last_intents: Map.put(st.last_intents, pc_id, %{text: text, tick: st.run.world.tick})
+        }
+
         {:reply, {:ok, %{reply: reply}}, hold(st, run2)}
     end
   end
@@ -226,25 +258,44 @@ defmodule Referee.Run.Session do
       end)
 
     st3 = hold(st2, st2.run) |> checkpoint()
+    # Meta event (W2): seats + spectate console learn the pause over the wire.
+    st3 = push(st3, :meta, st3.run.world.tick, %{kind: :paused})
+    st3 = hold(st3, st3.run)
     {:reply, {:ok, %{dossiers: dossiers}}, %{st3 | status: :paused}}
   end
 
   def handle_call(:pause, _from, %{status: :paused} = st),
     do: {:reply, {:error, :already_paused}, st}
 
-  def handle_call(:resume, _from, %{status: :paused} = st),
-    do: {:reply, :ok, %{st | status: :running}}
+  def handle_call(:resume, _from, %{status: :paused} = st) do
+    st = push(st, :meta, st.run.world.tick, %{kind: :resumed})
+    {:reply, :ok, hold(%{st | status: :running}, st.run)}
+  end
 
   def handle_call(:resume, _from, %{status: :running} = st),
     do: {:reply, {:error, :not_paused}, st}
 
   def handle_call(:state, _from, st) do
-    {:reply,
-     %{run_id: st.run_id, status: st.status, tick: st.run.world.tick, seq: st.run.seq}, st}
+    {:reply, %{run_id: st.run_id, status: st.status, tick: st.run.world.tick, seq: st.run.seq},
+     st}
   end
 
   def handle_call(:roster, _from, st),
     do: {:reply, Enum.map(st.run.pcs, &%{id: &1.id, name: &1.name}), st}
+
+  def handle_call(:awaiting, _from, st) do
+    rows =
+      Enum.map(st.run.pcs, fn pc ->
+        %{
+          id: pc.id,
+          name: pc.name,
+          last_intent: Map.get(st.last_intents, pc.id),
+          prompt: outstanding_prompt(st.run, pc.id)
+        }
+      end)
+
+    {:reply, {:ok, rows}, st}
+  end
 
   # OOC works in every status: it is table talk, not a pipeline op.
   def handle_call({:ooc, pc_id, text}, _from, st),
@@ -288,12 +339,39 @@ defmodule Referee.Run.Session do
   defp push(st, class, tick, payload) do
     # Reuse Run's private push by folding a fresh event onto the run's
     # reversed event list — identical to what Run.declare does internally.
-    event = struct!(EngineCore.Ledger.Event, seq: st.run.seq + 1, tick: tick, class: class, payload: payload)
+    event =
+      struct!(EngineCore.Ledger.Event,
+        seq: st.run.seq + 1,
+        tick: tick,
+        class: class,
+        payload: payload
+      )
+
     %{st | run: %{st.run | events: [event | st.run.events], seq: st.run.seq + 1}}
   end
 
   defp append_audit(st, nil), do: st
-  defp append_audit(st, %Audit{} = audit), do: push(st, :llm, st.run.world.tick, Audit.to_ledger(audit))
+
+  defp append_audit(st, %Audit{} = audit),
+    do: push(st, :llm, st.run.world.tick, Audit.to_ledger(audit))
+
+  # A clarify for this PC with no newer narration targeting them is still
+  # outstanding — the table is waiting on that player's answer.
+  defp outstanding_prompt(run, pc_id) do
+    run.events
+    |> Enum.find(fn
+      %EngineCore.Ledger.Event{class: :narration, payload: %{agent_id: ^pc_id}} -> true
+      %EngineCore.Ledger.Event{class: :clarify, payload: %{agent_id: ^pc_id}} -> true
+      _ -> false
+    end)
+    |> case do
+      %EngineCore.Ledger.Event{class: :clarify, tick: tick, payload: %{question: q}} ->
+        %{question: q, tick: tick}
+
+      _ ->
+        nil
+    end
+  end
 
   defp alive?(nil), do: false
 
@@ -357,7 +435,11 @@ defmodule Referee.Run.Session do
   # `restore/2`; auto-restart would replay {:new, ...} against a journal
   # that already holds those seqs.
   def child_spec(init_arg) do
-    %{id: {__MODULE__, make_ref()}, start: {__MODULE__, :start_link, [init_arg]}, restart: :temporary}
+    %{
+      id: {__MODULE__, make_ref()},
+      start: {__MODULE__, :start_link, [init_arg]},
+      restart: :temporary
+    }
   end
 
   defp start_named(run_id, init_arg) do

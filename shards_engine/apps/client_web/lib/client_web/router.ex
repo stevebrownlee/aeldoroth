@@ -21,5 +21,6 @@ defmodule ClientWeb.Router do
     live "/", HomeLive
     live "/runs/:run_id", RunLive
     live "/runs/:run_id/gm", SpectateLive
+    live "/runs/:run_id/:pc_id", RunLive
   end
 end

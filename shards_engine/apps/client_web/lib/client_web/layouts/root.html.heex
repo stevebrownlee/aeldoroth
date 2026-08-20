@@ -13,7 +13,7 @@
         font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
         font-size: 14px; line-height: 1.5;
       }
-      main { max-width: 720px; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+      main { max-width: 1180px; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
       h1 { font-size: 1.3rem; color: #e8d9a8; letter-spacing: 0.04em; }
       h2 { font-size: 1.05rem; color: #b9c2cf; margin-top: 2rem; }
       a { color: #8fb7e8; text-decoration: none; }
@@ -51,6 +51,44 @@
       .stat { display: inline-block; border: 1px solid #343943; border-radius: 4px; padding: 0.15rem 0.5rem; margin-right: 0.4rem; color: #9aa3af; font-size: 0.8rem; }
       .stat b { color: #e6e8ec; font-weight: normal; }
       .row-box { border: 1px solid #2a2e36; border-radius: 4px; padding: 0.3rem 0.6rem; margin-bottom: 0.4rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+      /* Play surface & GM console — UX redesign (2026-08-20 spec). Class contract;
+         surfaces use these, they do not add their own styles. */
+      .layout-seat { display: grid; grid-template-columns: 190px 1fr 190px; gap: 0.8rem; align-items: start; }
+      .layout-gm { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; align-items: start; }
+      .panel { border: 1px solid #2a2e36; border-radius: 4px; padding: 0.5rem 0.7rem; margin-bottom: 0.8rem; }
+      .panel > h3 { margin: 0 0 0.4rem; font-size: 0.78rem; color: #9aa3af; text-transform: uppercase; letter-spacing: 0.08em; font-weight: normal; }
+      .status-ribbon { display: flex; gap: 0.9rem; align-items: baseline; border: 1px solid #343943; border-radius: 4px; padding: 0.3rem 0.7rem; margin: 0.4rem 0 0.8rem; color: #9aa3af; font-size: 0.85rem; }
+      .status-ribbon b { color: #e8d9a8; font-weight: normal; }
+      .dot-ok { color: #7ec98f; } .dot-warn { color: #e8c96a; } .dot-bad { color: #e88f8f; }
+      .chips { display: flex; flex-wrap: wrap; gap: 0.3rem; margin: 0.3rem 0; }
+      .chip { background: #262b33; color: #b9c2cf; border: 1px solid #3b424e; border-radius: 10px; padding: 0.1rem 0.6rem; font-size: 0.85rem; cursor: pointer; }
+      .chip:hover { border-color: #8fb7e8; color: #e6e8ec; }
+      .chip.salient { border-color: #7a6a3a; color: #e8d9a8; }
+      .palette { display: flex; flex-wrap: wrap; gap: 0.3rem; margin: 0.5rem 0; }
+      .palette button { background: #262b33; color: #b9c2cf; border-color: #3b424e; padding: 0.2rem 0.6rem; font-size: 0.85rem; }
+      .compose { display: flex; gap: 0.5rem; margin-top: 0.3rem; }
+      .compose input { flex: 1; }
+      .hint { color: #6f7885; font-size: 0.8rem; margin-top: 0.25rem; }
+      .chronicle { max-height: 18rem; overflow-y: auto; }
+      .hpbar { border: 1px solid #343943; border-radius: 3px; height: 0.7rem; background: #1c1f25; overflow: hidden; margin: 0.2rem 0 0.4rem; }
+      .hpbar > div { height: 100%; background: #4a7c59; }
+      .hpbar.low > div { background: #a85454; }
+      .party-row { display: flex; justify-content: space-between; gap: 0.5rem; padding: 0.15rem 0; border-bottom: 1px solid #232730; }
+      .flow-row { display: flex; justify-content: space-between; gap: 0.6rem; padding: 0.35rem 0.5rem; border-bottom: 1px solid #232730; }
+      .flow-row.needs { border-left: 3px solid #e8c96a; padding-left: 0.4rem; }
+      .lever-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 0.5rem 0; }
+      .scenario-card { border: 1px solid #3b424e; border-radius: 6px; padding: 0.8rem 1rem; margin: 0.6rem 0; background: #181b21; }
+      .seat-links input { width: 100%; font-size: 0.85rem; }
+      details.advanced { margin: 0.6rem 0; }
+      details.advanced summary { cursor: pointer; color: #9aa3af; }
+      .roster-row { display: grid; grid-template-columns: repeat(8, 1fr); gap: 0.3rem; margin-bottom: 0.3rem; }
+      .roster-row input { padding: 0.2rem 0.35rem; font-size: 0.85rem; }
+      .dim { color: #6f7885; }
+      @media (max-width: 900px) {
+        .layout-seat, .layout-gm { grid-template-columns: 1fr; }
+        .roster-row { grid-template-columns: repeat(4, 1fr); }
+      }
     </style>
     <script defer src="/assets/phoenix.min.js"></script>
     <script defer src="/assets/phoenix_live_view.min.js"></script>

@@ -8,17 +8,34 @@ defmodule ClientWeb.RunLiveTest do
   """
   use ClientWeb.ConnCase, async: false
 
-  alias ClientTUI.Conn
   alias ClientWeb.TestSupport
   alias Referee.Run.Session
 
   @yaml Path.expand("../../../../the-ruined-tower/ruined_tower.yaml", __DIR__)
 
   @pcs [
-    %{id: "pc_thistle", name: "Thistle", place_id: "entry_hall",
-      int: 13, ac: 5, hd: 1, hp: 12, thac0: 20, damage: "1d8"},
-    %{id: "pc_bramble", name: "Bramble", place_id: "entry_hall",
-      int: 12, ac: 6, hd: 1, hp: 8, thac0: 19, damage: "1d6"}
+    %{
+      id: "pc_thistle",
+      name: "Thistle",
+      place_id: "entry_hall",
+      int: 13,
+      ac: 5,
+      hd: 1,
+      hp: 12,
+      thac0: 20,
+      damage: "1d8"
+    },
+    %{
+      id: "pc_bramble",
+      name: "Bramble",
+      place_id: "entry_hall",
+      int: 12,
+      ac: 6,
+      hd: 1,
+      hp: 8,
+      thac0: 19,
+      damage: "1d6"
+    }
   ]
 
   setup %{test: test} do
@@ -89,6 +106,36 @@ defmodule ClientWeb.RunLiveTest do
 
     eventually(fn -> render(view_b) =~ "gm, what do I see?" end)
     assert render(view_t) =~ "gm, what do I see?"
+  end
+
+  test "status ribbon shows connection state and tick", %{conn: conn, run_id: id} do
+    {:ok, view, _html} = live(conn, "/runs/#{id}?pc=pc_thistle")
+    eventually(fn -> render(view) =~ "Entry Hall" end)
+
+    assert render(view) =~ "connected"
+    assert render(view) =~ "your move"
+  end
+
+  test "verb palette scaffolds the compose box", %{conn: conn, run_id: id} do
+    {:ok, view, _html} = live(conn, "/runs/#{id}?pc=pc_thistle")
+    eventually(fn -> render(view) =~ "Entry Hall" end)
+
+    view
+    |> element("[data-testid='verb-palette'] button", "Attack")
+    |> render_click()
+
+    assert render(view) =~ "value=\"attack \""
+  end
+
+  test "exit chip declares its direction through the wire", %{conn: conn, run_id: id} do
+    {:ok, view, _html} = live(conn, "/runs/#{id}?pc=pc_thistle")
+    eventually(fn -> render(view) =~ "Entry Hall" end)
+
+    view
+    |> element("button.chip-exit", "north")
+    |> render_click()
+
+    eventually(fn -> render(view) =~ "You go north." end)
   end
 
   defp eventually(fun, tries \\ 80) do

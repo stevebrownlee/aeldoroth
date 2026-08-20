@@ -208,6 +208,8 @@ defmodule EngineCore.Fold do
       :narration -> world
       :llm_call -> world
       :dossier -> world
+      :paused -> world
+      :resumed -> world
       :ooc -> world
 
       other ->

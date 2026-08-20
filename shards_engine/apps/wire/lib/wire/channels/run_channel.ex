@@ -24,7 +24,12 @@ defmodule Wire.RunChannel do
          true <- pc_id in pcs || :not_a_pc,
          :ok <- Claims.claim(run_id, pc_id),
          :ok <- Writer.subscribe(run_id) do
-      {:ok, %{state: slice(run_id, pc_id), dossier: last_dossier(run_id, pc_id)}, socket}
+      {:ok,
+       %{
+         state: slice(run_id, pc_id),
+         dossier: last_dossier(run_id, pc_id),
+         paused: paused?(run_id)
+       }, socket}
     else
       {:error, {:already_claimed, _pid}} -> {:error, %{reason: "character_already_claimed"}}
       _other -> {:error, %{reason: "unauthorized"}}
@@ -50,7 +55,8 @@ defmodule Wire.RunChannel do
     {:reply, {:ok, %{state: slice(run_id(socket), pc_id(socket))}}, socket}
   end
 
-  def handle_in(_event, _params, socket), do: {:reply, {:error, %{reason: "unknown_event"}}, socket}
+  def handle_in(_event, _params, socket),
+    do: {:reply, {:error, %{reason: "unknown_event"}}, socket}
 
   @impl true
   def handle_info({:ledger_events, _run_id, events}, socket) do
@@ -84,19 +90,43 @@ defmodule Wire.RunChannel do
     end
   end
 
-  defp push_one(%Ledger.Event{class: :narration, tick: tick, payload: %{agent_id: id, text: text}}, pc, _open?, socket) when id == pc,
-    do: push(socket, "perception", %{text: text, tick: tick})
+  defp push_one(
+         %Ledger.Event{class: :narration, tick: tick, payload: %{agent_id: id, text: text}},
+         pc,
+         _open?,
+         socket
+       )
+       when id == pc,
+       do: push(socket, "perception", %{text: text, tick: tick})
 
-  defp push_one(%Ledger.Event{class: :clarify, payload: %{agent_id: id, question: q}}, pc, _open?, socket) when id == pc,
-    do: push(socket, "prompt", %{question: q})
+  defp push_one(
+         %Ledger.Event{class: :clarify, payload: %{agent_id: id, question: q}},
+         pc,
+         _open?,
+         socket
+       )
+       when id == pc,
+       do: push(socket, "prompt", %{question: q})
 
   defp push_one(%Ledger.Event{class: :dice, payload: payload}, pc, true = _open?, socket)
        when is_map(payload) and :erlang.map_get(:agent_id, payload) == pc,
        do: push(socket, "dice", %{event_payload: payload})
 
   # OOC is table talk — every seat hears it, no per-PC filter (PROTOCOL.md).
-  defp push_one(%Ledger.Event{class: :ooc, payload: %{agent_id: id, text: text}}, _pc, _open?, socket),
-    do: push(socket, "ooc", %{agent_id: id, text: text})
+  defp push_one(
+         %Ledger.Event{class: :ooc, payload: %{agent_id: id, text: text}},
+         _pc,
+         _open?,
+         socket
+       ),
+       do: push(socket, "ooc", %{agent_id: id, text: text})
+
+  # Session pause/resume is global state — every seat hears it (W2).
+  defp push_one(%Ledger.Event{class: :meta, payload: %{kind: :paused}}, _pc, _open?, socket),
+    do: push(socket, "paused", %{})
+
+  defp push_one(%Ledger.Event{class: :meta, payload: %{kind: :resumed}}, _pc, _open?, socket),
+    do: push(socket, "resumed", %{})
 
   defp push_one(_ev, _pc, _open?, _socket), do: :ok
 
@@ -117,6 +147,14 @@ defmodule Wire.RunChannel do
     |> case do
       nil -> nil
       ev -> ev.payload[:text]
+    end
+  end
+
+  defp paused?(run_id) do
+    case Session.state(run_id) do
+      nil -> false
+      %{status: :paused} -> true
+      _ -> false
     end
   end
 

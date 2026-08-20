@@ -1,9 +1,11 @@
 defmodule ClientWeb.RunLive do
   @moduledoc """
-  Player seat over the wire protocol (plan 7 Task 4): seat picker from
-  `Session.roster` (pre-seat only — GM-console introspection), then a real
-  `ClientTUI.Conn` per joined seat. Every play interaction is wire traffic;
-  this module never touches the engine directly.
+  Player seat over the wire protocol (UX spec §4): seat lobby when no PC is
+  chosen, then a play surface built from the truth-barrier slice — scene
+  panel (believed agents as chips, direction-labeled exits as one-click
+  moves), typed chronicle, character rail, status ribbon, verb palette, and
+  prompt-answer mode. Every play interaction is wire traffic; this module
+  never touches the engine.
   """
 
   use ClientWeb, :live_view
@@ -11,24 +13,42 @@ defmodule ClientWeb.RunLive do
   alias ClientTUI.Conn
   alias Referee.Run.Session
 
+  @verb_palette [
+    {"Look", "look "},
+    {"Search", "search the "},
+    {"Listen", "listen "},
+    {"Attack", "attack "},
+    {"Talk", "say "},
+    {"Take", "take "},
+    {"Use", "use "},
+    {"Ready", "ready "},
+    {"Wait", "wait"}
+  ]
+
   @impl true
   def mount(%{"run_id" => run_id} = params, _session, socket) do
+    pc = params["pc_id"] || params["pc"]
+
     socket =
       assign(socket,
         run_id: run_id,
-        pc: params["pc"],
+        pc: pc,
         roster: nil,
         conn: nil,
         slice: nil,
         dossier: nil,
-        prompt: nil
+        prompt: nil,
+        paused: false,
+        tick: 0,
+        compose: "",
+        hint_shown: false
       )
       |> stream(:log, [])
 
-    if connected?(socket) && socket.assigns.pc && wire_url() do
+    if connected?(socket) && pc && wire_url() do
       case Conn.start_link(wire_url(),
              run_id: run_id,
-             character_id: socket.assigns.pc,
+             character_id: pc,
              parent: self()
            ) do
         {:ok, pid} ->
@@ -49,13 +69,25 @@ defmodule ClientWeb.RunLive do
       when is_pid(conn) and text != "" do
     event = if socket.assigns.prompt, do: "answer", else: "declare_intent"
     :ok = Conn.send_event(conn, event, %{"text" => text})
-    {:noreply, assign(socket, prompt: nil)}
+    {:noreply, assign(socket, prompt: nil, compose: "", hint_shown: true)}
   end
 
   def handle_event("ooc", %{"text" => text}, %{assigns: %{conn: conn}} = socket)
       when is_pid(conn) and text != "" do
     :ok = Conn.send_event(conn, "ooc", %{"text" => text})
     {:noreply, socket}
+  end
+
+  # Verb palette / believed-agent chips scaffold into the compose box.
+  def handle_event("scaffold", %{"text" => add}, socket) do
+    {:noreply, update(socket, :compose, &(&1 <> add))}
+  end
+
+  # Exit chips declare the bare direction label immediately.
+  def handle_event("go", %{"dir" => dir}, %{assigns: %{conn: conn}} = socket)
+      when is_pid(conn) and dir != "" do
+    :ok = Conn.send_event(conn, "declare_intent", %{"text" => dir})
+    {:noreply, assign(socket, compose: "", hint_shown: true)}
   end
 
   def handle_event(_other, _params, socket), do: {:noreply, socket}
@@ -65,7 +97,13 @@ defmodule ClientWeb.RunLive do
   # Join reply: seat claimed, here is the truth-barrier slice.
   @impl true
   def handle_info({:chan_reply, _ref, :ok, %{"state" => slice} = reply}, socket) do
-    {:noreply, assign(socket, slice: slice, dossier: reply["dossier"], roster: nil)}
+    {:noreply,
+     assign(socket,
+       slice: slice,
+       dossier: reply["dossier"],
+       roster: nil,
+       paused: reply["paused"] == true
+     )}
   end
 
   # Error replies (unknown event, paused, no_run, claim races).
@@ -74,7 +112,10 @@ defmodule ClientWeb.RunLive do
   end
 
   def handle_info({:chan, _topic, "perception", %{"text" => text, "tick" => tick}}, socket) do
-    {:noreply, stream_insert(socket, :log, log_row("perception", "[tick #{tick}] #{text}"))}
+    {:noreply,
+     socket
+     |> stream_insert(:log, log_row("perception", "[tick #{tick}] #{text}"))
+     |> assign(tick: max(tick, socket.assigns.tick))}
   end
 
   def handle_info({:chan, _topic, "ooc", %{"agent_id" => id, "text" => text}}, socket) do
@@ -86,11 +127,19 @@ defmodule ClientWeb.RunLive do
   end
 
   def handle_info({:chan, _topic, "dice", %{"event_payload" => payload}}, socket) do
-    {:noreply, stream_insert(socket, :log, log_row("dice", inspect(payload)))}
+    {:noreply, stream_insert(socket, :log, log_row("dice", render_dice(payload)))}
   end
 
   def handle_info({:chan, _topic, "state_sync", %{"slice" => slice}}, socket) do
     {:noreply, assign(socket, slice: slice)}
+  end
+
+  def handle_info({:chan, _topic, "paused", _payload}, socket) do
+    {:noreply, socket |> system_row("The GM pauses the world.") |> assign(paused: true)}
+  end
+
+  def handle_info({:chan, _topic, "resumed", _payload}, socket) do
+    {:noreply, socket |> system_row("The GM resumes play.") |> assign(paused: false)}
   end
 
   # Protocol growth never crashes a seat.
@@ -113,51 +162,142 @@ defmodule ClientWeb.RunLive do
     ~H"""
     <h1>Run <%= @run_id %></h1>
 
-    <div :if={@roster} class="picker">
+    <div :if={@roster} class="picker panel" data-testid="seat-picker">
       <h2>Choose a seat</h2>
-      <%= for pc <- @roster do %>
-        <p><a href={"/runs/#{@run_id}?pc=#{pc.id}"}><%= pc.name %> (<%= pc.id %>)</a></p>
-      <% end %>
+      <p class="hint">
+        You declare in prose, the referee resolves, dice are open. One seat per player.
+      </p>
+      <ul class="seat-list">
+        <li :for={pc <- @roster} class="seat-card">
+          <.link href={"/runs/#{@run_id}/#{pc.id}"} class="seat-claim" data-testid={"claim-#{pc.id}"}>
+            <strong><%= pc.name %></strong>
+            <span class="hint"><%= pc.id %></span>
+          </.link>
+        </li>
+      </ul>
     </div>
 
     <div :if={@slice} class="seat" data-testid="seat">
+      <div class="ribbon" data-testid="status-ribbon">
+        <%= status(@conn, @paused, @prompt, @tick) %>
+      </div>
+
       <h2><%= @slice["agent"]["name"] %></h2>
 
-      <div class="prompt" :if={@prompt}>
+      <div class="prompt" :if={@prompt} data-testid="prompt">
         <strong>Referee asks:</strong> <%= @prompt %>
       </div>
 
-      <section class="slice">
-        <h3><%= @slice["place"]["name"] %></h3>
-        <p><%= @slice["summary"] %></p>
-        <p>
-          Exits: <%= Enum.map_join(@slice["place"]["exits"] || [], ", ", & &1) %>
-        </p>
-      </section>
+      <div class="play-grid">
+        <div class="play-main">
+          <section class="slice panel">
+            <h3><%= @slice["place"]["name"] %></h3>
+            <p><%= @slice["summary"] %></p>
 
-      <section class="dossier" :if={@dossier}>
-        <h3>Dossier</h3>
-        <pre><%= @dossier["text"] || inspect(@dossier) %></pre>
-      </section>
+            <p :if={@slice["believed_agents"] != []} class="here">
+              <strong>Here:</strong>
+              <button
+                :for={who <- @slice["believed_agents"]}
+                type="button"
+                class="chip"
+                phx-click="scaffold"
+                phx-value-text={who["name"] <> " — "}
+              ><%= who["name"] %></button>
+            </p>
 
-      <section class="log">
-        <h3>Log</h3>
-        <ul id="log" phx-update="stream">
-          <li :for={{dom_id, row} <- @streams.log} id={dom_id} class={row.kind}>
-            <%= row.text %>
-          </li>
-        </ul>
-      </section>
+            <p :if={@slice["place"]["items"] != []} class="here">
+              <strong>Items:</strong>
+              <span :for={it <- @slice["place"]["items"]} class="chip-static"><%= it["name"] %></span>
+            </p>
 
-      <form id="declare" phx-submit="declare">
-        <input name="text" placeholder={if @prompt, do: "your answer", else: "declare intent"} />
-        <button type="submit">Declare</button>
-      </form>
+            <p class="exits">
+              <strong>Exits:</strong>
+              <button
+                :for={e <- @slice["place"]["exits_labeled"] || []}
+                :if={e["dir"] && !e["sealed"]}
+                type="button"
+                class="chip chip-exit"
+                phx-click="go"
+                phx-value-dir={e["dir"]}
+              ><%= e["dir"] %></button>
+              <span
+                :for={e <- @slice["place"]["exits_labeled"] || []}
+                :if={e["sealed"] or is_nil(e["dir"])}
+                class="chip-static"
+              ><%= e["dir"] || e["to"] %><%= if e["sealed"], do: " (sealed)" %></span>
+            </p>
+          </section>
 
-      <form id="ooc" phx-submit="ooc">
-        <input name="text" placeholder="table talk" />
-        <button type="submit">OOC</button>
-      </form>
+          <section class="log panel">
+            <h3>Chronicle</h3>
+            <ul id="log" phx-update="stream">
+              <li :for={{dom_id, row} <- @streams.log} id={dom_id} class={row.kind}>
+                <%= row.text %>
+              </li>
+            </ul>
+          </section>
+
+          <section class="compose panel">
+            <div class="verb-palette" data-testid="verb-palette">
+              <button
+                :for={{label, scaffold} <- verb_palette()}
+                type="button"
+                class="chip chip-verb"
+                phx-click="scaffold"
+                phx-value-text={scaffold}
+              ><%= label %></button>
+            </div>
+
+            <form id="declare" phx-submit="declare">
+              <input
+                name="text"
+                value={@compose}
+                placeholder={if @prompt, do: "your answer", else: "declare intent"}
+                disabled={@paused}
+              />
+              <button type="submit" disabled={@paused}>
+                <%= if @prompt, do: "Answer", else: "Declare" %>
+              </button>
+            </form>
+
+            <p :if={@paused} class="hint">Paused by the GM — the referee will resume play.</p>
+            <p :if={!@hint_shown && !@prompt} class="hint"><%= first_run_hint() %></p>
+
+            <form id="ooc" phx-submit="ooc">
+              <input name="text" placeholder="table talk" />
+              <button type="submit">OOC</button>
+            </form>
+          </section>
+        </div>
+
+        <aside class="rail">
+          <section class="sheet panel">
+            <h3>Character</h3>
+            <%= if sh = @slice["sheet"] do %>
+              <p class="hp">
+                <strong>HP</strong>
+                <span class="hp-numbers"><%= sh["hp"] %><%= if sh["hp_max"], do: " / #{sh["hp_max"]}" %></span>
+              </p>
+              <div class="hp-bar">
+                <div class="hp-fill" style={"width: #{hp_percent(sh)}%"}></div>
+              </div>
+              <dl class="stats">
+                <div><dt>AC</dt><dd><%= sh["ac"] %></dd></div>
+                <div><dt>THAC0</dt><dd><%= sh["thac0"] %></dd></div>
+                <div><dt>Damage</dt><dd><%= sh["damage"] || "—" %></dd></div>
+              </dl>
+              <p :if={sh["conditions"] != []} class="conditions">
+                <span :for={c <- sh["conditions"]} class="chip-static"><%= c %></span>
+              </p>
+            <% end %>
+          </section>
+
+          <section class="dossier panel" :if={@dossier}>
+            <h3>Dossier</h3>
+            <pre><%= @dossier %></pre>
+          </section>
+        </aside>
+      </div>
     </div>
     """
   end
@@ -171,5 +311,42 @@ defmodule ClientWeb.RunLive do
     socket
   end
 
-  defp log_row(kind, text), do: %{id: "row-#{kind}-#{System.unique_integer([:positive])}", kind: kind, text: text}
+  defp log_row(kind, text),
+    do: %{id: "row-#{kind}-#{System.unique_integer([:positive])}", kind: kind, text: text}
+
+  defp system_row(socket, text), do: stream_insert(socket, :log, log_row("system", text))
+
+  defp verb_palette, do: @verb_palette
+
+  defp first_run_hint,
+    do: ~s(Describe what you do — specifics beat dice. Try: "search the crate" or "north".)
+
+  defp status(nil, _paused?, _prompt?, _tick), do: "disconnected — reconnecting…"
+  defp status(_conn, true, _prompt?, _tick), do: "paused by GM"
+  defp status(_conn, _paused?, prompt, _tick) when is_binary(prompt), do: "answer needed"
+  defp status(_conn, _paused?, _prompt?, tick), do: "connected · tick #{tick} · your move"
+
+  defp hp_percent(%{"hp" => hp, "hp_max" => hp_max})
+       when is_number(hp) and is_number(hp_max) and hp_max > 0,
+       do: hp |> max(0) |> Kernel.min(hp_max) |> Kernel.*(100) |> Kernel.div(hp_max) |> min(100)
+
+  defp hp_percent(_), do: 100
+
+  # Dice tray rendering (UX spec §4): never inspect/1 at the player.
+  defp render_dice(%{"purpose" => purpose} = p) when is_map(p) do
+    base =
+      case p do
+        %{"sides" => sides, "roll" => roll} -> "🎲 #{purpose}: d#{sides} → #{roll}"
+        _ -> "🎲 #{purpose}"
+      end
+
+    case p do
+      %{"hit" => true} -> "#{base} — hit"
+      %{"hit" => false} -> "#{base} — miss"
+      %{"amount" => amount} -> "#{base} — #{amount} damage"
+      _ -> base
+    end
+  end
+
+  defp render_dice(_), do: "🎲 the referee rolls…"
 end

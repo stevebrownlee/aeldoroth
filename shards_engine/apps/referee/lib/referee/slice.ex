@@ -2,19 +2,49 @@ defmodule Referee.Slice do
   @moduledoc """
   Truth-barrier actor-visible view (spec §9; pattern: llm-proposes-engine-disposes).
 
-  `for_actor/2` derives everything an LLM prompt may reference for one agent:
-  identity, current place + exits, believed agents *at that place*, salient
-  (seen) beliefs by salience, and a summary line. Hidden items and agents in
-  other places never appear — the slice is the only world data that reaches
-  a prompt.
+  `for_actor/2` derives everything an LLM prompt may reference for one agent.
+  Returned keys:
+    * `:agent` — identity (`id`, `name`, `place_id`)
+    * `:sheet` — the actor's own body (`hp`, `hp_max`, `ac`, `thac0`, `damage`,
+      `conditions`, `morale`, `int`, `hd`); truth-barrier safe
+    * `:place` — current place (`id`, `name`, `kind`, `exits`, `visible_items`,
+      `items` with `id` and `name`)
+    * `:believed` — ids of believed agents at this place
+    * `:believed_agents` — the same ids resolved to `%{id: ..., name: ...}`
+    * `:salient` — seen beliefs, sorted by salience
+    * `:commitments`, `:capabilities`, `:summary`
+
+  Hidden items and agents in other places never appear — the slice is the only
+  world data that reaches a prompt, and the sheet is the actor's own body,
+  so it is truth-barrier safe.
   """
 
   alias EngineCore.World
 
   @spec for_actor(World.t(), String.t()) :: %{
           agent: map(),
-          place: map(),
+          sheet: %{
+            hp: integer(),
+            hp_max: integer(),
+            ac: integer(),
+            thac0: integer(),
+            damage: String.t() | nil,
+            conditions: [atom()],
+            morale: integer(),
+            int: integer(),
+            hd: integer()
+          },
+          place: %{
+            id: String.t(),
+            name: String.t(),
+            kind: atom(),
+            exits: [String.t()],
+            exits_labeled: [%{dir: String.t() | nil, to: String.t(), sealed: boolean()}],
+            visible_items: [String.t()],
+            items: [%{id: String.t(), name: String.t()}]
+          },
           believed: [String.t()],
+          believed_agents: [%{id: String.t(), name: String.t()}],
           salient: [String.t()],
           commitments: [map()],
           capabilities: [atom()],
@@ -39,19 +69,60 @@ defmodule Referee.Slice do
 
     %{
       agent: %{id: agent.id, name: agent.name, place_id: agent.place_id},
+      sheet: sheet(agent),
       place: %{
         id: place.id,
         name: place.name,
         kind: place.kind,
         exits: exits(world, agent.place_id),
-        visible_items: visible_items(world, agent.place_id)
+        exits_labeled: exits_labeled(world, agent.place_id),
+        visible_items: visible_items(world, agent.place_id),
+        items: place_items(world, agent.place_id)
       },
       believed: believed,
+      believed_agents: believed_agents(world, believed),
       salient: salient,
       commitments: commitments(agent),
       capabilities: agent.capabilities,
       summary: summarize(place, believed, world)
     }
+  end
+
+  defp sheet(agent) do
+    body = agent.body
+    st = Map.get(agent, :statblock) || %{}
+
+    %{
+      hp: body.hp,
+      hp_max: Map.get(st, :hp_max),
+      ac: Map.get(st, :ac),
+      thac0: Map.get(st, :thac0),
+      damage: format_damage(Map.get(st, :damage)),
+      conditions: body.conditions,
+      morale: Map.get(st, :morale),
+      int: Map.get(st, :int),
+      hd: Map.get(st, :hd)
+    }
+  end
+
+  defp format_damage(%{dice: dice, sides: sides, plus: plus}) when plus > 0,
+    do: "#{dice}d#{sides}+#{plus}"
+
+  defp format_damage(%{dice: dice, sides: sides}), do: "#{dice}d#{sides}"
+  defp format_damage(_), do: nil
+
+  defp believed_agents(world, believed) do
+    believed
+    |> Enum.map(fn id ->
+      name =
+        case World.agent(world, id) do
+          nil -> id
+          agent -> agent.name
+        end
+
+      %{id: id, name: name}
+    end)
+    |> Enum.sort_by(& &1.id)
   end
 
   defp commitments(agent) do
@@ -75,12 +146,29 @@ defmodule Referee.Slice do
     |> Enum.sort()
   end
 
+  # Direction-labeled exits for one-click moves (UX spec §4): `label` is the
+  # YAML exit direction when present, nil for bare connection lists.
+  defp exits_labeled(world, place_id) do
+    world.edges
+    |> Enum.filter(&(&1.from == place_id))
+    |> Enum.map(&%{dir: &1.label, to: &1.to, sealed: &1.sealed})
+    |> Enum.sort_by(& &1.to)
+  end
+
   defp visible_items(world, place_id) do
     world.items
     |> Map.values()
     |> Enum.filter(&(&1.place_id == place_id and not Map.get(&1, :is_hidden, false)))
     |> Enum.map(& &1.id)
     |> Enum.sort()
+  end
+
+  defp place_items(world, place_id) do
+    world.items
+    |> Map.values()
+    |> Enum.filter(&(&1.place_id == place_id and not Map.get(&1, :is_hidden, false)))
+    |> Enum.map(&%{id: &1.id, name: &1.name})
+    |> Enum.sort_by(& &1.id)
   end
 
   defp summarize(place, believed, world) do

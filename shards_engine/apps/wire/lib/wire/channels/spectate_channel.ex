@@ -22,14 +22,17 @@ defmodule Wire.SpectateChannel do
     with %{run_id: ^run_id, role: :spectate} <- assigns,
          %{} = state <- Session.state(run_id),
          :ok <- Writer.subscribe(run_id) do
+      awaiting = enrich_awaiting(run_id, Session.awaiting(run_id))
+
       snapshot = %{
         tick: state.tick,
         boundaries: JSONSafe.to_json(Server.boundaries(run_id)),
         spend: Spend.report(Writer.events(run_id)),
-        tail: Writer.events(run_id) |> Enum.take(-@tail_cap) |> JSONSafe.to_json()
+        tail: Writer.events(run_id) |> Enum.take(-@tail_cap) |> JSONSafe.to_json(),
+        awaiting: awaiting
       }
 
-      {:ok, snapshot, socket}
+      {:ok, snapshot, assign(socket, :last_awaiting, awaiting)}
     else
       _other -> {:error, %{reason: "unauthorized"}}
     end
@@ -64,15 +67,42 @@ defmodule Wire.SpectateChannel do
   def handle_info({:ledger_events, _run_id, events}, socket) do
     :ok = push(socket, "ledger_tail", %{events: JSONSafe.to_json(events)})
     push_state_sync(socket)
-    {:noreply, socket}
+    {:noreply, push_awaiting(socket)}
   end
 
   def handle_info(_msg, socket), do: {:noreply, socket}
 
   defp push_state_sync(socket) do
     run_id = run_id(socket)
-    :ok = push(socket, "state_sync", %{tick: tick_of(run_id), boundaries: JSONSafe.to_json(Server.boundaries(run_id))})
+
+    :ok =
+      push(socket, "state_sync", %{
+        tick: tick_of(run_id),
+        boundaries: JSONSafe.to_json(Server.boundaries(run_id))
+      })
   end
+
+  defp push_awaiting(socket) do
+    run_id = run_id(socket)
+    current = enrich_awaiting(run_id, Session.awaiting(run_id))
+    last = Map.get(socket.assigns, :last_awaiting, [])
+
+    if current != last do
+      :ok = push(socket, "awaiting", %{pcs: current})
+      assign(socket, :last_awaiting, current)
+    else
+      socket
+    end
+  end
+
+  defp enrich_awaiting(run_id, {:ok, pcs}) do
+    Enum.map(pcs, fn pc ->
+      seated = Registry.lookup(Wire.ClaimsReg, {run_id, pc.id}) != []
+      Map.put(pc, :seated, seated)
+    end)
+  end
+
+  defp enrich_awaiting(_run_id, {:error, :no_run}), do: []
 
   defp tick_of(run_id) do
     case Session.state(run_id) do

@@ -20,10 +20,28 @@ defmodule ClientTUI.E2EWSysTest do
   @yaml Path.expand("../../../../the-ruined-tower/ruined_tower.yaml", __DIR__)
 
   @pcs [
-    %{id: "pc_thistle", name: "Thistle", place_id: "entry_hall",
-      int: 13, ac: 5, hd: 1, hp: 12, thac0: 20, damage: "1d8"},
-    %{id: "pc_bramble", name: "Bramble", place_id: "entry_hall",
-      int: 12, ac: 6, hd: 1, hp: 8, thac0: 19, damage: "1d6"}
+    %{
+      id: "pc_thistle",
+      name: "Thistle",
+      place_id: "entry_hall",
+      int: 13,
+      ac: 5,
+      hd: 1,
+      hp: 12,
+      thac0: 20,
+      damage: "1d8"
+    },
+    %{
+      id: "pc_bramble",
+      name: "Bramble",
+      place_id: "entry_hall",
+      int: 12,
+      ac: 6,
+      hd: 1,
+      hp: 8,
+      thac0: 19,
+      damage: "1d6"
+    }
   ]
 
   @moves ["north", "north", "south", "south"]
@@ -31,7 +49,11 @@ defmodule ClientTUI.E2EWSysTest do
   test "live WS path produces the byte-identical ledger of the pure path" do
     port = start_bandit!()
     id = "e2e_ws_#{:erlang.unique_integer([:positive])}"
-    on_exit(fn -> Session.stop(id); RunSup.stop_run(id) end)
+
+    on_exit(fn ->
+      Session.stop(id)
+      RunSup.stop_run(id)
+    end)
 
     # Run A: pure path. Run B: live session, declares through two WS conns.
     # Lockstep order: thistle north, bramble north, advance; repeat south.
@@ -71,6 +93,7 @@ defmodule ClientTUI.E2EWSysTest do
     id = "e2e_restart_#{:erlang.unique_integer([:positive])}"
     dir = Path.join(System.tmp_dir!(), "e2e_#{:erlang.unique_integer([:positive])}")
     File.mkdir_p!(dir)
+
     on_exit(fn ->
       Session.stop(id)
       RunSup.stop_run(id)
@@ -104,10 +127,18 @@ defmodule ClientTUI.E2EWSysTest do
     {:ok, %{reply: _}} = Session.declare(id, "pc_thistle", "go south")
     {:ok, %{reply: _}} = Session.declare(id, "pc_thistle", "go south")
 
-    # Pause inserted :dossier events; their seqs shift later rows, so compare
-    # content triples rather than binaries (session_test convention).
+    # Pause inserted :dossier events and :paused/:resumed metas; their seqs
+    # shift later rows, so compare content triples rather than binaries
+    # (session_test convention).
     content = fn evs -> Enum.map(evs, &{&1.tick, &1.class, &1.payload}) end
-    restored = Writer.events(id) |> Enum.reject(&(&1.class == :dossier))
+
+    restored =
+      Writer.events(id)
+      |> Enum.reject(&(&1.class == :dossier))
+      |> Enum.reject(
+        &match?(%{class: :meta, payload: %{kind: k}} when k in [:paused, :resumed], &1)
+      )
+
     assert content.(Run.events(ref)) == content.(restored)
   after
     stop_conns()
@@ -197,6 +228,7 @@ defmodule ClientTUI.E2EWSysTest do
             :exit, _ -> :ok
           end
         end)
+
         port
 
       {:error, {:eaddrinuse, _}} ->

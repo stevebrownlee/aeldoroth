@@ -38,7 +38,7 @@ defmodule Wire.SpectateChannelTest do
     {:ok, _pid} = start_run(id)
     {:ok, socket} = connect(Wire.Socket, %{"run_id" => id})
 
-    assert {:ok, %{tick: tick, boundaries: boundaries, spend: spend, tail: tail}, _chan} =
+    assert {:ok, %{tick: tick, boundaries: boundaries, spend: spend, tail: tail, awaiting: awaiting}, _chan} =
              join(socket, "spectate:#{id}", %{})
 
     assert is_integer(tick)
@@ -46,9 +46,16 @@ defmodule Wire.SpectateChannelTest do
     assert is_map(spend) and Map.has_key?(spend, :total)
     assert length(tail) <= 50
 
+    assert length(awaiting) == 2
+    assert Enum.all?(awaiting, &(&1.seated == false))
+    assert %{
+             "pc_thistle" => %{name: "Thistle"},
+             "pc_bramble" => %{name: "Bramble"}
+           } = Map.new(awaiting, fn pc -> {pc.id, pc} end)
+
     # Real sockets serialize to JSON (the crash this pins: agent_added's
     # Agent struct and the prefs md5 digest are not JSON-safe terms).
-    assert {:ok, _} = Jason.encode(%{tick: tick, boundaries: boundaries, spend: spend, tail: tail})
+    assert {:ok, _} = Jason.encode(%{tick: tick, boundaries: boundaries, spend: spend, tail: tail, awaiting: awaiting})
 
     # Tail entries are JSON-shaped projections: string keys, plain maps.
     for ev <- tail do
@@ -127,6 +134,45 @@ defmodule Wire.SpectateChannelTest do
     assert is_integer(tick)
     assert is_map(boundaries)
     assert {:ok, _} = Jason.encode(boundaries)
+  end
+
+  test "awaiting push fires after a joined PC seat declares", %{run_id: id} do
+    {:ok, _pid} = start_run(id)
+
+    {:ok, spec_socket} = connect(Wire.Socket, %{"run_id" => id})
+    assert {:ok, _, _spec_chan} = join(spec_socket, "spectate:#{id}", %{})
+
+    {:ok, pc_socket} = connect(Wire.Socket, %{"run_id" => id, "character_id" => "pc_thistle"})
+    assert {:ok, _, _pc_chan} = join(pc_socket, "run:#{id}", %{})
+
+    assert {:ok, %{reply: _}} = Session.declare(id, "pc_thistle", "I head east")
+
+    assert_push "awaiting", %{pcs: pcs}
+    by_id = Map.new(pcs, fn pc -> {pc.id, pc} end)
+
+    assert %{"pc_thistle" => thistle, "pc_bramble" => bramble} = by_id
+    assert thistle.seated == true
+    assert thistle.last_intent.text == "I head east"
+    assert is_integer(thistle.last_intent.tick)
+    assert bramble.seated == false
+    assert bramble.last_intent == nil
+  end
+
+  test "awaiting push is suppressed when the list has not changed", %{run_id: id} do
+    {:ok, _pid} = start_run(id)
+
+    {:ok, spec_socket} = connect(Wire.Socket, %{"run_id" => id})
+    assert {:ok, _, _spec_chan} = join(spec_socket, "spectate:#{id}", %{})
+
+    {:ok, pc_socket} = connect(Wire.Socket, %{"run_id" => id, "character_id" => "pc_thistle"})
+    assert {:ok, _, _pc_chan} = join(pc_socket, "run:#{id}", %{})
+
+    assert {:ok, %{reply: _}} = Session.declare(id, "pc_thistle", "I head east")
+    assert_push "awaiting", %{pcs: _}
+
+    # A meta ledger event (pause) does not change awaiting, so no push.
+    assert {:ok, %{dossiers: _}} = Session.pause(id)
+    refute_push "awaiting", %{}
   end
 
   defp start_run(id) do

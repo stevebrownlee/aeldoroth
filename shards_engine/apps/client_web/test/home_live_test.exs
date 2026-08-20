@@ -1,6 +1,6 @@
 defmodule ClientWeb.HomeLiveTest do
   @moduledoc """
-  Home surface (plan 7 Task 3): run creation + registry listing.
+  Home surface (spec §6): run creation + active-runs registry.
   """
 
   use ClientWeb.ConnCase, async: true
@@ -23,16 +23,19 @@ defmodule ClientWeb.HomeLiveTest do
       int: 12, hd: 1, hp: 8, ac: 6, thac0: 19, damage: "1d6"}
   ]
 
-  test "creates a run and redirects", %{conn: conn} do
+  test "creates a run and shows seat links", %{conn: conn} do
     slug = "home_#{:erlang.unique_integer([:positive])}"
     on_exit(fn -> ClientWeb.TestSupport.stop_run(slug) end)
     {:ok, view, _html} = live(conn, "/")
 
-    view
-    |> form("#new_run", run: %{run_id: slug, seed: "42", roster: @roster})
-    |> render_submit()
+    html =
+      view
+      |> form("#new_run", run: %{run_id: slug, seed: "42", roster: @roster})
+      |> render_submit()
 
-    assert_redirect(view, "/runs/#{slug}")
+    assert html =~ slug
+    assert html =~ ~s|data-testid="seat-link-pc_thistle"|
+    assert html =~ ~s|data-testid="seat-link-pc_bramble"|
     assert %{status: :running} = Session.state(slug)
     assert Session.roster(slug) == @seats
   end
@@ -45,6 +48,7 @@ defmodule ClientWeb.HomeLiveTest do
     {:ok, _view, html} = live(conn, "/")
     assert html =~ slug
     assert html =~ "running"
+    assert html =~ "Tick"
   end
 
   test "rejects a malformed roster line", %{conn: conn} do
@@ -58,5 +62,45 @@ defmodule ClientWeb.HomeLiveTest do
 
     assert html =~ "pc_x|NoPlace"
     assert Session.state(slug) == nil
+  end
+
+  test "creates a run via seat row fields", %{conn: conn} do
+    slug = "home_rows_#{:erlang.unique_integer([:positive])}"
+    on_exit(fn -> ClientWeb.TestSupport.stop_run(slug) end)
+    {:ok, view, _html} = live(conn, "/")
+
+    html =
+      view
+      |> form("#new_run",
+        run: %{run_id: slug, seed: "42", yaml: @yaml},
+        seat: %{
+          "0" => %{
+            "name" => "Thistle",
+            "id" => "pc_thistle",
+            "place_id" => "entry_hall",
+            "int" => "13",
+            "hp" => "12",
+            "ac" => "5",
+            "thac0" => "20",
+            "damage" => "1d8"
+          },
+          "1" => %{
+            "name" => "Bramble",
+            "id" => "pc_bramble",
+            "place_id" => "entry_hall",
+            "int" => "12",
+            "hp" => "8",
+            "ac" => "6",
+            "thac0" => "19",
+            "damage" => "1d6"
+          }
+        }
+      )
+      |> render_submit()
+
+    assert html =~ ~s|data-testid="seat-link-pc_thistle"|
+    assert html =~ ~s|data-testid="seat-link-pc_bramble"|
+    assert %{status: :running} = Session.state(slug)
+    assert Session.roster(slug) == @seats
   end
 end

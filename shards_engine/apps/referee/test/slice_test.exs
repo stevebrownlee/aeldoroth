@@ -28,13 +28,23 @@ defmodule Referee.SliceTest do
     }
 
     %World{
-      places: %{"hall" => place.("hall"), "crypt" => place.("crypt")},
+      places: %{"hall" => place.("hall"), "crypt" => place.("crypt"), "vault" => place.("vault")},
       edges: [
-        %Types.Edge{id: "e1", from: "hall", to: "crypt"},
-        %Types.Edge{id: "e2", from: "crypt", to: "hall"}
+        %Types.Edge{id: "e1", from: "hall", to: "crypt", label: "north"},
+        %Types.Edge{id: "e2", from: "crypt", to: "hall"},
+        %Types.Edge{id: "e3", from: "hall", to: "vault", label: "iron door", sealed: true}
       ],
       agents: %{
-        "pc" => struct!(mk.("pc", "hall"), beliefs: beliefs),
+        "pc" =>
+        struct!(mk.("pc", "hall"), beliefs: beliefs, statblock: %{
+          ac: 12,
+          hd: 1,
+          hp_max: 10,
+          thac0: 18,
+          morale: 7,
+          int: 8,
+          damage: %{dice: 1, sides: 8, plus: 2}
+        }),
         "goblin_guard_1" => mk.("goblin_guard_1", "hall"),
         "rat_1" => mk.("rat_1", "crypt")
       },
@@ -51,7 +61,7 @@ defmodule Referee.SliceTest do
     assert s.agent == %{id: "pc", name: "PC", place_id: "hall"}
     assert s.place.name == "Room hall"
     assert s.place.kind == :room
-    assert s.place.exits == ["crypt"]
+    assert s.place.exits == ["crypt", "vault"]
 
     # believed: abouts at the actor's current place, sorted; crypt belief must not leak
     assert s.believed == ["ghost", "goblin_guard_1"]
@@ -61,6 +71,15 @@ defmodule Referee.SliceTest do
     assert s.salient == ["goblin_guard_1"]
   end
 
+  test "exits_labeled carries direction, destination, and seal for one-click moves" do
+    s = Slice.for_actor(world(), "pc")
+
+    assert s.place.exits_labeled == [
+             %{dir: "north", to: "crypt", sealed: false},
+             %{dir: "iron door", to: "vault", sealed: true}
+           ]
+  end
+
   test "hidden items never appear anywhere in the slice" do
     s = Slice.for_actor(world(), "pc")
 
@@ -68,9 +87,12 @@ defmodule Referee.SliceTest do
     assert s.place.visible_items == ["sword"]
 
     # whole-term: no field of the slice leaks the hidden gem — the slice is
-    # the only world data a prompt may reference (acceptance criterion 5)
+    # the only world data a prompt may reference (acceptance criterion 5).
+    # inspect/1 is the whole-term check: term_to_binary is unusable here
+    # because raw encoding bytes forge substrings across field boundaries
+    # (e.g. the :damage atom's trailing bytes plus the next value's string
+    # tag encode "gem" without any gem anywhere in the slice).
     refute inspect(s) =~ "gem"
-    refute to_string(:erlang.term_to_binary(s)) =~ "gem"
   end
 
   test "prompt_slice_ref is a stable lowercase md5 hex, sensitive to content" do
@@ -126,6 +148,29 @@ defmodule Referee.SliceTest do
 
     assert s.summary =~ "Room hall"
     assert s.summary =~ "GOBLIN_GUARD_1"
+  end
+
+  test "for_actor adds the actor sheet, believed agent names, and visible item details" do
+    s = Slice.for_actor(world(), "pc")
+
+    assert s.sheet == %{
+             hp: 5,
+             hp_max: 10,
+             ac: 12,
+             thac0: 18,
+             damage: "1d8+2",
+             conditions: [],
+             morale: 7,
+             int: 8,
+             hd: 1
+           }
+
+    assert s.believed_agents == [
+             %{id: "ghost", name: "ghost"},
+             %{id: "goblin_guard_1", name: "GOBLIN_GUARD_1"}
+           ]
+
+    assert s.place.items == [%{id: "sword", name: "Sword"}]
   end
 
 end
