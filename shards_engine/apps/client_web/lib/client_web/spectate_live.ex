@@ -88,10 +88,14 @@ defmodule ClientWeb.SpectateLive do
     {:noreply, assign(socket, spend: spend)}
   end
 
-  # Resume reply: an empty ok — clear dossiers, mark resumed.
-  def handle_info({:chan_reply, _ref, :ok, %{}}, socket) do
+  # Resume reply: `{"resumed": true}` — distinctive so heartbeat acks ({}),
+  # which share the transport, never masquerade as a resume.
+  def handle_info({:chan_reply, _ref, :ok, %{"resumed" => true}}, socket) do
     {:noreply, assign(socket, dossiers: nil, resumed: true)}
   end
+
+  # Heartbeat acks and future empty ok replies: nothing to show.
+  def handle_info({:chan_reply, _ref, :ok, _payload}, socket), do: {:noreply, socket}
 
   def handle_info({:chan_reply, _ref, :error, %{"reason" => reason}}, socket) do
     {:noreply, assign(socket, error: reason)}
