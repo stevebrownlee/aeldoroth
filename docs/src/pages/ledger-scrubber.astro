@@ -1,0 +1,18 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import LedgerScrubber from '../components/visualizers/LedgerScrubber.astro';
+---
+
+<BaseLayout title="Ledger Scrubber" description="Interactive ledger time-travel and determinism scrubber for The Shattered Kingdoms engine.">
+  <div class="ledger-page">
+    <LedgerScrubber />
+  </div>
+</BaseLayout>
+
+<style>
+  .ledger-page {
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    padding: calc(var(--header-height) + 2rem) var(--content-padding) 3rem;
+  }
+</style>

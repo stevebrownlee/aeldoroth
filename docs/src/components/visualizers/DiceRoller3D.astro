@@ -1,0 +1,959 @@
+---
+// DiceRoller3D.astro — Pure-CSS 3D polyhedral dice roller with AD&D 1E attack resolution.
+
+const PHI = (1 + Math.sqrt(5)) / 2;
+const RAD2DEG = 180 / Math.PI;
+
+function distSq(a: number[], b: number[]): number {
+  return (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2;
+}
+
+function length(v: number[]): number {
+  return Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+}
+
+function dot(a: number[], b: number[]): number {
+  return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+}
+
+interface FaceData {
+  number: number;
+  theta: number;
+  phi: number;
+  psi: number;
+  transform: string;
+  bCss: number;
+  hCss: number;
+  normal: number[];
+}
+
+function generateTriangleFaces(
+  vertices: number[][],
+  edgeLenSq: number,
+  dCss: number
+): FaceData[] {
+  const faces: number[][] = [];
+  const n = vertices.length;
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      for (let k = j + 1; k < n; k++) {
+        if (
+          Math.abs(distSq(vertices[i], vertices[j]) - edgeLenSq) < 1e-6 &&
+          Math.abs(distSq(vertices[j], vertices[k]) - edgeLenSq) < 1e-6 &&
+          Math.abs(distSq(vertices[k], vertices[i]) - edgeLenSq) < 1e-6
+        ) {
+          faces.push([i, j, k]);
+        }
+      }
+    }
+  }
+
+  // Inradius and vertex-distance from face centre for the model.
+  const fc = [
+    (vertices[faces[0][0]][0] + vertices[faces[0][1]][0] + vertices[faces[0][2]][0]) / 3,
+    (vertices[faces[0][0]][1] + vertices[faces[0][1]][1] + vertices[faces[0][2]][1]) / 3,
+    (vertices[faces[0][0]][2] + vertices[faces[0][1]][2] + vertices[faces[0][2]][2]) / 3,
+  ];
+  const dModel = length(fc);
+  const vModel = Math.sqrt(edgeLenSq / 3);
+  const scale = dCss / dModel;
+  const bCss = scale * Math.sqrt(3) * vModel;
+  const hCss = (bCss * Math.sqrt(3)) / 2;
+
+  const rawFaces = faces.map((face) => {
+    const v0 = vertices[face[0]];
+    const v1 = vertices[face[1]];
+    const v2 = vertices[face[2]];
+    const cx = (v0[0] + v1[0] + v2[0]) / 3;
+    const cy = (v0[1] + v1[1] + v2[1]) / 3;
+    const cz = (v0[2] + v1[2] + v2[2]) / 3;
+    const cLen = length([cx, cy, cz]);
+    const nx = cx / cLen;
+    const ny = cy / cLen;
+    const nz = cz / cLen;
+
+    const theta = Math.atan2(nx, nz);
+    const phi = -Math.asin(Math.max(-1, Math.min(1, ny)));
+
+    const cosT = Math.cos(theta);
+    const sinT = Math.sin(theta);
+    const cosP = Math.cos(phi);
+    const sinP = Math.sin(phi);
+
+    // Local axes after rotateY(theta) rotateX(phi).
+    const xAxis = [cosT, 0, -sinT];
+    const yAxis = [sinT * sinP, cosP, cosT * sinP];
+
+    // Spin: align the triangle apex with the face vertex that has the largest world-Y.
+    let topIdx = face[0];
+    let maxY = v0[1];
+    if (v1[1] > maxY) {
+      maxY = v1[1];
+      topIdx = face[1];
+    }
+    if (v2[1] > maxY) {
+      maxY = v2[1];
+      topIdx = face[2];
+    }
+    const topV = vertices[topIdx];
+    const fCenter = [nx * dModel, ny * dModel, nz * dModel];
+    const rel = [topV[0] - fCenter[0], topV[1] - fCenter[1], topV[2] - fCenter[2]];
+    const qx = dot(rel, xAxis);
+    const qy = dot(rel, yAxis);
+    const psi = Math.PI / 2 + Math.atan2(qy, qx);
+
+    const thetaDeg = theta * RAD2DEG;
+    const phiDeg = phi * RAD2DEG;
+    const psiCssDeg = -psi * RAD2DEG;
+
+    return {
+      number: 0, // filled in after pairing
+      theta: thetaDeg,
+      phi: phiDeg,
+      psi: psiCssDeg,
+      transform: `rotateY(${thetaDeg.toFixed(3)}deg) rotateX(${phiDeg.toFixed(3)}deg) translateZ(${dCss.toFixed(3)}px) rotateZ(${psiCssDeg.toFixed(3)}deg)`,
+      bCss,
+      hCss,
+      normal: [nx, ny, nz],
+    };
+  });
+
+  return rawFaces;
+}
+
+function pairAndNumber(faces: FaceData[], maxNum: number): void {
+  const used = new Set<number>();
+  let nextLow = 1;
+  for (let i = 0; i < faces.length; i++) {
+    if (used.has(i)) continue;
+    let opp = -1;
+    for (let j = i + 1; j < faces.length; j++) {
+      if (used.has(j)) continue;
+      if (dot(faces[i].normal, faces[j].normal) < -0.999) {
+        opp = j;
+        break;
+      }
+    }
+    if (opp === -1) opp = i;
+    faces[i].number = nextLow;
+    faces[opp].number = maxNum + 1 - nextLow;
+    used.add(i);
+    used.add(opp);
+    nextLow++;
+  }
+}
+
+// --- D20 icosahedron ---------------------------------------------------------
+const d20Vertices = [
+  [0, 1, PHI], [0, 1, -PHI], [0, -1, PHI], [0, -1, -PHI],
+  [1, PHI, 0], [1, -PHI, 0], [-1, PHI, 0], [-1, -PHI, 0],
+  [PHI, 0, 1], [PHI, 0, -1], [-PHI, 0, 1], [-PHI, 0, -1],
+];
+const d20Faces = generateTriangleFaces(d20Vertices, 4, 78);
+pairAndNumber(d20Faces, 20);
+
+// --- D8 octahedron -----------------------------------------------------------
+const d8Vertices = [
+  [1, 0, 0], [-1, 0, 0],
+  [0, 1, 0], [0, -1, 0],
+  [0, 0, 1], [0, 0, -1],
+];
+const d8Faces = generateTriangleFaces(d8Vertices, 2, 35).map((f) => ({
+  ...f,
+  transform: f.transform.replace(/translateZ\([\d.]+px\)/, 'translateZ(35px)'),
+}));
+pairAndNumber(d8Faces, 8);
+
+// --- D6 cube -----------------------------------------------------------------
+interface CubeFaceData extends FaceData {
+  size: number;
+}
+const d6Size = 104;
+const d6Half = d6Size / 2;
+const d6Faces: CubeFaceData[] = [
+  { number: 1, theta: 0, phi: 0, psi: 0, transform: `translateZ(${d6Half}px)`, bCss: d6Size, hCss: d6Size, size: d6Size, normal: [0, 0, 1] },
+  { number: 6, theta: 180, phi: 0, psi: 0, transform: `rotateY(180deg) translateZ(${d6Half}px)`, bCss: d6Size, hCss: d6Size, size: d6Size, normal: [0, 0, -1] },
+  { number: 2, theta: 90, phi: 0, psi: 0, transform: `rotateY(90deg) translateZ(${d6Half}px)`, bCss: d6Size, hCss: d6Size, size: d6Size, normal: [-1, 0, 0] },
+  { number: 5, theta: -90, phi: 0, psi: 0, transform: `rotateY(-90deg) translateZ(${d6Half}px)`, bCss: d6Size, hCss: d6Size, size: d6Size, normal: [1, 0, 0] },
+  { number: 3, theta: 0, phi: 90, psi: 0, transform: `rotateX(90deg) translateZ(${d6Half}px)`, bCss: d6Size, hCss: d6Size, size: d6Size, normal: [0, -1, 0] },
+  { number: 4, theta: 0, phi: -90, psi: 0, transform: `rotateX(-90deg) translateZ(${d6Half}px)`, bCss: d6Size, hCss: d6Size, size: d6Size, normal: [0, 1, 0] },
+];
+
+const attackers = [
+  { name: 'Level 1 Fighter', thac0: 20 },
+  { name: 'Level 3 Fighter', thac0: 19 },
+  { name: 'Level 1 Thief', thac0: 20 },
+];
+
+const defenders = [
+  { name: 'Goblin Guard', ac: 6 },
+  { name: 'Chief Grisk', ac: 5 },
+  { name: 'Wolf', ac: 7 },
+  { name: 'Plate + Shield', ac: 2 },
+];
+---
+
+<div class="dice-roller runic-border-beam">
+  <header class="roller-header">
+    <h2 class="roller-title">Arcane Dice Engine</h2>
+    <span class="roller-badge">3D CSS</span>
+  </header>
+
+  <div class="roller-body">
+    <div class="scene-panel">
+      <div class="die-type-tabs" role="tablist" aria-label="Die type">
+        <button class="die-tab active" data-die="d20" role="tab" aria-selected="true">D20</button>
+        <button class="die-tab" data-die="d8" role="tab" aria-selected="false">D8</button>
+        <button class="die-tab" data-die="d6" role="tab" aria-selected="false">D6</button>
+      </div>
+
+      <div class="scene" id="scene">
+        <div class="die d20" id="die" data-current="d20" style="transform: rotateX(-25deg) rotateY(35deg);">
+          {d20Faces.map((face) => (
+            <div
+              class="face triangle"
+              data-number={face.number}
+              data-theta={face.theta.toFixed(3)}
+              data-phi={face.phi.toFixed(3)}
+              data-psi={face.psi.toFixed(3)}
+              style={`width: ${face.bCss.toFixed(2)}px; height: ${face.hCss.toFixed(2)}px; transform: ${face.transform};`}
+            >
+              <span class="face-number">{face.number}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div class="roll-controls">
+        <button class="roll-button" id="rollBtn" type="button">
+          <span class="roll-label">Roll Attack (d20)</span>
+          <span class="roll-die">d20</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="calculator-panel">
+      <div class="calc-section">
+        <h3 class="calc-title">Attacker</h3>
+        <select class="calc-select" id="attackerSelect">
+          {attackers.map((a) => (
+            <option value={a.thac0}>{a.name} (THAC0 {a.thac0})</option>
+          ))}
+        </select>
+      </div>
+
+      <div class="calc-section">
+        <h3 class="calc-title">Defender</h3>
+        <select class="calc-select" id="defenderSelect">
+          {defenders.map((d) => (
+            <option value={d.ac}>{d.name} (AC {d.ac > 0 ? d.ac : `-${-d.ac}`})</option>
+          ))}
+        </select>
+      </div>
+
+      <div class="target-readout">
+        <span class="target-label">Target roll</span>
+        <span class="target-formula">THAC0 − AC</span>
+        <span class="target-value" id="targetValue">14</span>
+      </div>
+
+      <div class="result-readout" id="resultReadout" aria-live="polite">
+        <div class="result-line">
+          <span class="result-label">Rolled</span>
+          <span class="result-value" id="rollValue">—</span>
+        </div>
+        <div class="result-line">
+          <span class="result-label">Verdict</span>
+          <span class="verdict" id="verdict">—</span>
+        </div>
+        <div class="result-line" id="damageLine">
+          <span class="result-label">Damage</span>
+          <span class="damage-value" id="damageValue">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="log-panel">
+    <h3 class="log-title">Referee Adjudication</h3>
+    <ol class="combat-log" id="combatLog" reversed></ol>
+  </div>
+</div>
+
+<script is:inline define:vars={{ d20Faces, d8Faces, d6Faces, attackers, defenders }}>
+  (function () {
+    const die = document.getElementById('die');
+    const rollBtn = document.getElementById('rollBtn');
+    const attackerSelect = document.getElementById('attackerSelect');
+    const defenderSelect = document.getElementById('defenderSelect');
+    const targetValue = document.getElementById('targetValue');
+    const rollValue = document.getElementById('rollValue');
+    const verdict = document.getElementById('verdict');
+    const damageValue = document.getElementById('damageValue');
+    const combatLog = document.getElementById('combatLog');
+    const tabs = document.querySelectorAll('.die-tab');
+
+    const facesByDie = {
+      d20: d20Faces,
+      d8: d8Faces,
+      d6: d6Faces,
+    };
+
+    let currentDie = 'd20';
+    let isRolling = false;
+
+    function getTarget() {
+      const thac0 = Number(attackerSelect.value);
+      const ac = Number(defenderSelect.value);
+      return thac0 - ac;
+    }
+
+    function updateTarget() {
+      targetValue.textContent = String(getTarget());
+    }
+
+    function randomInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function setDieType(type) {
+      if (currentDie === type || isRolling) return;
+      currentDie = type;
+      die.setAttribute('data-current', type);
+
+      tabs.forEach((t) => {
+        const active = t.dataset.die === type;
+        t.classList.toggle('active', active);
+        t.setAttribute('aria-selected', String(active));
+      });
+
+      // Rebuild faces.
+      const faces = facesByDie[type];
+      const isCube = type === 'd6';
+      die.innerHTML = faces
+        .map(
+          (face) => `
+            <div
+              class="face ${isCube ? 'square' : 'triangle'}"
+              data-number="${face.number}"
+              data-theta="${face.theta.toFixed(3)}"
+              data-phi="${face.phi.toFixed(3)}"
+              data-psi="${face.psi.toFixed(3)}"
+              style="width: ${face.bCss.toFixed(2)}px; height: ${face.hCss.toFixed(2)}px; transform: ${face.transform};"
+            >
+              <span class="face-number">${face.number}</span>
+            </div>
+          `
+        )
+        .join('');
+
+      // Reset orientation.
+      die.style.transform = 'rotateX(-25deg) rotateY(35deg)';
+      die.style.animation = 'none';
+      die.classList.remove('rolling');
+      void die.offsetWidth;
+
+      // Update button copy.
+      const label = rollBtn.querySelector('.roll-label');
+      const badge = rollBtn.querySelector('.roll-die');
+      if (type === 'd20') {
+        label.textContent = 'Roll Attack (d20)';
+        badge.textContent = 'd20';
+      } else {
+        label.textContent = `Roll ${type.toUpperCase()}`;
+        badge.textContent = type;
+      }
+    }
+
+    function landingTransform(face) {
+      // Undo the face orientation rotateY(theta) rotateX(phi) rotateZ(psi).
+      // CSS transforms apply right-to-left, so write the inverse in left-to-right order.
+      return `rotateY(${-face.theta}deg) rotateX(${-face.phi}deg) rotateZ(${-face.psi}deg)`;
+    }
+
+    function parseTransform(el) {
+      const st = el.style.transform || 'rotateX(-25deg) rotateY(35deg)';
+      const rx = st.match(/rotateX\(([-\d.]+)deg\)/);
+      const ry = st.match(/rotateY\(([-\d.]+)deg\)/);
+      const rz = st.match(/rotateZ\(([-\d.]+)deg\)/);
+      return {
+        x: rx ? Number(rx[1]) : -25,
+        y: ry ? Number(ry[1]) : 35,
+        z: rz ? Number(rz[1]) : 0,
+      };
+    }
+
+    function normalizeAngle(a) {
+      while (a > 180) a -= 360;
+      while (a < -180) a += 360;
+      return a;
+    }
+
+    function generateTumbleKeyframes(start, end, type) {
+      const steps = 12;
+      const keyframes = [];
+      let prev = { ...start };
+
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        let x, y, z;
+
+        if (i === steps) {
+          x = end.x;
+          y = end.y;
+          z = end.z;
+        } else {
+          // Physics-like tumble: large early rotations that settle toward target.
+          const jitter = 1 - Math.pow(t, 0.6);
+          const spins = type === 'd20' ? 5 : type === 'd8' ? 4 : 3;
+          x = prev.x + (Math.random() - 0.5) * 360 * jitter * spins + (end.x - prev.x) * 0.18;
+          y = prev.y + (Math.random() - 0.5) * 360 * jitter * spins + (end.y - prev.y) * 0.18;
+          z = prev.z + (Math.random() - 0.5) * 180 * jitter + (end.z - prev.z) * 0.18;
+        }
+
+        x = normalizeAngle(x);
+        y = normalizeAngle(y);
+        z = normalizeAngle(z);
+        keyframes.push({ transform: `rotateX(${x.toFixed(2)}deg) rotateY(${y.toFixed(2)}deg) rotateZ(${z.toFixed(2)}deg)` });
+        prev = { x, y, z };
+      }
+      return keyframes;
+    }
+
+    function rollDie(type) {
+      const faces = facesByDie[type];
+      const sides = type === 'd20' ? 20 : type === 'd8' ? 8 : 6;
+      const result = randomInt(1, sides);
+      const face = faces.find((f) => f.number === result);
+      if (!face) return null;
+
+      const endRotStr = landingTransform(face);
+      const endMatch = endRotStr.match(/rotateX\(([-\d.]+)deg\).*rotateY\(([-\d.]+)deg\).*rotateZ\(([-\d.]+)deg\)/);
+      const end = endMatch
+        ? { x: Number(endMatch[1]), y: Number(endMatch[2]), z: Number(endMatch[3]) }
+        : { x: 0, y: 0, z: 0 };
+
+      const start = parseTransform(die);
+      const keyframes = generateTumbleKeyframes(start, end, type);
+
+      isRolling = true;
+      die.classList.add('rolling');
+      rollBtn.disabled = true;
+
+      const anim = die.animate(keyframes, {
+        duration: type === 'd20' ? 2200 : 1600,
+        easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+        fill: 'forwards',
+      });
+
+      anim.onfinish = () => {
+        die.style.transform = endRotStr;
+        anim.cancel();
+        die.classList.remove('rolling');
+        rollBtn.disabled = false;
+        isRolling = false;
+        onRollComplete(type, result);
+      };
+
+      return result;
+    }
+
+    function rollAttack() {
+      if (currentDie !== 'd20') {
+        setDieType('d20');
+      }
+      rollDie('d20');
+    }
+
+    function onRollComplete(type, result) {
+      rollValue.textContent = String(result);
+
+      if (type === 'd20') {
+        const target = getTarget();
+        const hit = result >= target;
+        verdict.textContent = hit ? 'HIT!' : 'MISS';
+        verdict.className = 'verdict ' + (hit ? 'hit' : 'miss');
+
+        if (hit) {
+          const dmg = randomInt(1, 8);
+          damageValue.textContent = `${dmg} hp`;
+          log(
+            `Attacker needs ${target}+, rolls ${result}. ${hit ? 'HIT!' : 'MISS'}${
+              hit ? ` Longsword damage: ${dmg}.` : ''
+            }`
+          );
+        } else {
+          damageValue.textContent = '—';
+          log(`Attacker needs ${target}+, rolls ${result}. The blow glances off the armour.`);
+        }
+      } else {
+        verdict.textContent = '—';
+        verdict.className = 'verdict';
+        damageValue.textContent = '—';
+        log(`Rolled ${type.toUpperCase()}: ${result}.`);
+      }
+    }
+
+    function log(message) {
+      const li = document.createElement('li');
+      const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      li.innerHTML = `<span class="log-time">${time}</span> <span class="log-text">${message}</span>`;
+      combatLog.insertBefore(li, combatLog.firstChild);
+      while (combatLog.children.length > 20) {
+        combatLog.removeChild(combatLog.lastChild);
+      }
+    }
+
+    attackerSelect.addEventListener('change', updateTarget);
+    defenderSelect.addEventListener('change', updateTarget);
+
+    rollBtn.addEventListener('click', () => {
+      if (currentDie === 'd20') {
+        rollAttack();
+      } else {
+        rollDie(currentDie);
+      }
+    });
+
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => setDieType(tab.dataset.die));
+    });
+
+    // Keyboard shortcut: spacebar rolls.
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' && !e.repeat && !['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON'].includes(e.target.tagName)) {
+        e.preventDefault();
+        rollBtn.click();
+      }
+    });
+
+    updateTarget();
+  })();
+</script>
+
+<style>
+  .dice-roller {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    padding: 1.25rem;
+    background: var(--bg-surface, #0c1017);
+    border-radius: var(--radius-lg, 0.75rem);
+    box-shadow: var(--shadow-void, 0 0.5rem 1.5rem rgba(0, 0, 0, 0.5));
+    color: var(--parchment-bg, #f5eedb);
+  }
+
+  .roller-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-stone, #242e40);
+  }
+
+  .roller-title {
+    margin: 0;
+    font-family: var(--font-display, Georgia, serif);
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--gold-bright, #f6d88e);
+  }
+
+  .roller-badge {
+    padding: 0.2em 0.6em;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--bg-void, #06080c);
+    background: var(--amber-rune, #ff9d42);
+    border-radius: var(--radius-sm, 0.25rem);
+  }
+
+  .roller-body {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+
+  @media (min-width: 800px) {
+    .roller-body {
+      grid-template-columns: 1.2fr 1fr;
+    }
+  }
+
+  .scene-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .die-type-tabs {
+    display: inline-flex;
+    gap: 0.25rem;
+    padding: 0.25rem;
+    background: var(--bg-surface-raised, #131822);
+    border: 1px solid var(--border-stone, #242e40);
+    border-radius: var(--radius-md, 0.5rem);
+  }
+
+  .die-tab {
+    padding: 0.45em 1em;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--parchment-muted, #574e41);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm, 0.25rem);
+    cursor: pointer;
+    transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .die-tab:hover,
+  .die-tab:focus-visible {
+    color: var(--gold-bright, #f6d88e);
+  }
+
+  .die-tab.active {
+    color: var(--bg-void, #06080c);
+    background: var(--gold-bright, #f6d88e);
+    border-color: var(--gold-bright, #f6d88e);
+    box-shadow: var(--shadow-gold-sm, 0 0 0.5rem rgba(223, 177, 91, 0.4));
+  }
+
+  .scene {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    max-width: 320px;
+    display: grid;
+    place-items: center;
+    perspective: 800px;
+    background:
+      radial-gradient(circle at 50% 35%, rgba(246, 216, 142, 0.08) 0%, transparent 50%),
+      radial-gradient(circle at 50% 100%, rgba(56, 189, 248, 0.06) 0%, transparent 55%);
+    border: 1px solid var(--border-stone, #242e40);
+    border-radius: var(--radius-lg, 0.75rem);
+    overflow: hidden;
+  }
+
+  .die {
+    position: relative;
+    width: 0;
+    height: 0;
+    transform-style: preserve-3d;
+    will-change: transform;
+    transition: transform 0.15s ease-out;
+  }
+
+  .die.rolling {
+    transition: none;
+  }
+
+  .face {
+    position: absolute;
+    display: grid;
+    place-items: center;
+    backface-visibility: hidden;
+    transform-style: preserve-3d;
+    user-select: none;
+  }
+
+  .face.triangle {
+    clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+    background:
+      radial-gradient(circle at 50% 20%, rgba(246, 216, 142, 0.22), transparent 55%),
+      linear-gradient(165deg, rgba(56, 62, 78, 0.96), rgba(19, 24, 34, 0.98));
+    border: 2px solid rgba(246, 216, 142, 0.55);
+    box-shadow:
+      inset 0 0 1.25rem rgba(246, 216, 142, 0.18),
+      0 0 0.75rem rgba(246, 216, 142, 0.15);
+  }
+
+  .face.triangle::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+    background: conic-gradient(from 180deg at 50% 0%, rgba(255, 157, 66, 0.25), transparent 35%, transparent 65%, rgba(56, 189, 248, 0.2));
+    pointer-events: none;
+  }
+
+  .face.square {
+    background:
+      radial-gradient(circle at 50% 20%, rgba(246, 216, 142, 0.2), transparent 55%),
+      linear-gradient(165deg, rgba(56, 62, 78, 0.98), rgba(19, 24, 34, 0.98));
+    border: 2px solid rgba(246, 216, 142, 0.55);
+    border-radius: var(--radius-md, 0.5rem);
+    box-shadow:
+      inset 0 0 1.25rem rgba(246, 216, 142, 0.15),
+      0 0 0.75rem rgba(246, 216, 142, 0.15);
+  }
+
+  .face.square::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: conic-gradient(from 180deg at 50% 0%, rgba(255, 157, 66, 0.22), transparent 30%, transparent 70%, rgba(56, 189, 248, 0.18));
+    pointer-events: none;
+  }
+
+  .face-number {
+    position: relative;
+    z-index: 1;
+    font-family: var(--font-display, Georgia, serif);
+    font-size: clamp(1.1rem, 4.5vw, 1.55rem);
+    font-weight: 700;
+    color: var(--gold-bright, #f6d88e);
+    text-shadow:
+      0 0 0.25rem rgba(0, 0, 0, 0.8),
+      0 0 0.6rem rgba(246, 216, 142, 0.55);
+    transform: translateZ(0.75px);
+  }
+
+  .roll-controls {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .roll-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.75rem 1.5rem;
+    font-family: var(--font-display, Georgia, serif);
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--bg-void, #06080c);
+    background: linear-gradient(180deg, var(--gold-bright, #f6d88e), var(--gold-primary, #dfb15b));
+    border: 1px solid var(--gold-deep, #8c6721);
+    border-radius: var(--radius-md, 0.5rem);
+    cursor: pointer;
+    box-shadow: 0 0.25rem 1rem rgba(223, 177, 91, 0.25);
+    transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.2s ease;
+  }
+
+  .roll-button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 0.4rem 1.25rem rgba(223, 177, 91, 0.35);
+    filter: brightness(1.08);
+  }
+
+  .roll-button:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  .roll-button:disabled {
+    opacity: 0.7;
+    cursor: wait;
+    filter: grayscale(0.4);
+  }
+
+  .roll-die {
+    padding: 0.2em 0.5em;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.75rem;
+    color: var(--gold-bright, #f6d88e);
+    background: var(--bg-void, #06080c);
+    border-radius: var(--radius-sm, 0.25rem);
+  }
+
+  .calculator-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+    background: var(--bg-surface-raised, #131822);
+    border: 1px solid var(--border-stone, #242e40);
+    border-radius: var(--radius-md, 0.5rem);
+  }
+
+  .calc-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .calc-title {
+    margin: 0;
+    font-family: var(--font-display, Georgia, serif);
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--amber-rune, #ff9d42);
+  }
+
+  .calc-select {
+    width: 100%;
+    padding: 0.6rem 0.8rem;
+    color: var(--parchment-bg, #f5eedb);
+    background: var(--bg-surface, #0c1017);
+    border: 1px solid var(--border-stone, #242e40);
+    border-radius: var(--radius-sm, 0.25rem);
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .calc-select:focus {
+    outline: none;
+    border-color: var(--gold-bright, #f6d88e);
+    box-shadow: 0 0 0 2px rgba(246, 216, 142, 0.15);
+  }
+
+  .target-readout {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.25rem 0.75rem;
+    padding: 0.75rem 1rem;
+    background: var(--bg-surface, #0c1017);
+    border: 1px solid var(--border-stone, #242e40);
+    border-radius: var(--radius-sm, 0.25rem);
+  }
+
+  .target-label {
+    grid-row: 1;
+    grid-column: 1;
+    font-family: var(--font-display, Georgia, serif);
+    font-size: 0.8rem;
+    color: var(--parchment-muted, #574e41);
+  }
+
+  .target-formula {
+    grid-row: 2;
+    grid-column: 1;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.75rem;
+    color: var(--parchment-muted, #574e41);
+  }
+
+  .target-value {
+    grid-row: 1 / span 2;
+    grid-column: 2;
+    align-self: center;
+    font-family: var(--font-display, Georgia, serif);
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--mana-azure, #38bdf8);
+    text-shadow: 0 0 0.6rem rgba(56, 189, 248, 0.3);
+  }
+
+  .result-readout {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: var(--bg-surface, #0c1017);
+    border: 1px solid var(--border-stone, #242e40);
+    border-radius: var(--radius-sm, 0.25rem);
+  }
+
+  .result-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .result-label {
+    font-family: var(--font-display, Georgia, serif);
+    font-size: 0.8rem;
+    color: var(--parchment-muted, #574e41);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .result-value {
+    font-family: var(--font-mono, monospace);
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--gold-bright, #f6d88e);
+  }
+
+  .verdict {
+    font-family: var(--font-display, Georgia, serif);
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--parchment-muted, #574e41);
+  }
+
+  .verdict.hit {
+    color: var(--emerald-rekindler, #10b981);
+    text-shadow: 0 0 0.6rem rgba(16, 185, 129, 0.35);
+  }
+
+  .verdict.miss {
+    color: var(--crimson-blood, #e05238);
+    text-shadow: 0 0 0.6rem rgba(224, 82, 56, 0.35);
+  }
+
+  .damage-value {
+    font-family: var(--font-mono, monospace);
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--amber-rune, #ff9d42);
+  }
+
+  .log-panel {
+    padding: 1rem;
+    background: var(--bg-surface-raised, #131822);
+    border: 1px solid var(--border-stone, #242e40);
+    border-radius: var(--radius-md, 0.5rem);
+  }
+
+  .log-title {
+    margin: 0 0 0.75rem 0;
+    font-family: var(--font-display, Georgia, serif);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--amber-rune, #ff9d42);
+  }
+
+  .combat-log {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 220px;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--parchment-bg, #f5eedb);
+  }
+
+  .combat-log li {
+    padding: 0.5rem 0.65rem;
+    background: var(--bg-surface, #0c1017);
+    border-left: 2px solid var(--border-stone, #242e40);
+    border-radius: 0 var(--radius-sm, 0.25rem) var(--radius-sm, 0.25rem) 0;
+  }
+
+  .combat-log li:first-child {
+    border-left-color: var(--gold-bright, #f6d88e);
+  }
+
+  .log-time {
+    margin-right: 0.5rem;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.75rem;
+    color: var(--parchment-muted, #574e41);
+  }
+
+  .log-text {
+    color: var(--parchment-bg, #f5eedb);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .die {
+      transition: none;
+    }
+  }
+</style>

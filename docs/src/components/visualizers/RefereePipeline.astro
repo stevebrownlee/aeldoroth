@@ -1,0 +1,751 @@
+---
+// RefereePipeline.astro — interactive 5-stage adjudication simulator
+// Client-side vanilla JS drives step navigation and demo playback.
+---
+
+<section class="referee-pipeline runic-border-beam" aria-label="Referee adjudication pipeline">
+  <header class="pipeline-header">
+    <h2 class="pipeline-title">Referee Adjudication Pipeline</h2>
+    <p class="pipeline-subtitle">Five illuminated stages from natural intent to ledger-bound truth.</p>
+  </header>
+
+  <div class="pipeline-controls-top">
+    <label class="preset-label" for="action-preset">Action Preset</label>
+    <select id="action-preset" class="preset-select">
+      <option value="strike">“I strike the goblin with my longsword”</option>
+      <option value="search">“I search the library wall for hidden runes”</option>
+      <option value="cast">“I cast light on my shield”</option>
+    </select>
+  </div>
+
+  <ol class="stage-track" role="tablist" aria-label="Pipeline stages">
+    <li class="stage-node" data-stage="0" role="tab" aria-selected="false" tabindex="0">
+      <span class="stage-ring"><span class="stage-number">1</span></span>
+      <span class="stage-label">Intent</span>
+    </li>
+    <li class="stage-connector" aria-hidden="true"></li>
+    <li class="stage-node" data-stage="1" role="tab" aria-selected="false" tabindex="0">
+      <span class="stage-ring"><span class="stage-number">2</span></span>
+      <span class="stage-label">Interpret</span>
+    </li>
+    <li class="stage-connector" aria-hidden="true"></li>
+    <li class="stage-node" data-stage="2" role="tab" aria-selected="false" tabindex="0">
+      <span class="stage-ring"><span class="stage-number">3</span></span>
+      <span class="stage-label">Validate</span>
+    </li>
+    <li class="stage-connector" aria-hidden="true"></li>
+    <li class="stage-node" data-stage="3" role="tab" aria-selected="false" tabindex="0">
+      <span class="stage-ring"><span class="stage-number">4</span></span>
+      <span class="stage-label">Resolve</span>
+    </li>
+    <li class="stage-connector" aria-hidden="true"></li>
+    <li class="stage-node" data-stage="4" role="tab" aria-selected="false" tabindex="0">
+      <span class="stage-ring"><span class="stage-number">5</span></span>
+      <span class="stage-label">Apply</span>
+    </li>
+  </ol>
+
+  <div class="stage-detail" id="stage-detail" aria-live="polite">
+    <div class="detail-header">
+      <h3 class="detail-title" id="detail-title">Intent</h3>
+      <span class="detail-badge" id="detail-badge">Untrusted Input</span>
+    </div>
+    <p class="detail-description" id="detail-description"></p>
+    <div class="detail-payload runic-border-beam" id="detail-payload"></div>
+  </div>
+
+  <div class="pipeline-controls-bottom">
+    <button type="button" class="pipeline-btn" id="prev-stage" aria-label="Previous stage">← Previous Stage</button>
+    <button type="button" class="pipeline-btn pipeline-btn-primary" id="auto-play" aria-pressed="false">Auto Play Demo</button>
+    <button type="button" class="pipeline-btn" id="next-stage" aria-label="Next stage">Next Stage →</button>
+  </div>
+
+  <label class="rejection-toggle">
+    <input type="checkbox" id="rejection-toggle" />
+    <span class="toggle-track" aria-hidden="true"><span class="toggle-thumb"></span></span>
+    <span class="toggle-label">Simulate rejection branch (invalid target out of range)</span>
+  </label>
+</section>
+
+<script>
+  const stages = [
+    {
+      title: 'Intent',
+      badge: 'Untrusted Input',
+      description:
+        'The player submits free-form natural language. This layer captures raw intent without trusting it; everything downstream is verified against the rules engine, not the LLM.',
+      payload: (preset: string) => {
+        const text = {
+          strike: 'I strike the goblin with my longsword',
+          search: 'I search the library wall for hidden runes',
+          cast: 'I cast light on my shield',
+        }[preset] ?? 'I strike the goblin with my longsword';
+        return JSON.stringify({ source: 'player', channel: 'untrusted', raw: text }, null, 2);
+      },
+    },
+    {
+      title: 'Interpret',
+      badge: 'LLM-First / Grammar Fallback',
+      description:
+        'An LLM extracts a typed schema; if the model wavers or the build omits inference, a deterministic grammar fallback parses the same sentence into a structured action.',
+      payload: (preset: string) => {
+        const schemas: Record<string, object> = {
+          strike: {
+            action: 'attack',
+            actor: { id: 'pc_hero', name: 'Hero' },
+            target: { id: 'mob_goblin_01', name: 'Goblin' },
+            weapon: { id: 'wpn_longsword', type: 'melee' },
+            confidence: 0.97,
+          },
+          search: {
+            action: 'search',
+            actor: { id: 'pc_hero', name: 'Hero' },
+            target: { id: 'prop_library_wall', name: 'Library Wall' },
+            query: 'hidden runes',
+            confidence: 0.94,
+          },
+          cast: {
+            action: 'cast',
+            actor: { id: 'pc_hero', name: 'Hero' },
+            spell: { id: 'spl_light', name: 'Light' },
+            target: { id: 'eq_shield', name: 'Shield', self: true },
+            confidence: 0.99,
+          },
+        };
+        return JSON.stringify(schemas[preset] ?? schemas.strike, null, 2);
+      },
+    },
+    {
+      title: 'Validate',
+      badge: 'Pure Rules Verification',
+      description:
+        'The typed action is checked against diegetic rules: line of sight, range, action economy, spell slots, and target validity. This stage is pure logic with no stochastic allowance.',
+      payload: (preset: string, rejected: boolean) => {
+        const base = {
+          strike: {
+            checks: [
+              { rule: 'range', result: 'PASS', value: '5 ft <= melee reach' },
+              { rule: 'target_valid', result: 'PASS', value: 'hostile, alive' },
+              { rule: 'action_economy', result: 'PASS', value: '1 attack action available' },
+            ],
+            verdict: 'VALID',
+          },
+          search: {
+            checks: [
+              { rule: 'range', result: 'PASS', value: 'adjacent to library wall' },
+              { rule: 'perception', result: 'PASS', value: 'passive 14 >= DC 12' },
+              { rule: 'action_economy', result: 'PASS', value: 'free object interaction' },
+            ],
+            verdict: 'VALID',
+          },
+          cast: {
+            checks: [
+              { rule: 'range', result: 'PASS', value: 'self / touch' },
+              { rule: 'spell_slot', result: 'PASS', value: 'cantrip, no slot consumed' },
+              { rule: 'concentration', result: 'PASS', value: 'no active concentration' },
+            ],
+            verdict: 'VALID',
+          },
+        } as const;
+        const key = (preset in base ? preset : 'strike') as keyof typeof base;
+        const report = JSON.parse(JSON.stringify(base[key]));
+        if (rejected) {
+          report.checks.unshift({ rule: 'range', result: 'FAIL', value: 'target is 35 ft away; longsword reach 5 ft' });
+          report.verdict = 'INVALID';
+        }
+        return JSON.stringify(report, null, 2);
+      },
+    },
+    {
+      title: 'Resolve & Roll',
+      badge: 'Deterministic AD&D Mechanics',
+      description:
+        'If validation passes, seeded randomness resolves rolls. The seed is derived from the action hash so identical inputs produce identical outcomes across clients and sessions.',
+      payload: (preset: string) => {
+        const rolls: Record<string, object> = {
+          strike: {
+            seed: '0x8f3a2b1c',
+            attack_roll: { d20: 17, modifier: '+5', total: 22 },
+            hit: true,
+            damage: { dice: '1d8+3', roll: 6, modifier: 3, total: 9 },
+          },
+          search: {
+            seed: '0x4c7d9e0f',
+            search_roll: { d20: 14, modifier: '+3', total: 17 },
+            discovered: true,
+            find: 'Rune of Warding (faint abjuration)',
+          },
+          cast: {
+            seed: '0xa1b6c3d8',
+            casting_roll: { d20: 12, modifier: '+0', total: 12 },
+            success: true,
+            duration: '1 hour',
+          },
+        };
+        return JSON.stringify(rolls[preset] ?? rolls.strike, null, 2);
+      },
+    },
+    {
+      title: 'Apply & Narrate',
+      badge: 'Ledger Commit + Truth Barrier',
+      description:
+        'The outcome is committed to an append-only ledger. Once written, it becomes canonical truth; narration and state updates are derived from this barrier, never from memory.',
+      payload: (preset: string) => {
+        const commits: Record<string, object> = {
+          strike: {
+            ledger_id: 'evt_7a8f9e2d',
+            op: 'DAMAGE',
+            target: 'mob_goblin_01',
+            amount: 9,
+            hp_before: 14,
+            hp_after: 5,
+            narrative: 'Your longsword bites into the goblin, spraying black blood.',
+          },
+          search: {
+            ledger_id: 'evt_2b4c6a1e',
+            op: 'REVEAL',
+            target: 'prop_library_wall',
+            secret: 'Rune of Warding',
+            narrative: 'Your fingers trace cold grooves in the stone; a warding rune hums awake.',
+          },
+          cast: {
+            ledger_id: 'evt_9d3e7b5c',
+            op: 'BUFF',
+            target: 'eq_shield',
+            effect: 'Light (60 ft bright, 60 ft dim)',
+            narrative: 'A golden radiance spills across your shield, banishing shadows.',
+          },
+        };
+        return JSON.stringify(commits[preset] ?? commits.strike, null, 2);
+      },
+    },
+  ];
+
+  const section = document.querySelector('.referee-pipeline') as HTMLElement;
+  const nodes = Array.from(section.querySelectorAll<HTMLElement>('.stage-node'));
+  const detailTitle = section.querySelector<HTMLElement>('#detail-title')!;
+  const detailBadge = section.querySelector<HTMLElement>('#detail-badge')!;
+  const detailDesc = section.querySelector<HTMLElement>('#detail-description')!;
+  const detailPayload = section.querySelector<HTMLElement>('#detail-payload')!;
+  const presetSelect = section.querySelector<HTMLSelectElement>('#action-preset')!;
+  const prevBtn = section.querySelector<HTMLButtonElement>('#prev-stage')!;
+  const nextBtn = section.querySelector<HTMLButtonElement>('#next-stage')!;
+  const autoBtn = section.querySelector<HTMLButtonElement>('#auto-play')!;
+  const rejectionToggle = section.querySelector<HTMLInputElement>('#rejection-toggle')!;
+
+  let currentStage = 0;
+  let autoPlayTimer: ReturnType<typeof setInterval> | null = null;
+
+  function syntaxHighlight(json: string): string {
+    return json
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/(".*?")/g, '<span class="syntax-string">$1</span>')
+      .replace(/\b(true|false|null)\b/g, '<span class="syntax-bool">$1</span>')
+      .replace(/\b(\d+(?:\.\d+)?)\b/g, '<span class="syntax-number">$1</span>')
+      .replace(/([{}[\],:])/g, '<span class="syntax-punct">$1</span>');
+  }
+
+  function render(stageIndex: number) {
+    currentStage = stageIndex;
+    const stage = stages[stageIndex];
+    const preset = presetSelect.value;
+    const rejected = rejectionToggle.checked && stageIndex === 2;
+
+    detailTitle.textContent = stage.title;
+    detailBadge.textContent = stage.badge;
+    detailDesc.textContent = stage.description;
+
+    const payload = stage.payload(preset, rejected);
+    detailPayload.innerHTML = `<pre><code>${syntaxHighlight(payload)}</code></pre>`;
+
+    nodes.forEach((node, idx) => {
+      const selected = idx === stageIndex;
+      const visited = idx <= stageIndex;
+      node.classList.toggle('is-active', selected);
+      node.classList.toggle('is-visited', visited);
+      node.setAttribute('aria-selected', String(selected));
+      const line = node.previousElementSibling;
+      if (line && line.classList.contains('stage-connector')) {
+        line.classList.toggle('is-visited', idx <= stageIndex);
+      }
+    });
+
+    const isRejection = rejected && stageIndex === 2;
+    section.classList.toggle('is-rejected', isRejection);
+
+    prevBtn.disabled = stageIndex === 0;
+    nextBtn.disabled = isRejection || stageIndex === stages.length - 1;
+
+    if (isRejection) {
+      detailBadge.style.background = 'var(--crimson-blood)';
+      detailBadge.style.color = 'var(--parchment-bg)';
+      detailPayload.classList.add('runic-border-beam--crimson');
+    } else {
+      detailBadge.style.background = '';
+      detailBadge.style.color = '';
+      detailPayload.classList.remove('runic-border-beam--crimson');
+    }
+  }
+
+  function next() {
+    if (currentStage < stages.length - 1) {
+      render(currentStage + 1);
+    } else {
+      render(0);
+    }
+  }
+
+  function previous() {
+    if (currentStage > 0) {
+      render(currentStage - 1);
+    }
+  }
+
+  function startAutoPlay() {
+    if (autoPlayTimer) return;
+    autoBtn.setAttribute('aria-pressed', 'true');
+    autoBtn.classList.add('is-playing');
+    autoBtn.textContent = 'Pause Demo';
+    render(0);
+    autoPlayTimer = setInterval(() => {
+      if (rejectionToggle.checked && currentStage === 1) {
+        render(2);
+        stopAutoPlay();
+        return;
+      }
+      if (currentStage >= stages.length - 1) {
+        render(0);
+      } else {
+        render(currentStage + 1);
+      }
+    }, 1500);
+  }
+
+  function stopAutoPlay() {
+    if (!autoPlayTimer) return;
+    clearInterval(autoPlayTimer);
+    autoPlayTimer = null;
+    autoBtn.setAttribute('aria-pressed', 'false');
+    autoBtn.classList.remove('is-playing');
+    autoBtn.textContent = 'Auto Play Demo';
+  }
+
+  function toggleAutoPlay() {
+    if (autoPlayTimer) {
+      stopAutoPlay();
+    } else {
+      startAutoPlay();
+    }
+  }
+
+  presetSelect.addEventListener('change', () => render(currentStage));
+  prevBtn.addEventListener('click', () => { stopAutoPlay(); previous(); });
+  nextBtn.addEventListener('click', () => { stopAutoPlay(); next(); });
+  autoBtn.addEventListener('click', toggleAutoPlay);
+  rejectionToggle.addEventListener('change', () => render(currentStage));
+
+  nodes.forEach((node) => {
+    node.addEventListener('click', () => {
+      stopAutoPlay();
+      render(parseInt(node.dataset.stage || '0', 10));
+    });
+    node.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        stopAutoPlay();
+        render(parseInt(node.dataset.stage || '0', 10));
+      }
+    });
+  });
+
+  render(0);
+</script>
+
+<style>
+  .referee-pipeline {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    background: var(--bg-surface);
+    border-radius: var(--radius-lg);
+  }
+
+  .pipeline-header {
+    text-align: center;
+  }
+
+  .pipeline-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(1.5rem, 4vw, 2.25rem);
+    color: var(--gold-bright);
+    text-shadow: 0 0 0.5rem var(--gold-glow);
+  }
+
+  .pipeline-subtitle {
+    margin: 0.5rem 0 0;
+    color: var(--parchment-muted);
+    font-style: italic;
+  }
+
+  .pipeline-controls-top {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .preset-label {
+    font-family: var(--font-display);
+    color: var(--gold-primary);
+    font-size: 0.95rem;
+  }
+
+  .preset-select {
+    min-width: 22rem;
+    max-width: 100%;
+    padding: 0.5rem 0.75rem;
+    background: var(--bg-surface-raised);
+    color: var(--parchment-bg);
+    border: 1px solid var(--border-stone);
+    border-radius: var(--radius-md);
+    font-family: var(--font-body);
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .preset-select:hover,
+  .preset-select:focus {
+    border-color: var(--gold-primary);
+    box-shadow: 0 0 0.5rem var(--gold-glow);
+    outline: none;
+  }
+
+  .stage-track {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.25rem;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+  }
+
+  .stage-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 0 0 auto;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+  }
+
+  .stage-node:focus-visible {
+    outline: 2px solid var(--gold-primary);
+    outline-offset: 0.25rem;
+    border-radius: var(--radius-sm);
+  }
+
+  .stage-node:hover {
+    transform: translateY(-2px);
+  }
+
+  .stage-ring {
+    display: grid;
+    place-items: center;
+    width: 3rem;
+    height: 3rem;
+    border-radius: 50%;
+    background: var(--bg-surface-raised);
+    border: 2px solid var(--border-stone);
+    color: var(--parchment-muted);
+    font-family: var(--font-display);
+    font-weight: 700;
+    box-shadow: inset 0 0 0.5rem rgba(0, 0, 0, 0.4);
+    transition:
+      border-color 0.3s ease,
+      color 0.3s ease,
+      background 0.3s ease,
+      box-shadow 0.3s ease;
+  }
+
+  .stage-node.is-visited .stage-ring {
+    background: var(--bg-surface-elevated);
+    border-color: var(--gold-primary);
+    color: var(--gold-bright);
+    box-shadow:
+      inset 0 0 0.5rem rgba(0, 0, 0, 0.3),
+      0 0 0.75rem var(--gold-glow);
+  }
+
+  .stage-node.is-active .stage-ring {
+    background: var(--bg-surface-elevated);
+    border-color: var(--amber-rune);
+    color: var(--amber-rune);
+    box-shadow:
+      0 0 1rem var(--amber-rune),
+      0 0 2rem rgba(255, 157, 66, 0.4),
+      inset 0 0 0.75rem rgba(255, 157, 66, 0.15);
+    animation: pulse-ring 2s ease-in-out infinite;
+  }
+
+  .stage-label {
+    font-size: 0.8rem;
+    color: var(--parchment-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    transition: color 0.3s ease;
+  }
+
+  .stage-node.is-active .stage-label {
+    color: var(--amber-rune);
+    text-shadow: 0 0 0.5rem rgba(255, 157, 66, 0.5);
+  }
+
+  .stage-node.is-visited .stage-label {
+    color: var(--gold-bright);
+  }
+
+  .stage-connector {
+    flex: 1 1 auto;
+    height: 2px;
+    min-width: 1rem;
+    background: var(--border-stone);
+    border-radius: 1px;
+    transition: background 0.4s ease, box-shadow 0.4s ease;
+  }
+
+  .stage-connector.is-visited {
+    background: linear-gradient(90deg, var(--gold-primary), var(--amber-rune));
+    box-shadow: 0 0 0.75rem var(--gold-glow);
+  }
+
+  .stage-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1.25rem;
+    background: var(--bg-surface-raised);
+    border: 1px solid var(--border-stone);
+    border-radius: var(--radius-lg);
+  }
+
+  .detail-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .detail-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    color: var(--gold-bright);
+  }
+
+  .detail-badge {
+    padding: 0.25em 0.75em;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--bg-void);
+    background: var(--amber-rune);
+    border-radius: var(--radius-sm);
+    transition: background 0.2s ease, color 0.2s ease;
+  }
+
+  .detail-description {
+    margin: 0;
+    color: var(--parchment-bg);
+    line-height: 1.7;
+  }
+
+  .detail-payload {
+    padding: 1rem;
+    background: var(--bg-void);
+    border-radius: var(--radius-md);
+    overflow-x: auto;
+  }
+
+  .detail-payload pre {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .detail-payload code {
+    font-family: inherit;
+    background: transparent;
+  }
+
+  .syntax-string { color: #a5d6ff; }
+  .syntax-number { color: #fca5a5; }
+  .syntax-bool { color: #6ee7b7; }
+  .syntax-punct { color: #94a3b8; }
+
+  .pipeline-controls-bottom {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .pipeline-btn {
+    padding: 0.6rem 1.2rem;
+    font-family: var(--font-display);
+    font-size: 0.9rem;
+    color: var(--gold-bright);
+    background: var(--bg-surface-raised);
+    border: 1px solid var(--border-stone);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition:
+      background 0.2s ease,
+      border-color 0.2s ease,
+      box-shadow 0.2s ease,
+      color 0.2s ease;
+  }
+
+  .pipeline-btn:hover:not(:disabled) {
+    background: var(--bg-surface-elevated);
+    border-color: var(--gold-primary);
+    box-shadow: 0 0 0.75rem var(--gold-glow);
+  }
+
+  .pipeline-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .pipeline-btn-primary {
+    background: var(--gold-primary);
+    color: var(--bg-void);
+    border-color: var(--gold-primary);
+  }
+
+  .pipeline-btn-primary:hover:not(:disabled) {
+    background: var(--gold-bright);
+    border-color: var(--gold-bright);
+    box-shadow: 0 0 1rem var(--gold-glow);
+  }
+
+  .pipeline-btn-primary.is-playing {
+    background: var(--crimson-blood);
+    border-color: var(--crimson-blood);
+    color: var(--parchment-bg);
+  }
+
+  .rejection-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .rejection-toggle input {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .toggle-track {
+    position: relative;
+    width: 2.75rem;
+    height: 1.5rem;
+    background: var(--bg-surface-raised);
+    border: 1px solid var(--border-stone);
+    border-radius: 1rem;
+    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .toggle-thumb {
+    position: absolute;
+    top: 0.125rem;
+    left: 0.125rem;
+    width: 1.125rem;
+    height: 1.125rem;
+    background: var(--parchment-muted);
+    border-radius: 50%;
+    transition: transform 0.2s ease, background 0.2s ease;
+  }
+
+  .rejection-toggle input:checked + .toggle-track {
+    background: rgba(224, 82, 56, 0.15);
+    border-color: var(--crimson-blood);
+    box-shadow: 0 0 0.5rem rgba(224, 82, 56, 0.3);
+  }
+
+  .rejection-toggle input:checked + .toggle-track .toggle-thumb {
+    transform: translateX(1.25rem);
+    background: var(--crimson-blood);
+  }
+
+  .toggle-label {
+    color: var(--parchment-bg);
+    font-size: 0.9rem;
+  }
+
+  .is-rejected .detail-title {
+    color: var(--crimson-blood);
+    text-shadow: 0 0 0.5rem rgba(224, 82, 56, 0.4);
+  }
+
+  .runic-border-beam--crimson::before {
+    background: conic-gradient(
+      from var(--angle),
+      transparent 0%,
+      var(--crimson-blood) 25%,
+      var(--amber-rune) 50%,
+      var(--crimson-blood) 75%,
+      transparent 100%
+    );
+  }
+
+  @keyframes pulse-ring {
+    0%, 100% {
+      box-shadow:
+        0 0 1rem var(--amber-rune),
+        0 0 2rem rgba(255, 157, 66, 0.4),
+        inset 0 0 0.75rem rgba(255, 157, 66, 0.15);
+    }
+    50% {
+      box-shadow:
+        0 0 1.5rem var(--amber-rune),
+        0 0 3rem rgba(255, 157, 66, 0.55),
+        inset 0 0 1rem rgba(255, 157, 66, 0.25);
+    }
+  }
+
+  @media (max-width: 640px) {
+    .stage-track {
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    .stage-connector {
+      display: none;
+    }
+
+    .preset-select {
+      min-width: unset;
+      width: 100%;
+    }
+  }
+</style>

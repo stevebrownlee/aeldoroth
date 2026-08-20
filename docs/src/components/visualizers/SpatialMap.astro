@@ -1,0 +1,777 @@
+---
+// Spatial Activation & Signal Waveform Cascade Dungeon Map
+// Interactive floorplan of The Ruined Tower demonstrating
+// awake/dormant room boundaries and attenuating signal propagation.
+---
+
+<section class="spatial-map runic-border-beam" aria-labelledby="spatial-map-title">
+  <header class="spatial-header">
+    <h2 id="spatial-map-title">Spatial Activation & Signal Cascade</h2>
+    <p class="spatial-subtitle">
+      Awake rooms burn gold; dormant rooms sink into slate. Trigger a signal and
+      watch the wave attenuate through doorways.
+    </p>
+  </header>
+
+  <div class="spatial-body">
+    <div class="map-stage">
+      <svg
+        id="tower-map"
+        class="tower-svg"
+        viewBox="0 0 940 640"
+        role="img"
+        aria-label="Ruined Tower floorplan with seven rooms and signal propagation"
+      >
+        <defs>
+          <filter id="gold-glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="6" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+          <filter id="sound-glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="8" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+          <filter id="light-glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="10" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+          <marker
+            id="door-arrow"
+            viewBox="0 0 10 10"
+            refX="5"
+            refY="5"
+            markerWidth="6"
+            markerHeight="6"
+            orient="auto-start-reverse"
+          >
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--gold-primary)" />
+          </marker>
+        </defs>
+
+        <!-- Doorways -->
+        <g class="doorways">
+          <!-- Entry Hall ⇄ Library -->
+          <line class="doorway" x1="340" y1="280" x2="400" y2="280" data-from="entry" data-to="library" />
+          <!-- Entry Hall ⇄ Guard Room -->
+          <line class="doorway" x1="480" y1="360" x2="480" y2="400" data-from="entry" data-to="guard" />
+          <!-- Guard Room ⇄ Prison Cells -->
+          <line class="doorway" x1="700" y1="360" x2="700" y2="400" data-from="guard" data-to="prison" />
+          <!-- Guard Room ⇄ Chief's Room -->
+          <line class="doorway" x1="560" y1="460" x2="660" y2="460" data-from="guard" data-to="chief" />
+          <!-- Prison Cells ⇄ Beast Pen -->
+          <line class="doorway" x1="780" y1="280" x2="820" y2="280" data-from="prison" data-to="beast" />
+          <!-- Library ⇄ Ritual Chamber (secret stairs) -->
+          <line class="doorway secret" x1="220" y1="160" x2="280" y2="200" data-from="library" data-to="ritual" />
+        </g>
+
+        <!-- Room shells -->
+        <g class="rooms">
+          <g class="room-group" data-id="library">
+            <rect class="room" x="280" y="80" width="180" height="180" rx="6" />
+            <text class="room-label" x="370" y="150">Library</text>
+            <text class="room-state" x="370" y="175">DORMANT</text>
+          </g>
+
+          <g class="room-group" data-id="entry">
+            <rect class="room" x="280" y="300" width="180" height="140" rx="6" />
+            <text class="room-label" x="370" y="360">Entry Hall</text>
+            <text class="room-state" x="370" y="385">DORMANT</text>
+          </g>
+
+          <g class="room-group" data-id="guard">
+            <rect class="room" x="500" y="300" width="200" height="140" rx="6" />
+            <text class="room-label" x="600" y="360">Guard Room</text>
+            <text class="room-state" x="600" y="385">DORMANT</text>
+          </g>
+
+          <g class="room-group" data-id="prison">
+            <rect class="room" x="740" y="300" width="160" height="140" rx="6" />
+            <text class="room-label" x="820" y="360">Prison Cells</text>
+            <text class="room-state" x="820" y="385">DORMANT</text>
+          </g>
+
+          <g class="room-group" data-id="chief">
+            <rect class="room" x="500" y="480" width="200" height="140" rx="6" />
+            <text class="room-label" x="600" y="540">Chief's Room</text>
+            <text class="room-state" x="600" y="565">DORMANT</text>
+          </g>
+
+          <g class="room-group" data-id="beast">
+            <rect class="room" x="740" y="120" width="160" height="140" rx="6" />
+            <text class="room-label" x="820" y="180">Beast Pen</text>
+            <text class="room-state" x="820" y="205">DORMANT</text>
+          </g>
+
+          <g class="room-group" data-id="ritual">
+            <rect class="room" x="40" y="80" width="180" height="180" rx="6" />
+            <text class="room-label" x="130" y="150">Ritual Chamber</text>
+            <text class="room-state" x="130" y="175">DORMANT</text>
+          </g>
+        </g>
+
+        <!-- Wave layer -->
+        <g id="wave-layer" class="wave-layer"></g>
+
+        <!-- Legend overlay -->
+        <g class="map-legend" transform="translate(20, 580)">
+          <rect class="legend-swatch awake" x="0" y="-10" width="16" height="16" rx="3" />
+          <text class="legend-text" x="24" y="3">Awake (PCs present)</text>
+          <rect class="legend-swatch dormant" x="170" y="-10" width="16" height="16" rx="3" />
+          <text class="legend-text" x="194" y="3">Dormant (skip compute)</text>
+        </g>
+      </svg>
+    </div>
+
+    <div class="control-deck">
+      <div class="control-panel">
+        <h3>Signal Emitter</h3>
+        <div class="source-row">
+          <label for="source-select">Source room</label>
+          <select id="source-select">
+            <option value="entry">Entry Hall</option>
+            <option value="library">Library</option>
+            <option value="guard">Guard Room</option>
+            <option value="prison">Prison Cells</option>
+            <option value="chief">Chief's Room</option>
+            <option value="beast">Beast Pen</option>
+            <option value="ritual">Ritual Chamber</option>
+          </select>
+        </div>
+
+        <div class="signal-grid">
+          <button class="signal-btn sound" data-signal="sound" type="button">
+            <span class="signal-name">Sword Clash</span>
+            <span class="signal-meta">Sound 8</span>
+          </button>
+          <button class="signal-btn light" data-signal="light" type="button">
+            <span class="signal-name">Ignite Torch</span>
+            <span class="signal-meta">Light 6</span>
+          </button>
+          <button class="signal-btn alarm" data-signal="alarm" type="button">
+            <span class="signal-name">Alarm Tripwire</span>
+            <span class="signal-meta">Cascade Wave</span>
+          </button>
+        </div>
+
+        <button id="reset-map" class="reset-btn" type="button">Reset Map</button>
+      </div>
+
+      <div class="attenuation-card runic-border-beam">
+        <h3>Attenuation & Compute</h3>
+        <ul class="attenuation-list">
+          <li>
+            <strong>Sound:</strong> drops by <span class="stat">-2</span> intensity per heavy wooden door.
+            A sword clash (8) reaches one room clearly, two rooms faintly, and dies at a third.
+          </li>
+          <li>
+            <strong>Light:</strong> blocked entirely by stone walls and closed doors. Only the source
+            room flares unless a door is propped open.
+          </li>
+          <li>
+            <strong>Dormancy savings:</strong> rooms marked <em>Dormant</em> do not run perception,
+            deliberation, or boundary checks until a signal with enough intensity wakes them.
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script is:inline>
+  // @ts-nocheck
+  (function () {
+    /** @typedef {'entry'|'library'|'guard'|'prison'|'chief'|'beast'|'ritual'} RoomId */
+    /** @typedef {'sound'|'light'|'alarm'} SignalKey */
+    /** @typedef {{ name: string; cx: number; cy: number }} RoomMeta */
+    /** @typedef {{ label: string; color: string; glow: string; loss: number; baseIntensity: number; maxHops: number; className: string; packetClass: string }} Signal */
+
+    const waveLayer = /** @type {SVGGElement|null} */ (document.getElementById('wave-layer'));
+    const sourceSelect = /** @type {HTMLSelectElement|null} */ (document.getElementById('source-select'));
+    const resetBtn = /** @type {HTMLButtonElement|null} */ (document.getElementById('reset-map'));
+
+    if (!waveLayer || !sourceSelect || !resetBtn) return;
+
+    /** @type {Record<RoomId, RoomMeta>} */
+    const roomMeta = {
+      entry: { name: 'Entry Hall', cx: 370, cy: 370 },
+      library: { name: 'Library', cx: 370, cy: 170 },
+      guard: { name: 'Guard Room', cx: 600, cy: 370 },
+      prison: { name: 'Prison Cells', cx: 820, cy: 370 },
+      chief: { name: "Chief's Room", cx: 600, cy: 550 },
+      beast: { name: 'Beast Pen', cx: 820, cy: 190 },
+      ritual: { name: 'Ritual Chamber', cx: 130, cy: 170 },
+    };
+
+    /** @type {Array<{from: RoomId; to: RoomId}>} */
+    const edges = [
+      { from: 'entry', to: 'library' },
+      { from: 'entry', to: 'guard' },
+      { from: 'guard', to: 'prison' },
+      { from: 'guard', to: 'chief' },
+      { from: 'prison', to: 'beast' },
+      { from: 'library', to: 'ritual' },
+    ];
+
+    /** @type {Record<SignalKey, Signal>} */
+    const signalTypes = {
+      sound: {
+        label: 'Sword Clash',
+        color: '#ff9d42',
+        glow: 'url(#sound-glow)',
+        loss: 2,
+        baseIntensity: 8,
+        maxHops: 4,
+        className: 'wave-sound',
+        packetClass: 'packet-sound',
+      },
+      light: {
+        label: 'Ignite Torch',
+        color: '#f6d88e',
+        glow: 'url(#light-glow)',
+        loss: 6,
+        baseIntensity: 6,
+        maxHops: 1,
+        className: 'wave-light',
+        packetClass: 'packet-light',
+      },
+      alarm: {
+        label: 'Alarm Tripwire',
+        color: '#e05238',
+        glow: 'url(#sound-glow)',
+        loss: 1,
+        baseIntensity: 10,
+        maxHops: 6,
+        className: 'wave-alarm',
+        packetClass: 'packet-alarm',
+      },
+    };
+
+    /** @type {Map<RoomId, 'awake'|'dormant'>} */
+    const roomStates = new Map(
+      /** @type {RoomId[]} */ (Object.keys(roomMeta)).map((id) => [id, 'dormant'])
+    );
+
+    /** @type {RoomId} */
+    let activeSource = 'entry';
+
+    function renderStates() {
+      document.querySelectorAll('.room-group').forEach((group) => {
+        const id = /** @type {RoomId|null} */ (group.getAttribute('data-id'));
+        const rect = /** @type {SVGRectElement|null} */ (group.querySelector('.room'));
+        const stateText = /** @type {SVGTextElement|null} */ (group.querySelector('.room-state'));
+        if (!id || !rect || !stateText) return;
+
+        const isAwake = roomStates.get(id) === 'awake';
+        const isSource = id === activeSource;
+
+        rect.classList.toggle('awake', isAwake);
+        rect.classList.toggle('source', isSource);
+        stateText.textContent = isAwake ? 'AWAKE' : 'DORMANT';
+      });
+      sourceSelect.value = activeSource;
+    }
+
+    /** @param {RoomId} id */
+    function neighborsOf(id) {
+      /** @type {RoomId[]} */
+      const out = [];
+      for (const e of edges) {
+        if (e.from === id) out.push(e.to);
+        else if (e.to === id) out.push(e.from);
+      }
+      return out;
+    }
+
+    /**
+     * @param {number} cx
+     * @param {number} cy
+     * @param {Signal} signal
+     * @param {number} intensity
+     */
+    function createPulse(cx, cy, signal, intensity) {
+      const pulse = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      const maxR = 40 + intensity * 8;
+      const baseSw = Math.max(1, intensity / 2);
+      pulse.setAttribute('cx', String(cx));
+      pulse.setAttribute('cy', String(cy));
+      pulse.setAttribute('r', '4');
+      pulse.setAttribute('fill', 'none');
+      pulse.setAttribute('stroke', signal.color);
+      pulse.setAttribute('stroke-width', String(baseSw));
+      pulse.setAttribute('opacity', '0.9');
+      pulse.setAttribute('filter', signal.glow);
+      pulse.classList.add('wave-pulse', signal.className);
+      waveLayer.appendChild(pulse);
+
+      const start = performance.now();
+      const duration = 1200;
+      function step(now) {
+        const t = Math.min(1, (now - start) / duration);
+        const eased = 1 - Math.pow(1 - t, 3);
+        const r = 4 + (maxR - 4) * eased;
+        const sw = baseSw * (1 - eased);
+        const op = 0.9 * (1 - eased);
+        pulse.setAttribute('r', String(r));
+        pulse.setAttribute('stroke-width', String(Math.max(0, sw)));
+        pulse.setAttribute('opacity', String(Math.max(0, op)));
+        if (t < 1) requestAnimationFrame(step);
+        else pulse.remove();
+      }
+      requestAnimationFrame(step);
+    }
+
+    /**
+     * @param {number} x1
+     * @param {number} y1
+     * @param {number} x2
+     * @param {number} y2
+     * @param {Signal} signal
+     * @param {number} delay
+     */
+    function createPacket(x1, y1, x2, y2, signal) {
+      const packet = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      packet.setAttribute('r', '5');
+      packet.setAttribute('cx', String(x1));
+      packet.setAttribute('cy', String(y1));
+      packet.setAttribute('fill', signal.color);
+      packet.setAttribute('filter', signal.glow);
+      packet.classList.add('wave-packet', signal.packetClass);
+      waveLayer.appendChild(packet);
+
+      const start = performance.now();
+      const duration = 350;
+      function step(now) {
+        const t = Math.min(1, (now - start) / duration);
+        const eased = 1 - Math.pow(1 - t, 3);
+        const cx = x1 + (x2 - x1) * eased;
+        const cy = y1 + (y2 - y1) * eased;
+        packet.setAttribute('cx', String(cx));
+        packet.setAttribute('cy', String(cy));
+        packet.setAttribute('opacity', String(1 - eased));
+        if (t < 1) requestAnimationFrame(step);
+        else packet.remove();
+      }
+      requestAnimationFrame(step);
+    }
+
+    /** @param {SignalKey} signalKey */
+    function triggerSignal(signalKey) {
+      const signal = signalTypes[signalKey];
+      /** @type {Map<RoomId, number>} */
+      const visited = new Map();
+      /** @type {Array<{id: RoomId; intensity: number; delay: number; from: RoomId|null}>} */
+      const queue = [{ id: activeSource, intensity: signal.baseIntensity, delay: 0, from: null }];
+      const fromMeta = roomMeta[activeSource];
+
+      createPulse(fromMeta.cx, fromMeta.cy, signal, signal.baseIntensity);
+
+      while (queue.length) {
+        const current = queue.shift();
+        if (!current) continue;
+        const { id, intensity, delay, from } = current;
+        if (visited.has(id)) continue;
+        if (intensity <= 0) continue;
+        visited.set(id, intensity);
+
+        if (intensity >= 3) {
+          setTimeout(() => {
+            roomStates.set(id, 'awake');
+            renderStates();
+          }, delay + 200);
+        }
+
+        if (from) {
+          const prev = roomMeta[from];
+          const curr = roomMeta[id];
+          setTimeout(() => {
+            createPacket(prev.cx, prev.cy, curr.cx, curr.cy, signal);
+          }, delay);
+          setTimeout(() => createPulse(curr.cx, curr.cy, signal, intensity), delay + 350);
+        }
+
+        if (intensity - signal.loss <= 0) continue;
+
+        for (const next of neighborsOf(id)) {
+          if (visited.has(next)) continue;
+          queue.push({
+            id: next,
+            intensity: intensity - signal.loss,
+            delay: delay + 350,
+            from: id,
+          });
+        }
+      }
+    }
+
+    /** @param {RoomId} id */
+    function setSource(id) {
+      activeSource = id;
+      roomStates.set(id, 'awake');
+      renderStates();
+    }
+
+    function resetMap() {
+      for (const id of /** @type {Iterable<RoomId>} */ (roomStates.keys())) {
+        roomStates.set(id, 'dormant');
+      }
+      activeSource = 'entry';
+      roomStates.set(activeSource, 'awake');
+      waveLayer.innerHTML = '';
+      renderStates();
+    }
+
+    document.querySelectorAll('.room-group').forEach((group) => {
+      const id = /** @type {RoomId|null} */ (group.getAttribute('data-id'));
+      group.setAttribute('tabindex', '0');
+      group.setAttribute('role', 'button');
+      group.setAttribute('aria-pressed', 'false');
+
+      group.addEventListener('click', () => {
+        if (id) setSource(id);
+      });
+
+      group.addEventListener('keydown', /** @param {KeyboardEvent} e */ (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          if (id) setSource(id);
+        }
+      });
+    });
+
+    document.querySelectorAll('.signal-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const signal = /** @type {SignalKey|null} */ (btn.getAttribute('data-signal'));
+        if (signal) triggerSignal(signal);
+      });
+    });
+
+    sourceSelect.addEventListener('change', (e) => {
+      const target = /** @type {HTMLSelectElement} */ (e.target);
+      const id = /** @type {RoomId} */ (target.value);
+      setSource(id);
+    });
+
+    resetBtn.addEventListener('click', resetMap);
+
+    resetMap();
+  })();
+</script>
+
+<style>
+  .spatial-map {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    padding: 1.5rem;
+    background: var(--bg-surface);
+    border-radius: var(--radius-lg);
+  }
+
+  .spatial-header h2 {
+    margin: 0;
+    font-family: var(--font-display, Georgia, serif);
+    font-size: 1.5rem;
+    color: var(--gold-bright);
+  }
+
+  .spatial-subtitle {
+    margin: 0.5rem 0 0;
+    color: var(--parchment-bg);
+    opacity: 0.85;
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+
+  .spatial-body {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  @media (min-width: 1024px) {
+    .spatial-body {
+      grid-template-columns: 1.6fr 1fr;
+    }
+  }
+
+  .map-stage {
+    position: relative;
+    border: 1px solid var(--border-stone);
+    border-radius: var(--radius-md);
+    background: var(--bg-void);
+    overflow: hidden;
+  }
+
+  .tower-svg {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .doorway {
+    stroke: var(--gold-primary);
+    stroke-width: 2;
+    stroke-dasharray: 6 4;
+    opacity: 0.7;
+  }
+
+  .doorway.secret {
+    stroke: var(--mana-azure);
+    stroke-dasharray: 4 6;
+    opacity: 0.55;
+  }
+
+  .room-group {
+    cursor: pointer;
+  }
+
+  .room {
+    fill: var(--bg-surface-elevated);
+    stroke: var(--border-stone);
+    stroke-width: 2;
+    transition:
+      fill 0.25s ease,
+      stroke 0.25s ease,
+      filter 0.25s ease;
+  }
+
+  .room-group:focus-visible .room {
+    outline: none;
+    stroke: var(--gold-bright);
+    stroke-width: 3;
+  }
+
+  .room.awake {
+    fill: rgba(223, 177, 91, 0.12);
+    stroke: var(--gold-bright);
+    filter: drop-shadow(0 0 0.5rem var(--gold-glow));
+  }
+
+  .room.source {
+    stroke: var(--emerald-rekindler);
+    stroke-width: 3;
+  }
+
+  .room-label {
+    font-family: var(--font-display, Georgia, serif);
+    font-size: 14px;
+    font-weight: 600;
+    fill: var(--parchment-bg);
+    text-anchor: middle;
+    pointer-events: none;
+  }
+
+  .room-state {
+    font-family: var(--font-mono, monospace);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    fill: var(--border-stone);
+    text-anchor: middle;
+    pointer-events: none;
+    transition: fill 0.25s ease;
+  }
+
+  .room.awake ~ .room-state {
+    fill: var(--gold-bright);
+  }
+
+  .map-legend .legend-swatch {
+    stroke: var(--border-stone);
+    stroke-width: 1;
+  }
+
+  .map-legend .legend-swatch.awake {
+    fill: rgba(223, 177, 91, 0.12);
+    stroke: var(--gold-bright);
+  }
+
+  .map-legend .legend-swatch.dormant {
+    fill: var(--bg-surface-elevated);
+    stroke: var(--border-stone);
+  }
+
+  .map-legend .legend-text {
+    font-family: var(--font-body, Georgia, serif);
+    font-size: 12px;
+    fill: var(--parchment-bg);
+    opacity: 0.9;
+  }
+
+  .wave-pulse,
+  .wave-packet {
+    pointer-events: none;
+  }
+
+  .control-deck {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .control-panel,
+  .attenuation-card {
+    padding: 1.25rem;
+    background: var(--bg-surface-raised);
+    border-radius: var(--radius-md);
+  }
+
+  .attenuation-card.runic-border-beam {
+    background: var(--bg-surface);
+  }
+
+  .control-panel h3,
+  .attenuation-card h3 {
+    margin: 0 0 1rem;
+    font-family: var(--font-display, Georgia, serif);
+    font-size: 1.125rem;
+    color: var(--gold-bright);
+  }
+
+  .source-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .source-row label {
+    font-size: 0.9rem;
+    color: var(--parchment-bg);
+  }
+
+  .source-row select {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+    background: var(--bg-surface);
+    color: var(--parchment-bg);
+    border: 1px solid var(--border-stone);
+    border-radius: var(--radius-sm);
+  }
+
+  .signal-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  @media (min-width: 640px) {
+    .signal-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  .signal-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.75rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-stone);
+    border-radius: var(--radius-md);
+    color: var(--parchment-bg);
+    cursor: pointer;
+    transition:
+      border-color 0.2s ease,
+      box-shadow 0.2s ease,
+      transform 0.1s ease;
+  }
+
+  .signal-btn:hover,
+  .signal-btn:focus-visible {
+    border-color: var(--gold-primary);
+    box-shadow: 0 0 0.75rem var(--gold-glow);
+    outline: none;
+  }
+
+  .signal-btn:active {
+    transform: translateY(1px);
+  }
+
+  .signal-btn.sound {
+    border-top: 3px solid var(--amber-rune);
+  }
+
+  .signal-btn.light {
+    border-top: 3px solid var(--gold-bright);
+  }
+
+  .signal-btn.alarm {
+    border-top: 3px solid var(--crimson-blood);
+  }
+
+  .signal-name {
+    font-family: var(--font-display, Georgia, serif);
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  .signal-meta {
+    font-family: var(--font-mono, monospace);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    opacity: 0.75;
+  }
+
+  .reset-btn {
+    width: 100%;
+    padding: 0.6rem;
+    background: transparent;
+    border: 1px solid var(--border-stone);
+    border-radius: var(--radius-sm);
+    color: var(--parchment-bg);
+    cursor: pointer;
+    transition: border-color 0.2s ease, color 0.2s ease;
+  }
+
+  .reset-btn:hover,
+  .reset-btn:focus-visible {
+    border-color: var(--crimson-blood);
+    color: var(--crimson-blood);
+    outline: none;
+  }
+
+  .attenuation-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--parchment-bg);
+  }
+
+  .attenuation-list strong {
+    color: var(--gold-bright);
+  }
+
+  .attenuation-list .stat {
+    display: inline-block;
+    padding: 0.05em 0.35em;
+    background: var(--bg-surface-elevated);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono, monospace);
+    color: var(--amber-rune);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .wave-pulse,
+    .wave-packet {
+      transition: none;
+    }
+  }
+</style>

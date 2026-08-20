@@ -1,0 +1,19 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import DiceRoller3D from '../components/visualizers/DiceRoller3D.astro';
+---
+
+<BaseLayout title="Arcane Dice Engine">
+  <main class="dice-page">
+    <DiceRoller3D />
+  </main>
+</BaseLayout>
+
+<style>
+  .dice-page {
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    padding: var(--content-padding);
+    padding-top: calc(var(--header-height) + 2rem);
+  }
+</style>

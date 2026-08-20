@@ -1,0 +1,19 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import RefereePipeline from '../components/visualizers/RefereePipeline.astro';
+---
+
+<BaseLayout title="Referee Pipeline">
+  <div class="pipeline-page">
+    <RefereePipeline />
+  </div>
+</BaseLayout>
+
+<style>
+  .pipeline-page {
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    padding: var(--content-padding);
+    padding-top: calc(var(--header-height) + 2rem);
+  }
+</style>

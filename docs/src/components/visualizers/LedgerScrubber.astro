@@ -1,0 +1,730 @@
+---
+// LedgerScrubber.astro
+// Interactive time-travel scrubber over a deterministic D&D engine ledger.
+---
+
+<section class="ledger-scrubber runic-border-beam" aria-label="Ledger time-travel scrubber">
+  <div class="ledger-inner">
+    <header class="ledger-header">
+      <h2 class="ledger-title">Ledger Time-Travel &amp; Determinism Scrubber</h2>
+      <span class="ledger-seq-badge" data-seq-badge>seq 1</span>
+    </header>
+
+    <div class="ledger-controls">
+      <button type="button" class="scrub-btn" data-scrub="first" aria-label="First sequence">|&lt;</button>
+      <button type="button" class="scrub-btn" data-scrub="prev" aria-label="Previous sequence">&lt;</button>
+
+      <label class="scrub-slider-wrap" for="ledger-sequence">
+        <span class="scrub-label">Sequence</span>
+        <input
+          id="ledger-sequence"
+          class="scrub-slider"
+          type="range"
+          min="1"
+          max="20"
+          value="1"
+          step="1"
+          aria-valuemin="1"
+          aria-valuemax="20"
+          aria-valuenow="1"
+        />
+      </label>
+
+      <button type="button" class="scrub-btn" data-scrub="next" aria-label="Next sequence">&gt;</button>
+      <button type="button" class="scrub-btn" data-scrub="last" aria-label="Last sequence">&gt;|</button>
+    </div>
+
+    <div class="invariant-banner" data-invariant-banner>
+      <span class="invariant-icon" data-invariant-icon>✓</span>
+      <code class="invariant-code">fold(events[1..N]) == World.snapshot</code>
+    </div>
+
+    <div class="inspector-grid">
+      <article class="inspector-panel runic-border-beam">
+        <div class="panel-inner">
+          <header class="panel-header">
+            <h3 class="panel-title">Committed Event</h3>
+            <span class="panel-badge amber">%EngineCore.Ledger.Event</span>
+          </header>
+          <pre class="json-view" data-event-view><code></code></pre>
+        </div>
+      </article>
+
+      <article class="inspector-panel runic-border-beam">
+        <div class="panel-inner">
+          <header class="panel-header">
+            <h3 class="panel-title">Folded World State</h3>
+            <span class="panel-badge azure">%EngineCore.Types.World</span>
+          </header>
+          <pre class="json-view" data-snapshot-view><code></code></pre>
+        </div>
+      </article>
+    </div>
+
+    <section class="fork-section">
+      <header class="fork-header">
+        <h3 class="fork-title">Emergence &amp; Fork-Diff Comparator</h3>
+        <p class="fork-subtitle">
+          Two deterministic replays seeded from <code>42</code>. The first sequence where
+          outputs diverge is the emergence point.
+        </p>
+      </header>
+
+      <div class="fork-summary" data-fork-summary></div>
+
+      <div class="fork-comparator" data-fork-comparator>
+        <div class="fork-col fork-col-head seq-head">Seq</div>
+        <div class="fork-col fork-col-head branch-a-head">Branch A</div>
+        <div class="fork-col fork-col-head branch-b-head">Branch B</div>
+        <div class="fork-col fork-col-head diff-head">Diff</div>
+      </div>
+    </section>
+  </div>
+</section>
+
+<script>
+  // @ts-nocheck
+  (function initLedgerScrubbers() {
+    const roots = document.querySelectorAll('.ledger-scrubber');
+    if (!roots.length) return;
+
+    const DEFAULT_PCS = {
+      Aeloria: { name: 'Aeloria', class: 'warden', level: 1, hp: 12, maxHp: 12, alive: true },
+      Kaelen: { name: 'Kaelen', class: 'renegade', level: 1, hp: 10, maxHp: 10, alive: true },
+      Mira: { name: 'Mira', class: 'seer', level: 1, hp: 8, maxHp: 8, alive: true },
+    };
+
+    const INVARIANTS = [
+      { name: 'party_size ≤ 6', check: (w) => w.pcs.length <= 6 },
+      { name: 'pcs_alive ≥ 1', check: (w) => w.pcs.some((p) => p.alive) },
+      { name: 'place_is_string', check: (w) => typeof w.current_place === 'string' },
+      { name: 'tick_monotonic', check: (w, prev) => w.tick >= prev.tick },
+      { name: 'hp_non_negative', check: (w) => w.pcs.every((p) => p.hp >= 0) },
+    ];
+
+    const EVENTS_A = [
+      { seq: 1, tick: 1, class: ':world_boot', payload: { seed: 42, campaign: 'The Shattered Kingdoms', ruleset: 'v5' } },
+      { seq: 2, tick: 2, class: ':party_formed', payload: { party: ['Aeloria', 'Kaelen', 'Mira'] } },
+      { seq: 3, tick: 3, class: ':place_changed', payload: { from: '', to: 'Dimwood Gate' } },
+      { seq: 4, tick: 4, class: ':rolled_initiative', payload: { order: ['Kaelen', 'Aeloria', 'Mira'], seed: 42 } },
+      { seq: 5, tick: 5, class: ':encounter_started', payload: { foes: ['goblin_scout'] } },
+      { seq: 6, tick: 6, class: ':attempt_attack', payload: { attacker: 'Aeloria', target: 'goblin_scout', attack_roll: 15, hit: true } },
+      { seq: 7, tick: 7, class: ':damage_dealt', payload: { target: 'goblin_scout', damage: 7, remaining_hp: 0 } },
+      { seq: 8, tick: 8, class: ':enemy_defeated', payload: { target: 'goblin_scout', xp_awarded: 45 } },
+      { seq: 9, tick: 9, class: ':loot_acquired', payload: { items: ['crimson rune shard'], recipient: 'Aeloria' } },
+      { seq: 10, tick: 10, class: ':place_changed', payload: { from: 'Dimwood Gate', to: 'Ruined Tower' } },
+      { seq: 11, tick: 11, class: ':quest_flag_set', payload: { flag: 'found_tome', value: true } },
+      { seq: 12, tick: 12, class: ':short_rested', payload: { hit_dice_used: 1, recovered: [{ name: 'Kaelen', hp: 4 }] } },
+      { seq: 13, tick: 13, class: ':character_leveled', payload: { name: 'Aeloria', level: 2 } },
+      { seq: 14, tick: 14, class: ':place_changed', payload: { from: 'Ruined Tower', to: 'Aeldoroth Market' } },
+      { seq: 15, tick: 15, class: ':npc_dialogue', payload: { npc: 'Veira', node: 'rumors' } },
+      { seq: 16, tick: 16, class: ':rolled_saving_throw', payload: { name: 'Kaelen', save: 'dexterity', roll: 14, success: true } },
+      { seq: 17, tick: 17, class: ':invariant_checked', payload: { checks: ['party_size ≤ 6', 'pcs_alive ≥ 1'] } },
+      { seq: 18, tick: 18, class: ':world_tick', payload: { tick: 18 } },
+      { seq: 19, tick: 19, class: ':emergence_logged', payload: { note: 'replayed deterministically' } },
+      { seq: 20, tick: 20, class: ':snapshot_verified', payload: { hash: 'sha256:7a3f9c2b', method: 'fold' } },
+    ];
+
+    const EVENTS_B = [
+      { seq: 1, tick: 1, class: ':world_boot', payload: { seed: 42, campaign: 'The Shattered Kingdoms', ruleset: 'v5' } },
+      { seq: 2, tick: 2, class: ':party_formed', payload: { party: ['Aeloria', 'Kaelen', 'Mira'] } },
+      { seq: 3, tick: 3, class: ':place_changed', payload: { from: '', to: 'Dimwood Gate' } },
+      { seq: 4, tick: 4, class: ':rolled_initiative', payload: { order: ['Kaelen', 'Aeloria', 'Mira'], seed: 42 } },
+      { seq: 5, tick: 5, class: ':encounter_started', payload: { foes: ['goblin_scout'] } },
+      { seq: 6, tick: 6, class: ':attempt_attack', payload: { attacker: 'Aeloria', target: 'goblin_scout', attack_roll: 9, hit: false } },
+      { seq: 7, tick: 7, class: ':attack_missed', payload: { attacker: 'Aeloria', target: 'goblin_scout' } },
+      { seq: 8, tick: 8, class: ':goblin_retaliated', payload: { target: 'Aeloria', damage: 3 } },
+      { seq: 9, tick: 9, class: ':combat_round_started', payload: { round: 1 } },
+      { seq: 10, tick: 10, class: ':place_changed', payload: { from: 'Dimwood Gate', to: 'Ruined Tower' } },
+      { seq: 11, tick: 11, class: ':quest_flag_set', payload: { flag: 'found_tome', value: true } },
+      { seq: 12, tick: 12, class: ':short_rested', payload: { hit_dice_used: 1, recovered: [{ name: 'Kaelen', hp: 4 }] } },
+      { seq: 13, tick: 13, class: ':character_leveled', payload: { name: 'Aeloria', level: 2 } },
+      { seq: 14, tick: 14, class: ':place_changed', payload: { from: 'Ruined Tower', to: 'Aeldoroth Market' } },
+      { seq: 15, tick: 15, class: ':npc_dialogue', payload: { npc: 'Veira', node: 'rumors' } },
+      { seq: 16, tick: 16, class: ':rolled_saving_throw', payload: { name: 'Kaelen', save: 'dexterity', roll: 14, success: true } },
+      { seq: 17, tick: 17, class: ':invariant_checked', payload: { checks: ['party_size ≤ 6', 'pcs_alive ≥ 1'] } },
+      { seq: 18, tick: 18, class: ':world_tick', payload: { tick: 18 } },
+      { seq: 19, tick: 19, class: ':emergence_logged', payload: { note: 'replayed deterministically' } },
+      { seq: 20, tick: 20, class: ':snapshot_verified', payload: { hash: 'sha256:7a3f9c2b', method: 'fold' } },
+    ];
+
+    function clonePcs(pcs) {
+      return pcs.map((p) => ({ ...p }));
+    }
+
+    function applyEvent(world, event) {
+      const next = {
+        tick: event.tick,
+        pcs: clonePcs(world.pcs),
+        current_place: world.current_place,
+        invariants_held: [],
+      };
+
+      const pl = event.payload;
+      switch (event.class) {
+        case ':party_formed':
+          next.pcs = (pl.party || []).map((name) => ({
+            ...(DEFAULT_PCS[name] || { name, class: 'adventurer', level: 1, hp: 10, maxHp: 10, alive: true }),
+          }));
+          break;
+        case ':place_changed':
+          next.current_place = pl.to ?? next.current_place;
+          break;
+        case ':damage_dealt':
+          if (pl.target && DEFAULT_PCS[pl.target]) {
+            const pc = next.pcs.find((p) => p.name === pl.target);
+            if (pc) {
+              pc.hp = Math.max(0, pc.hp - (pl.damage || 0));
+              pc.alive = pc.hp > 0;
+            }
+          }
+          break;
+        case ':goblin_retaliated':
+          if (pl.target && DEFAULT_PCS[pl.target]) {
+            const pc = next.pcs.find((p) => p.name === pl.target);
+            if (pc) {
+              pc.hp = Math.max(0, pc.hp - (pl.damage || 0));
+              pc.alive = pc.hp > 0;
+            }
+          }
+          break;
+        case ':short_rested':
+          (pl.recovered || []).forEach((rec) => {
+            const pc = next.pcs.find((p) => p.name === rec.name);
+            if (pc) {
+              pc.hp = Math.min(pc.maxHp, pc.hp + (rec.hp || 0));
+              pc.alive = pc.hp > 0;
+            }
+          });
+          break;
+        case ':character_leveled':
+          {
+            const pc = next.pcs.find((p) => p.name === pl.name);
+            if (pc) pc.level = pl.level ?? pc.level;
+          }
+          break;
+        default:
+          break;
+      }
+
+      next.invariants_held = INVARIANTS.filter((inv) => inv.check(next, world)).map((inv) => inv.name);
+      return next;
+    }
+
+    function fold(events) {
+      let world = { tick: 0, pcs: [], current_place: '', invariants_held: [] };
+      const snapshots = [];
+      events.forEach((event) => {
+        world = applyEvent(world, event);
+        snapshots.push(world);
+      });
+      return snapshots;
+    }
+
+    const SNAPSHOTS_A = fold(EVENTS_A);
+    const SNAPSHOTS_B = fold(EVENTS_B);
+
+    function findDivergenceIndex(eventsA, eventsB) {
+      for (let i = 0; i < eventsA.length; i++) {
+        if (eventsA[i].class !== eventsB[i].class) return i;
+        if (JSON.stringify(eventsA[i].payload) !== JSON.stringify(eventsB[i].payload)) return i;
+      }
+      return -1;
+    }
+
+    const DIVERGENCE_INDEX = findDivergenceIndex(EVENTS_A, EVENTS_B); // 0-based
+
+    function formatEvent(event) {
+      const obj = {
+        seq: event.seq,
+        tick: event.tick,
+        class: event.class,
+        payload: event.payload,
+      };
+      return `%EngineCore.Ledger.Event${JSON.stringify(obj, null, 2).slice(0, 1) === '{' ? ' ' : ''}${JSON.stringify(obj, null, 2).replace(/"([^"]+)":/g, '$1:').replace(/"/g, '')}`;
+    }
+
+    function formatWorld(snapshot) {
+      const body = JSON.stringify(
+        {
+          tick: snapshot.tick,
+          pcs: snapshot.pcs,
+          current_place: snapshot.current_place,
+          invariants_held: snapshot.invariants_held,
+        },
+        null,
+        2
+      );
+      return `%EngineCore.Types.World ${body}`;
+    }
+
+    function renderJson(element, text) {
+      const code = element.querySelector('code') || element;
+      code.textContent = text;
+      code.classList.remove('json-pass', 'json-fail');
+    }
+
+    function buildForkComparator(root) {
+      const container = root.querySelector('[data-fork-comparator]');
+      const summary = root.querySelector('[data-fork-summary]');
+      if (!container) return;
+
+      EVENTS_A.forEach((eventA, idx) => {
+        const eventB = EVENTS_B[idx];
+        const snapA = SNAPSHOTS_A[idx];
+        const snapB = SNAPSHOTS_B[idx];
+        const isDiv = idx === DIVERGENCE_INDEX;
+        const isAfterDiv = DIVERGENCE_INDEX !== -1 && idx > DIVERGENCE_INDEX;
+        const differs = isDiv || isAfterDiv;
+
+        const row = document.createElement('div');
+        row.className = `fork-row${isDiv ? ' divergence-point' : ''}${isAfterDiv ? ' diverged' : ''}${differs ? ' differs' : ''}`;
+        row.dataset.seq = eventA.seq;
+
+        const seqCell = document.createElement('div');
+        seqCell.className = 'fork-cell seq-cell';
+        seqCell.textContent = String(eventA.seq);
+
+        const aCell = document.createElement('div');
+        aCell.className = 'fork-cell branch-a-cell';
+        aCell.innerHTML = summaryHTML(eventA, snapA);
+
+        const bCell = document.createElement('div');
+        bCell.className = 'fork-cell branch-b-cell';
+        bCell.innerHTML = summaryHTML(eventB, snapB);
+
+        const diffCell = document.createElement('div');
+        diffCell.className = 'fork-cell diff-cell';
+        diffCell.innerHTML = differs ? '<span class="diff-mark" aria-label="Diverged">≠</span>' : '<span class="same-mark" aria-label="Identical">=</span>';
+
+        row.append(seqCell, aCell, bCell, diffCell);
+        container.appendChild(row);
+      });
+
+      if (summary) {
+        if (DIVERGENCE_INDEX === -1) {
+          summary.textContent = 'No divergence detected across the sampled sequences.';
+        } else {
+          summary.innerHTML = `Emergence divergence begins at <strong class="emergence-seq">seq ${DIVERGENCE_INDEX + 1}</strong> (tick ${EVENTS_A[DIVERGENCE_INDEX].tick}).`;
+        }
+      }
+    }
+
+    function summaryHTML(event, snapshot) {
+      const pcsSummary = snapshot.pcs
+        .map((p) => `${p.name}${p.alive ? '' : '†'} L${p.level}`)
+        .join(', ') || '—';
+      return `
+        <div class="branch-summary">
+          <span class="branch-class">${event.class}</span>
+          <span class="branch-place">${snapshot.current_place || '—'}</span>
+          <span class="branch-pcs">[${pcsSummary}]</span>
+        </div>
+      `;
+    }
+
+    function update(root, seq) {
+      const slider = root.querySelector('.scrub-slider');
+      const badge = root.querySelector('[data-seq-badge]');
+      const eventView = root.querySelector('[data-event-view]');
+      const snapshotView = root.querySelector('[data-snapshot-view]');
+      const banner = root.querySelector('[data-invariant-banner]');
+      const icon = root.querySelector('[data-invariant-icon]');
+
+      const index = seq - 1;
+      const event = EVENTS_A[index];
+      const expected = SNAPSHOTS_A[index];
+
+      // Recompute by folding from scratch to prove determinism.
+      const replayed = fold(EVENTS_A.slice(0, seq))[seq - 1];
+      const replayOk = JSON.stringify(replayed) === JSON.stringify(expected);
+
+      if (slider) {
+        slider.value = String(seq);
+        slider.setAttribute('aria-valuenow', String(seq));
+      }
+      if (badge) badge.textContent = `seq ${seq}`;
+      if (eventView) renderJson(eventView, formatEvent(event));
+      if (snapshotView) renderJson(snapshotView, formatWorld(expected));
+
+      if (banner) {
+        banner.classList.toggle('pass', replayOk);
+        banner.classList.toggle('fail', !replayOk);
+      }
+      if (icon) icon.textContent = replayOk ? '✓' : '✗';
+
+      root.querySelectorAll('.fork-row').forEach((row) => {
+        const active = Number(row.dataset.seq) === seq;
+        row.classList.toggle('active-seq', active);
+      });
+    }
+
+    function bind(root) {
+      const slider = root.querySelector('.scrub-slider');
+      if (!slider) return;
+
+      const max = Number(slider.max);
+
+      slider.addEventListener('input', () => update(root, Number(slider.value)));
+
+      root.querySelectorAll('[data-scrub]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const current = Number(slider.value);
+          const action = btn.dataset.scrub;
+          let next = current;
+          if (action === 'first') next = 1;
+          if (action === 'prev') next = Math.max(1, current - 1);
+          if (action === 'next') next = Math.min(max, current + 1);
+          if (action === 'last') next = max;
+          update(root, next);
+        });
+      });
+
+      buildForkComparator(root);
+      update(root, 1);
+    }
+
+    roots.forEach(bind);
+  })();
+</script>
+
+<style>
+  .ledger-scrubber {
+    --ledger-pad: 1.5rem;
+    --ledger-gap: 1.25rem;
+    color: var(--parchment-bg);
+    font-family: var(--font-body);
+  }
+
+  .ledger-inner {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--ledger-gap);
+    padding: var(--ledger-pad);
+  }
+
+  .ledger-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .ledger-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--gold-bright);
+  }
+
+  .ledger-seq-badge {
+    flex-shrink: 0;
+    padding: 0.35em 0.75em;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--bg-void);
+    background: var(--amber-rune);
+    border-radius: var(--radius-sm);
+    font-weight: 700;
+  }
+
+  .ledger-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .scrub-slider-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1 1 auto;
+    min-width: 12rem;
+  }
+
+  .scrub-label {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--gold-bright);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .scrub-slider {
+    flex: 1 1 auto;
+    width: 100%;
+    accent-color: var(--amber-rune);
+    cursor: pointer;
+  }
+
+  .scrub-btn {
+    padding: 0.35rem 0.6rem;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--gold-bright);
+    background: var(--bg-surface-raised);
+    border: 1px solid var(--border-stone);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  }
+
+  .scrub-btn:hover,
+  .scrub-btn:focus-visible {
+    background: var(--bg-surface-elevated);
+    border-color: var(--gold-primary);
+    outline: none;
+  }
+
+  .invariant-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-stone);
+    background: var(--bg-surface-raised);
+    transition: border-color 0.3s ease, background 0.3s ease;
+  }
+
+  .invariant-banner.pass {
+    border-color: var(--emerald-rekindler);
+    background: rgba(16, 185, 129, 0.08);
+  }
+
+  .invariant-banner.fail {
+    border-color: var(--crimson-blood);
+    background: rgba(224, 82, 56, 0.08);
+  }
+
+  .invariant-icon {
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+
+  .pass .invariant-icon {
+    color: var(--emerald-rekindler);
+  }
+
+  .fail .invariant-icon {
+    color: var(--crimson-blood);
+  }
+
+  .invariant-code {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--gold-bright);
+  }
+
+  .inspector-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--ledger-gap);
+    perspective: 800px;
+  }
+
+  @media (max-width: 800px) {
+    .inspector-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .inspector-panel {
+    position: relative;
+    background: var(--bg-surface);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    transform-style: preserve-3d;
+    transition: transform 0.4s ease;
+  }
+
+  .inspector-panel:hover {
+    transform: translateZ(8px);
+  }
+
+  .panel-inner {
+    padding: 1rem;
+    transition: transform 0.4s ease;
+    transform-style: preserve-3d;
+  }
+
+  .inspector-panel:hover .panel-inner {
+    transform: rotateY(-1.5deg) rotateX(0.75deg);
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-stone);
+  }
+
+  .panel-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 1rem;
+    color: var(--gold-bright);
+  }
+
+  .panel-badge {
+    padding: 0.2em 0.5em;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+  }
+
+  .panel-badge.amber {
+    color: var(--bg-void);
+    background: var(--amber-rune);
+  }
+
+  .panel-badge.azure {
+    color: var(--bg-void);
+    background: var(--mana-azure);
+  }
+
+  .json-view {
+    margin: 0;
+    padding: 0.75rem;
+    background: var(--bg-surface-raised);
+    border: 1px solid var(--border-stone-subtle);
+    border-radius: var(--radius-md);
+    overflow: auto;
+    max-height: 24rem;
+  }
+
+  .json-view code {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    line-height: 1.6;
+    color: var(--parchment-bg);
+    white-space: pre;
+  }
+
+  .fork-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .fork-header {
+    border-bottom: 1px solid var(--border-stone);
+    padding-bottom: 0.5rem;
+  }
+
+  .fork-title {
+    margin: 0 0 0.25rem;
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    color: var(--gold-bright);
+  }
+
+  .fork-subtitle {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--parchment-muted);
+  }
+
+  .fork-subtitle code {
+    color: var(--amber-rune);
+  }
+
+  .fork-summary {
+    font-size: 0.95rem;
+    color: var(--parchment-bg);
+  }
+
+  .emergence-seq {
+    color: var(--crimson-blood);
+  }
+
+  .fork-comparator {
+    display: grid;
+    grid-template-columns: 3rem 1fr 1fr 3.5rem;
+    gap: 0.25rem;
+    border: 1px solid var(--border-stone);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: var(--bg-surface-raised);
+  }
+
+  .fork-col-head,
+  .fork-cell {
+    padding: 0.55rem 0.6rem;
+    font-size: 0.8rem;
+  }
+
+  .fork-col-head {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--bg-void);
+    background: var(--gold-primary);
+  }
+
+  .fork-row {
+    display: contents;
+  }
+
+  .fork-row > .fork-cell {
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border-stone-subtle);
+    transition: background 0.2s ease, color 0.2s ease;
+  }
+
+  .fork-row.active-seq > .fork-cell {
+    background: rgba(223, 177, 91, 0.12);
+  }
+
+  .fork-row.divergence-point > .fork-cell {
+    background: rgba(224, 82, 56, 0.18);
+    border-left: 3px solid var(--crimson-blood);
+  }
+
+  .fork-row.diverged > .fork-cell {
+    border-left: 3px solid var(--amber-rune);
+  }
+
+  .fork-row.differs .diff-mark {
+    color: var(--crimson-blood);
+    font-weight: 800;
+  }
+
+  .diff-mark,
+  .same-mark {
+    font-family: var(--font-mono);
+  }
+
+  .same-mark {
+    color: var(--emerald-rekindler);
+  }
+
+  .branch-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .branch-class {
+    font-family: var(--font-mono);
+    color: var(--amber-rune);
+  }
+
+  .branch-place {
+    color: var(--mana-azure);
+  }
+
+  .branch-pcs {
+    color: var(--parchment-muted);
+    font-size: 0.75rem;
+  }
+</style>

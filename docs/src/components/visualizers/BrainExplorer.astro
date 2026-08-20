@@ -1,0 +1,550 @@
+---
+export interface Props {
+  class?: string;
+}
+
+const { class: className = '' } = Astro.props;
+
+const beliefNodes = [
+  {
+    id: 'pc_thistle',
+    label: 'pc_thistle',
+    role: 'Threat',
+    type: 'threat',
+    salience: 8.5,
+    authority: 0,
+    copresence: true,
+    description: 'Heavily armored fighter closing in with steel drawn.',
+  },
+  {
+    id: 'grisk_the_snatcher',
+    label: 'grisk_the_snatcher',
+    role: 'Creditor',
+    type: 'authority',
+    salience: 0.95,
+    authority: 0.95,
+    copresence: true,
+    description: 'Warband leader and creditor; his orders carry hierarchy weight.',
+  },
+  {
+    id: 'iron_chest',
+    label: 'iron_chest',
+    role: 'Item',
+    type: 'item',
+    salience: 1.0,
+    authority: 0,
+    copresence: true,
+    description: 'Unlocked iron chest; possibly loot or bait.',
+  },
+] as const;
+---
+
+<section
+  class:list={['brain-explorer', 'runic-border-beam', className]}
+  aria-label="Agent BDI Brain and Belief Matrix Explorer"
+>
+  <header class="brain-header">
+    <h2 class="brain-title">
+      Agent BDI Brain
+      <span class="brain-subtitle">Goblin Bodyguard</span>
+    </h2>
+    <span class="brain-badge">Tier-3 Sapient</span>
+  </header>
+
+  <div class="brain-grid">
+    <div class="panel belief-panel">
+      <h3 class="panel-title">Perceived Belief Store</h3>
+      <div class="node-list" role="list" aria-label="Perceived actors">
+        {
+          beliefNodes.map((node) => (
+            <button
+              class:list={['node-card', `node-card--${node.type}`]}
+              data-id={node.id}
+              data-type={node.type}
+              data-salience={node.salience}
+              data-authority={node.authority}
+              data-copresence={String(node.copresence)}
+              data-label={node.label}
+              data-role={node.role}
+              role="listitem"
+              aria-pressed="false"
+            >
+              <span class="node-meta">
+                <span class="node-id">{node.label}</span>
+                <span class:list={['node-badge', `node-badge--${node.type}`]}>
+                  {node.role} {node.salience.toFixed(2)}
+                </span>
+              </span>
+              <span class="node-description">{node.description}</span>
+            </button>
+          ))
+        }
+      </div>
+    </div>
+
+    <div class="panel salience-panel">
+      <h3 class="panel-title">Salience Escalation Threshold</h3>
+      <div class="meter" aria-live="polite">
+        <div class="meter-track" aria-hidden="true">
+          <div class="meter-fill" id="salience-fill"></div>
+          <div class="meter-threshold" style="left: 50%"></div>
+        </div>
+        <div class="meter-labels">
+          <span>0.0</span>
+          <span class="threshold-label">Deliberation threshold 5.0</span>
+          <span>10.0</span>
+        </div>
+        <div class="meter-readout">
+          <span id="salience-value" class="meter-value">0.0</span>
+          <span class="meter-divider"> / 10.0 — </span>
+          <span id="salience-status">cadence sleep</span>
+        </div>
+        <p class="meter-reason" id="meter-reason">
+          Select a perceived actor to evaluate why the brain wakes or sleeps.
+        </p>
+      </div>
+    </div>
+
+    <div class="panel adoption-panel">
+      <h3 class="panel-title">Autonomous Order Adoption</h3>
+      <div class="order-payload">
+        <span class="order-from">From: grisk_the_snatcher</span>
+        <blockquote class="order-quote">
+          “Flank the fighter while I prepare the trap!”
+        </blockquote>
+      </div>
+      <ul class="criteria-list" role="list">
+        <li id="crit-authority" class="criteria-item">
+          <span class="criteria-icon" aria-hidden="true">○</span>
+          <span class="criteria-text">Creditor authority hierarchy</span>
+        </li>
+        <li id="crit-copresence" class="criteria-item">
+          <span class="criteria-icon" aria-hidden="true">○</span>
+          <span class="criteria-text">Co-presence in boundary</span>
+        </li>
+        <li id="crit-threat" class="criteria-item">
+          <span class="criteria-icon" aria-hidden="true">○</span>
+          <span class="criteria-text">Perceived threat</span>
+        </li>
+      </ul>
+      <div id="verdict" class="verdict-banner">No active node selected.</div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .brain-explorer {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    padding: 1.5rem;
+    background: var(--bg-surface, #0c1017);
+    border-radius: var(--radius-lg, 0.75rem);
+    box-shadow: var(--shadow-void, 0 0.5rem 1.5rem rgba(0, 0, 0, 0.5));
+  }
+
+  .brain-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-stone, #242e40);
+  }
+
+  .brain-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem 0.75rem;
+    margin: 0;
+    font-family: var(--font-display, Georgia, serif);
+    font-size: 1.375rem;
+    font-weight: 600;
+    color: var(--gold-bright, #f6d88e);
+    text-shadow: 0 0 0.75rem var(--gold-glow, rgba(223, 177, 91, 0.4));
+  }
+
+  .brain-subtitle {
+    font-family: var(--font-mono, monospace);
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--amber-rune, #ff9d42);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .brain-badge {
+    flex-shrink: 0;
+    padding: 0.25em 0.65em;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--bg-void, #06080c);
+    background: var(--mana-azure, #38bdf8);
+    border-radius: var(--radius-sm, 0.25rem);
+  }
+
+  .brain-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+    gap: 1.25rem;
+    perspective: 800px;
+  }
+
+  .panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+    padding: 1rem;
+    background: var(--bg-surface-raised, #131822);
+    border: 1px solid var(--border-stone, #242e40);
+    border-radius: var(--radius-md, 0.5rem);
+  }
+
+  .panel-title {
+    margin: 0;
+    font-family: var(--font-display, Georgia, serif);
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--gold-bright, #f6d88e);
+  }
+
+  .node-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    transform-style: preserve-3d;
+  }
+
+  .node-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    padding: 0.875rem;
+    text-align: left;
+    cursor: pointer;
+    background: var(--bg-surface, #0c1017);
+    border: 1px solid var(--border-stone, #242e40);
+    border-left-width: 4px;
+    border-radius: var(--radius-md, 0.5rem);
+    color: var(--parchment-bg, #f5eedb);
+    transform-style: preserve-3d;
+    transition:
+      transform 0.2s ease,
+      border-color 0.2s ease,
+      box-shadow 0.2s ease,
+      background 0.2s ease;
+  }
+
+  .node-card:hover,
+  .node-card:focus-visible {
+    transform: translateZ(12px) rotateX(2deg);
+    box-shadow: 0 0.75rem 1.5rem rgba(0, 0, 0, 0.45);
+    outline: none;
+  }
+
+  .node-card.active {
+    background: var(--bg-surface-elevated, #1b2230);
+    border-color: var(--gold-primary, #dfb15b);
+    box-shadow: 0 0 1rem var(--gold-glow, rgba(223, 177, 91, 0.4));
+    transform: translateZ(24px) scale(1.02);
+  }
+
+  .node-card--threat { border-left-color: var(--crimson-blood, #e05238); }
+  .node-card--authority { border-left-color: var(--mana-azure, #38bdf8); }
+  .node-card--item { border-left-color: #94a3b8; }
+
+  .node-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .node-id {
+    font-family: var(--font-mono, monospace);
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--gold-bright, #f6d88e);
+  }
+
+  .node-badge {
+    flex-shrink: 0;
+    padding: 0.15em 0.5em;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--bg-void, #06080c);
+    border-radius: var(--radius-sm, 0.25rem);
+  }
+
+  .node-badge--threat { background: var(--crimson-blood, #e05238); }
+  .node-badge--authority { background: var(--mana-azure, #38bdf8); }
+  .node-badge--item { background: #94a3b8; }
+
+  .node-description {
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: rgba(245, 238, 219, 0.8);
+  }
+
+  .meter {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+  }
+
+  .meter-track {
+    position: relative;
+    width: 100%;
+    height: 1.25rem;
+    background: var(--bg-void, #06080c);
+    border: 1px solid var(--border-stone, #242e40);
+    border-radius: var(--radius-sm, 0.25rem);
+    overflow: hidden;
+  }
+
+  .meter-fill {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      var(--amber-rune, #ff9d42) 0%,
+      var(--crimson-blood, #e05238) 100%
+    );
+    transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .meter-threshold {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: repeating-linear-gradient(
+      to bottom,
+      var(--gold-bright, #f6d88e) 0,
+      var(--gold-bright, #f6d88e) 3px,
+      transparent 3px,
+      transparent 6px
+    );
+    transform: translateX(-50%);
+  }
+
+  .meter-labels {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.7rem;
+    color: rgba(245, 238, 219, 0.6);
+  }
+
+  .threshold-label {
+    color: var(--gold-bright, #f6d88e);
+  }
+
+  .meter-readout {
+    font-family: var(--font-mono, monospace);
+    font-size: 0.9rem;
+    color: var(--parchment-bg, #f5eedb);
+  }
+
+  .meter-value {
+    font-weight: 700;
+    color: var(--amber-rune, #ff9d42);
+  }
+
+  .meter-readout .salience-escalated {
+    color: var(--crimson-blood, #e05238);
+    font-weight: 700;
+    text-shadow: 0 0 0.5rem var(--crimson-glow, rgba(224, 82, 56, 0.4));
+  }
+
+  .meter-reason {
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: rgba(245, 238, 219, 0.75);
+  }
+
+  .order-payload {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    padding: 0.875rem;
+    background: var(--bg-surface, #0c1017);
+    border: 1px solid var(--border-stone, #242e40);
+    border-radius: var(--radius-md, 0.5rem);
+  }
+
+  .order-from {
+    font-family: var(--font-mono, monospace);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--mana-azure, #38bdf8);
+  }
+
+  .order-quote {
+    margin: 0;
+    font-family: var(--font-body, Georgia, serif);
+    font-size: 1rem;
+    font-style: italic;
+    color: var(--parchment-bg, #f5eedb);
+    border-left: 3px solid var(--gold-primary, #dfb15b);
+    padding-left: 0.75rem;
+  }
+
+  .criteria-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+  }
+
+  .criteria-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.625rem;
+    font-size: 0.9rem;
+    color: rgba(245, 238, 219, 0.7);
+    background: var(--bg-surface, #0c1017);
+    border: 1px solid var(--border-stone, #242e40);
+    border-radius: var(--radius-sm, 0.25rem);
+    transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+  }
+
+  .criteria-item.passed {
+    color: var(--emerald-rekindler, #10b981);
+    border-color: var(--emerald-rekindler, #10b981);
+    background: rgba(16, 185, 129, 0.08);
+  }
+
+  .criteria-icon {
+    font-family: var(--font-mono, monospace);
+    font-size: 0.9rem;
+  }
+
+  .verdict-banner {
+    margin-top: 0.25rem;
+    padding: 0.75rem;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--parchment-bg, #f5eedb);
+    background: var(--bg-surface, #0c1017);
+    border: 1px solid var(--border-stone, #242e40);
+    border-radius: var(--radius-md, 0.5rem);
+  }
+
+  .verdict-banner.adopted {
+    color: var(--bg-void, #06080c);
+    background: var(--emerald-rekindler, #10b981);
+    border-color: var(--emerald-rekindler, #10b981);
+    box-shadow: 0 0 0.75rem rgba(16, 185, 129, 0.35);
+  }
+
+  .verdict-banner.rejected {
+    color: var(--parchment-bg, #f5eedb);
+    background: rgba(224, 82, 56, 0.12);
+    border-color: var(--crimson-blood, #e05238);
+    box-shadow: 0 0 0.75rem var(--crimson-glow, rgba(224, 82, 56, 0.25));
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .node-card,
+    .meter-fill,
+    .criteria-item,
+    .verdict-banner {
+      transition: none;
+    }
+  }
+</style>
+
+<script>
+  const THRESHOLD = 5.0;
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const nodes = document.querySelectorAll<HTMLButtonElement>('.node-card');
+    const fill = document.getElementById('salience-fill') as HTMLDivElement;
+    const valueEl = document.getElementById('salience-value') as HTMLSpanElement;
+    const statusEl = document.getElementById('salience-status') as HTMLSpanElement;
+    const reasonEl = document.getElementById('meter-reason') as HTMLParagraphElement;
+    const critAuthority = document.getElementById('crit-authority') as HTMLLIElement;
+    const critCopresence = document.getElementById('crit-copresence') as HTMLLIElement;
+    const critThreat = document.getElementById('crit-threat') as HTMLLIElement;
+    const verdict = document.getElementById('verdict') as HTMLDivElement;
+
+    if (!nodes.length || !fill) return;
+
+    function setCriterion(el: HTMLLIElement, passed: boolean) {
+      el.classList.toggle('passed', passed);
+      const icon = el.querySelector('.criteria-icon');
+      if (icon) icon.textContent = passed ? '◆' : '○';
+    }
+
+    function update(node: HTMLButtonElement) {
+      nodes.forEach((n) => {
+        const isActive = n === node;
+        n.classList.toggle('active', isActive);
+        n.setAttribute('aria-pressed', String(isActive));
+      });
+
+      const salience = parseFloat(node.dataset.salience || '0');
+      const type = node.dataset.type || '';
+      const copresence = node.dataset.copresence === 'true';
+      const label = node.dataset.label || node.textContent?.trim() || 'actor';
+      const role = node.dataset.role || type;
+
+      const pct = Math.max(0, Math.min(100, (salience / 10.0) * 100));
+      fill.style.width = `${pct}%`;
+      valueEl.textContent = salience.toFixed(1);
+
+      const escalates = salience >= THRESHOLD;
+      statusEl.textContent = escalates
+        ? 'breaks cadence sleep → deliberates'
+        : 'remains in cadence sleep';
+      statusEl.classList.toggle('salience-escalated', escalates);
+
+      reasonEl.textContent = `${label} (${role}) registers salience ${salience.toFixed(
+        1
+      )}. ${
+        escalates
+          ? 'Novelty, proximity, or threat crosses the threshold; the brain wakes to deliberate.'
+          : 'Below the deliberation threshold; the agent stays in its cadence sleep.'
+      }`;
+
+      const hasCreditor = Array.from(nodes).some(
+        (n) => n.dataset.type === 'authority' && parseFloat(n.dataset.authority || '0') >= 0.8
+      );
+      const authorityPass = hasCreditor;
+      const copresencePass = copresence;
+      const threatPass = type === 'threat' && salience >= THRESHOLD;
+
+      setCriterion(critAuthority, authorityPass);
+      setCriterion(critCopresence, copresencePass);
+      setCriterion(critThreat, threatPass);
+
+      const adopted = authorityPass && copresencePass && threatPass;
+      verdict.className = `verdict-banner ${adopted ? 'adopted' : 'rejected'}`;
+      verdict.textContent = adopted
+        ? 'ADOPTED — commitment queued: flank target'
+        : 'REJECTED — no commitment created';
+    }
+
+    nodes.forEach((node) => {
+      node.addEventListener('click', () => update(node));
+    });
+
+    update(nodes[0]);
+  });
+</script>
