@@ -195,16 +195,32 @@ defmodule ClientWeb.SpectateLiveTest do
     assert render(view) =~ "GM"
   end
 
-  test "dungeon overview shows rooms and resident monsters", %{conn: conn, run_id: id} do
+  test "dungeon overview shows rooms, residents, treasure, hazards, and sealed exits", %{conn: conn, run_id: id} do
     {:ok, view, _html} = live(conn, "/runs/#{id}/gm")
     eventually(fn -> render(view) =~ ~s(data-testid="dungeon-overview") end)
     html = render(view)
+
     assert html =~ "Entry Hall"
     assert html =~ "Guard Room"
     assert html =~ ~r/giant rat/i
     assert html =~ "north → library"
     assert html =~ "east → guard_room"
     assert html =~ "west → entry_hall"
+
+    entry_hall = room_html(html, "entry_hall")
+    assert entry_hall =~ "HAZARD"
+    assert entry_hall =~ "alarm"
+    assert entry_hall =~ "DC 12"
+    assert entry_hall =~ "ARMED"
+
+    library = room_html(html, "library")
+    assert library =~ "Potion of Healing"
+    assert library =~ "50 gp"
+    assert library =~ "HIDDEN"
+    assert library =~ "Spellbook"
+    assert library =~ "500 gp"
+    assert library =~ "SEALED"
+    assert library =~ "down"
   end
 
   test "unknown run shows an error without crashing", %{conn: conn} do
@@ -226,6 +242,12 @@ defmodule ClientWeb.SpectateLiveTest do
       content:
         ~s({"verb":"shout","target_id":null,"params":{"message":"Intruders!"},"reason":"raise the alarm"})
     }
+
+  defp room_html(html, room_id) do
+    regex = ~r/<article[^>]*data-room-id="#{room_id}"[^>]*>.*?<\/article>/s
+    [[match] | _] = Regex.scan(regex, html)
+    match
+  end
 
   defp advance_until_believed(id, about, n \\ 20) do
     pc = EngineCore.World.Server.snapshot(id).agents["pc_thistle"]
