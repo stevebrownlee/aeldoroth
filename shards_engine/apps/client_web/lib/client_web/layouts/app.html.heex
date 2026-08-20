@@ -1,1 +1,3 @@
+<div :if={msg = Phoenix.Flash.get(@flash, :error)} class="flash flash-error">{msg}</div>
+<div :if={msg = Phoenix.Flash.get(@flash, :info)} class="flash flash-info">{msg}</div>
 <%= @inner_content %>
