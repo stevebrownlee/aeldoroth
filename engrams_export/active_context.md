@@ -1,14 +1,14 @@
 ---
 identifier: active_context
 title: Active Context
-created: 2026-08-20T04:25:38Z
+created: 2026-08-20T11:43:03Z
 ---
 # Active Context
 
 ```json
 {
   "content": {
-    "current_focus": "Platform documentation & interactive showcase site complete in docs/ — Astro v5, 5 visualizers, 9 handbook chapters",
+    "current_focus": "Docs site navigation routes verified via agent-browser and pushed to origin/main",
     "current_plan": "Plan 5 (protocol-live-runs) COMPLETE",
     "decisions": [
       47,
@@ -62,7 +62,7 @@ created: 2026-08-20T04:25:38Z
     "watch": "Party's choice for the Shadow-Crystal (keep/sell/study/destroy) is the Act 1 pacing lever"
   },
   "name": "default",
-  "updated_at": "2026-08-20T04:25:38Z",
-  "version": 8
+  "updated_at": "2026-08-20T11:43:03Z",
+  "version": 9
 }
 ```
