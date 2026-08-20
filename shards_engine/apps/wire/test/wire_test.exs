@@ -16,10 +16,28 @@ defmodule WireTest do
   @yaml Path.expand("../../../../the-ruined-tower/ruined_tower.yaml", __DIR__)
 
   @pcs [
-    %{id: "pc_thistle", name: "Thistle", place_id: "entry_hall",
-      int: 13, ac: 5, hd: 1, hp: 12, thac0: 20, damage: "1d8"},
-    %{id: "pc_bramble", name: "Bramble", place_id: "entry_hall",
-      int: 12, ac: 6, hd: 1, hp: 8, thac0: 19, damage: "1d6"}
+    %{
+      id: "pc_thistle",
+      name: "Thistle",
+      place_id: "entry_hall",
+      int: 13,
+      ac: 5,
+      hd: 1,
+      hp: 12,
+      thac0: 20,
+      damage: "1d8"
+    },
+    %{
+      id: "pc_bramble",
+      name: "Bramble",
+      place_id: "entry_hall",
+      int: 12,
+      ac: 6,
+      hd: 1,
+      hp: 8,
+      thac0: 19,
+      damage: "1d6"
+    }
   ]
 
   setup ctx do
@@ -55,9 +73,9 @@ defmodule WireTest do
            end)
 
     # The GM-facing overview includes resident PC agents (Thistle starts here).
-    entry_hall = Enum.find(places, & &1["id"] == "entry_hall")
+    entry_hall = Enum.find(places, &(&1["id"] == "entry_hall"))
     assert entry_hall
-    assert Enum.any?(entry_hall["agents"], & &1["id"] == "pc_thistle")
+    assert Enum.any?(entry_hall["agents"], &(&1["id"] == "pc_thistle"))
   end
 
   test "gm_chat replies :ok and broadcasts an ooc push", %{run_id: id} do
@@ -66,9 +84,9 @@ defmodule WireTest do
     assert {:ok, _snapshot, chan} = join(socket, "spectate:#{id}", %{"role" => "spectate"})
 
     ref = push(chan, "gm_chat", %{"text" => "Welcome to the table"})
-    assert_reply ref, :ok, %{}
+    assert_reply(ref, :ok, %{})
 
-    assert_push "ooc", %{agent_id: "GM", text: "Welcome to the table"}
+    assert_push("ooc", %{agent_id: "GM", text: "Welcome to the table"})
   end
 
   defp start_run(id) do

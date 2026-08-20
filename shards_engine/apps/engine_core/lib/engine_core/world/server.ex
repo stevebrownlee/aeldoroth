@@ -86,7 +86,6 @@ defmodule EngineCore.World.Server do
     %{places: places}
   end
 
-
   @doc """
   Cast: fold `events` into the snapshot (restore path). The first new
   event's seq must be `last_seq + 1`; a gap crashes the server — the
@@ -103,6 +102,7 @@ defmodule EngineCore.World.Server do
     existing = Writer.events(run_id)
     state = %__MODULE__{run_id: run_id, world: Fold.fold(world, existing), last_seq: 0}
     state = %{state | last_seq: last_seq(state.world, existing)}
+
     case Writer.subscribe(run_id) do
       :ok -> {:ok, state}
       # No writer means teardown is already underway; exit quietly rather

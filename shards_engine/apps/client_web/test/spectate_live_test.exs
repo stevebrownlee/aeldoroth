@@ -119,11 +119,14 @@ defmodule ClientWeb.SpectateLiveTest do
 
     eventually(fn ->
       html = render(view)
+
       html =~ "End Round (Run World)" and
         html =~ "Auto-Run until Choice"
     end)
 
-    assert render(view) =~ "Executes declared player actions &amp; NPC AI deliberation for 1 round."
+    assert render(view) =~
+             "Executes declared player actions &amp; NPC AI deliberation for 1 round."
+
     assert render(view) =~ "Steps rounds until a player decision is required."
 
     eventually(fn -> render(view) =~ "seq-" end)
@@ -156,12 +159,14 @@ defmodule ClientWeb.SpectateLiveTest do
 
   test "flow board shows a thinking badge while waiting for action", %{conn: conn, run_id: id} do
     {:ok, view, _html} = live(conn, "/runs/#{id}/gm")
+
     eventually(fn ->
       html = render(view)
       html =~ "THINKING" and html =~ "Waiting for player action..."
     end)
 
     assert {:ok, _} = Session.declare(id, "pc_thistle", "go east")
+
     eventually(fn ->
       html = render(view)
       html =~ "READY" and html =~ "go east"

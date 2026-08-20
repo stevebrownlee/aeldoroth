@@ -9,19 +9,49 @@ defmodule Referee.Run.SessionTest do
   @yaml Path.expand("../../../../../../the-ruined-tower/ruined_tower.yaml", __DIR__)
 
   @pcs [
-    %{id: "pc_thistle", name: "Thistle", place_id: "entry_hall",
-      int: 13, ac: 5, hd: 1, hp: 12, thac0: 20, damage: "1d8"},
-    %{id: "pc_bramble", name: "Bramble", place_id: "entry_hall",
-      int: 12, ac: 6, hd: 1, hp: 8, thac0: 19, damage: "1d6"}
+    %{
+      id: "pc_thistle",
+      name: "Thistle",
+      place_id: "entry_hall",
+      int: 13,
+      ac: 5,
+      hd: 1,
+      hp: 12,
+      thac0: 20,
+      damage: "1d8"
+    },
+    %{
+      id: "pc_bramble",
+      name: "Bramble",
+      place_id: "entry_hall",
+      int: 12,
+      ac: 6,
+      hd: 1,
+      hp: 8,
+      thac0: 19,
+      damage: "1d6"
+    }
   ]
 
   defp routing do
-    scripts = %{interpret: [Jason.encode!(%{"verb" => "move", "target_id" => nil, "params" => %{"direction" => "east"}})], salt: System.unique_integer()}
+    scripts = %{
+      interpret: [
+        Jason.encode!(%{
+          "verb" => "move",
+          "target_id" => nil,
+          "params" => %{"direction" => "east"}
+        })
+      ],
+      salt: System.unique_integer()
+    }
+
     %{interpret: %{adapter: Scripted, scripts: scripts}}
   end
 
   defp tmp_dir(tag) do
-    dir = Path.join(System.tmp_dir!(), "run_session_#{tag}_#{:erlang.unique_integer([:positive])}")
+    dir =
+      Path.join(System.tmp_dir!(), "run_session_#{tag}_#{:erlang.unique_integer([:positive])}")
+
     File.mkdir_p!(dir)
     dir
   end
@@ -37,7 +67,11 @@ defmodule Referee.Run.SessionTest do
     opts = Keyword.delete(opts, :pcs)
 
     {:ok, pid} =
-      Session.start_link(id, @yaml, 42, pcs,
+      Session.start_link(
+        id,
+        @yaml,
+        42,
+        pcs,
         Keyword.merge([routing: routing(), data_dir: dir], opts)
       )
 
