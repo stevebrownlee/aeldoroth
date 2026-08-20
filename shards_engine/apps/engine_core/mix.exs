@@ -11,7 +11,7 @@ defmodule EngineCore.MixProject do
       lockfile: "../../mix.lock",
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
-      deps: [{:yaml_elixir, "~> 2.11"}]
+      deps: [{:yaml_elixir, "~> 2.11"}, {:jason, "~> 1.0"}]
     ]
   end
 

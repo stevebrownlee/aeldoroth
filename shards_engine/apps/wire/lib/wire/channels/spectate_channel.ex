@@ -13,6 +13,7 @@ defmodule Wire.SpectateChannel do
   alias EngineCore.World.Server
   alias Referee.Run.Session
   alias Referee.Spend
+  alias Wire.JSONSafe
 
   @tail_cap 50
 
@@ -23,9 +24,9 @@ defmodule Wire.SpectateChannel do
          :ok <- Writer.subscribe(run_id) do
       snapshot = %{
         tick: state.tick,
-        boundaries: Server.boundaries(run_id),
+        boundaries: JSONSafe.to_json(Server.boundaries(run_id)),
         spend: Spend.report(Writer.events(run_id)),
-        tail: Writer.events(run_id) |> Enum.take(-@tail_cap)
+        tail: Writer.events(run_id) |> Enum.take(-@tail_cap) |> JSONSafe.to_json()
       }
 
       {:ok, snapshot, socket}
@@ -60,7 +61,7 @@ defmodule Wire.SpectateChannel do
 
   @impl true
   def handle_info({:ledger_events, _run_id, events}, socket) do
-    :ok = push(socket, "ledger_tail", %{events: events})
+    :ok = push(socket, "ledger_tail", %{events: JSONSafe.to_json(events)})
     push_state_sync(socket)
     {:noreply, socket}
   end
@@ -69,7 +70,7 @@ defmodule Wire.SpectateChannel do
 
   defp push_state_sync(socket) do
     run_id = run_id(socket)
-    :ok = push(socket, "state_sync", %{tick: tick_of(run_id), boundaries: Server.boundaries(run_id)})
+    :ok = push(socket, "state_sync", %{tick: tick_of(run_id), boundaries: JSONSafe.to_json(Server.boundaries(run_id))})
   end
 
   defp tick_of(run_id) do

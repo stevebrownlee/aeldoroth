@@ -1,5 +1,8 @@
 defmodule EngineCore.Ledger.Event do
   @enforce_keys [:seq, :tick, :class, :payload]
+  # JSON-safe (spectate tail crosses real WebSockets, spec §11): explicit
+  # field list so new fields never leak to the wire by accident.
+  @derive {Jason.Encoder, only: [:seq, :tick, :class, :payload]}
   defstruct [:seq, :tick, :class, :payload]
   @type t :: %__MODULE__{}
 end

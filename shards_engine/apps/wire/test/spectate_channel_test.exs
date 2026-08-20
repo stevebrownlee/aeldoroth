@@ -1,14 +1,15 @@
 defmodule Wire.SpectateChannelTest do
   @moduledoc """
   SpectateChannel (plan 5 Task 8): the GM/observer surface. Join snapshot
-  carries tick/boundaries/spend/tail; every writer tail streams raw;
+  carries tick/boundaries/spend/tail; tails stream as JSON-safe projections
+  (Wire.JSONSafe — structs and opaque binaries never cross a real socket);
   pause/resume/spend map to Session calls.
   """
   use ExUnit.Case, async: false
   import Phoenix.ChannelTest
   @endpoint Wire.Endpoint
 
-  alias EngineCore.{Ledger, RunSup}
+  alias EngineCore.RunSup
   alias EngineCore.Ledger.Writer
   alias LLMGateway.Adapters.Scripted
   alias Referee.Run.Session
@@ -24,12 +25,13 @@ defmodule Wire.SpectateChannelTest do
 
   setup ctx do
     id = "spec_#{ctx.test}_#{:erlang.unique_integer([:positive])}"
-
+    dir = Path.join(System.tmp_dir!(), "spectate_#{:erlang.unique_integer([:positive])}")
+    File.mkdir_p!(dir)
     on_exit(fn ->
-      Session.stop(id)
+      File.rm_rf!(dir)
       RunSup.stop_run(id)
     end)
-    {:ok, %{run_id: id}}
+    {:ok, run_id: id}
   end
 
   test "join snapshot has tick, boundaries, spend, tail", %{run_id: id} do
@@ -42,13 +44,21 @@ defmodule Wire.SpectateChannelTest do
     assert is_integer(tick)
     assert is_map(boundaries) and map_size(boundaries) > 0
     assert is_map(spend) and Map.has_key?(spend, :total)
-    assert is_list(tail) and length(tail) > 0
     assert length(tail) <= 50
 
+    # Real sockets serialize to JSON (the crash this pins: agent_added's
+    # Agent struct and the prefs md5 digest are not JSON-safe terms).
+    assert {:ok, _} = Jason.encode(%{tick: tick, boundaries: boundaries, spend: spend, tail: tail})
+
+    # Tail entries are JSON-shaped projections: string keys, plain maps.
     for ev <- tail do
-      assert %{seq: seq, tick: _, class: _, payload: _} = ev
+      assert %{"seq" => seq, "tick" => _, "class" => _, "payload" => _} = ev
       assert is_integer(seq)
     end
+
+    # The prefs-stack digest (opaque md5) projects to hex, not raw bytes.
+    assert [%{"payload" => %{"hash" => hash}} | _] = Enum.filter(tail, &(&1["class"] == "meta"))
+    assert hash == Base.encode16(Base.decode16!(hash))
   end
 
   test "spectate join refuses a socket holding a character", %{run_id: id} do
@@ -66,10 +76,12 @@ defmodule Wire.SpectateChannelTest do
     assert {:ok, %{reply: _}} = Session.declare(id, "pc_thistle", "I head east")
 
     assert_push "ledger_tail", %{events: events}
-    assert [%Ledger.Event{} | _] = events
-    assert Enum.all?(events, &(&1.seq > seq0))
-    # raw events: all classes reach spectators (observability)
-    assert Enum.any?(events, &(&1.class == :llm))
+    assert [%{"class" => _, "payload" => _, "seq" => _, "tick" => _} | _] = events
+    assert Enum.all?(events, &is_map/1)
+    assert Enum.all?(events, &(&1["seq"] > seq0))
+    # All classes reach spectators (observability), JSON-shaped.
+    assert Enum.any?(events, &(&1["class"] == "llm"))
+    assert {:ok, _} = Jason.encode(events)
   end
 
   test "pause generates dossiers and resumes", %{run_id: id} do
@@ -112,6 +124,7 @@ defmodule Wire.SpectateChannelTest do
     assert_push "state_sync", %{tick: tick, boundaries: boundaries}
     assert is_integer(tick)
     assert is_map(boundaries)
+    assert {:ok, _} = Jason.encode(boundaries)
   end
 
   defp start_run(id) do
