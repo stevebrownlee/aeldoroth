@@ -66,7 +66,7 @@ Four connected human PCs complete the adventure arc (or achieve a TPK) from YAML
 
 ```bash
 cd shards_engine
-mix run --no-halt -e 'ClientTUI.CLI.main(["--run", "rt-001", "--pc", "aelfric"])'
+mix run -e "ClientTUI.CLI.main(System.argv)" -- --url http://localhost:4000 --run rt-001 --character pc_thistle
 ```
 
 During pause, the run stops; on resume, the engine replays from the last snapshot plus the event tail.
@@ -96,8 +96,7 @@ The terminal client is the reference PC seat. It speaks the WebSocket protocol d
 
 ```bash
 cd shards_engine
-# start the umbrella in dev (or use scripts/web_server.exs below)
-mix run --no-halt -e 'ClientTUI.CLI.main(["--run", "rt-001", "--pc", "aelfric"])'
+mix run -e "ClientTUI.CLI.main(System.argv)" -- --url http://localhost:4000 --run rt-001 --character pc_thistle
 ```
 
 Available slash commands inside the REPL:

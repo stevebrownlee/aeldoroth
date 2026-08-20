@@ -9,7 +9,9 @@ const { class: className = '' } = Astro.props;
 const pathname = Astro.url.pathname;
 
 const navItems = [
+  { label: 'How to Play', href: '/docs/00-how-to-play' },
   { label: 'Handbook', href: '/docs/01-overview' },
+  { label: 'Visualizers', href: '/visualizers' },
   { label: 'Pipeline', href: '/visualizers/referee' },
   { label: 'Dice 3D', href: '/visualizers/dice' },
   { label: 'Ledger', href: '/visualizers/replay' },
@@ -31,9 +33,11 @@ const githubUrl = 'https://github.com/stevebrownlee/aeldoroth';
       <ul class="nav-list">
         {navItems.map((item) => {
           const isActive =
-            item.href === '/docs/01-overview'
-              ? pathname.startsWith('/docs')
-              : pathname === item.href || pathname.startsWith(`${item.href}/`);
+            item.href === '/docs/00-how-to-play'
+              ? pathname === '/docs/00-how-to-play'
+              : item.href === '/docs/01-overview'
+                ? pathname.startsWith('/docs') && pathname !== '/docs/00-how-to-play'
+                : pathname === item.href || pathname.startsWith(`${item.href}/`);
           return (
             <li class="nav-item">
               <a
