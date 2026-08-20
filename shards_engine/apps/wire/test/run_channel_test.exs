@@ -112,6 +112,22 @@ defmodule Wire.RunChannelTest do
     assert is_binary(b_text)
     refute_push "perception", %{}
   end
+  # PROTOCOL.md documents the ooc push for every seat (spec §11): table talk
+  # is not per-PC isolated.
+  test "ooc pushes to every seat on the run", %{run_id: id} do
+    {:ok, _pid, socket_t} = start_run(id)
+    {:ok, _, chan_t} = join(socket_t, "run:#{id}", %{})
+    {:ok, socket_b} = connect(Wire.Socket, %{"run_id" => id, "character_id" => "pc_bramble"})
+    {:ok, _, _chan_b} = join(socket_b, "run:#{id}", %{})
+
+    ref = push(chan_t, "ooc", %{"text" => "table talk"})
+    assert_reply ref, :ok, %{ack: true}
+
+    # Both channels receive the same push (two messages in this mailbox).
+    # Atom keys here — the JSON encoding happens below this layer.
+    assert_push "ooc", %{agent_id: "pc_thistle", text: "table talk"}
+    assert_push "ooc", %{agent_id: "pc_thistle", text: "table talk"}
+  end
 
   test "ooc is ledgered and acked", %{run_id: id} do
     {:ok, _pid, socket} = start_run(id)

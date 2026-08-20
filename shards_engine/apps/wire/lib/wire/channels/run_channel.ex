@@ -94,6 +94,10 @@ defmodule Wire.RunChannel do
        when is_map(payload) and :erlang.map_get(:agent_id, payload) == pc,
        do: push(socket, "dice", %{event_payload: payload})
 
+  # OOC is table talk — every seat hears it, no per-PC filter (PROTOCOL.md).
+  defp push_one(%Ledger.Event{class: :ooc, payload: %{agent_id: id, text: text}}, _pc, _open?, socket),
+    do: push(socket, "ooc", %{agent_id: id, text: text})
+
   defp push_one(_ev, _pc, _open?, _socket), do: :ok
 
   defp slice(run_id, pc_id), do: Slice.for_actor(Server.snapshot(run_id), pc_id)
