@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="csrf-token" content={get_csrf_token()} />
+    <title>The Shattered Kingdoms — Referee Console</title>
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; background: #14161a; color: #cfd3da;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 14px; line-height: 1.5;
+      }
+      main { max-width: 720px; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+      h1 { font-size: 1.3rem; color: #e8d9a8; letter-spacing: 0.04em; }
+      h2 { font-size: 1.05rem; color: #b9c2cf; margin-top: 2rem; }
+      a { color: #8fb7e8; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      label { display: block; margin: 0.6rem 0 0.15rem; color: #9aa3af; font-size: 0.85rem; }
+      input[type=text], input[type=number], textarea {
+        width: 100%; background: #1c1f25; color: #e6e8ec;
+        border: 1px solid #343943; border-radius: 4px; padding: 0.4rem 0.5rem;
+        font: inherit;
+      }
+      textarea { min-height: 5.5rem; }
+      button {
+        background: #2c3a2e; color: #d8e8d0; border: 1px solid #4a5f4c;
+        border-radius: 4px; padding: 0.4rem 0.9rem; font: inherit; cursor: pointer;
+      }
+      button:hover { background: #37493a; }
+      button.secondary { background: #262b33; color: #b9c2cf; border-color: #3b424e; }
+      .log { list-style: none; margin: 0.5rem 0; padding: 0; border: 1px solid #2a2e36; border-radius: 4px; }
+      .log > li {
+        padding: 0.35rem 0.6rem; border-bottom: 1px solid #232730;
+        white-space: pre-wrap; overflow-wrap: anywhere;
+      }
+      .log > li:last-child { border-bottom: none; }
+      .log .meta { color: #6f7885; font-size: 0.8rem; }
+      .log .kind-perception { color: #d6d9de; }
+      .log .kind-ooc { color: #9a8fb8; font-style: italic; }
+      .log .kind-dice { color: #8fb7e8; }
+      .prompt-box { border: 1px solid #7a6a3a; background: #241f14; border-radius: 4px; padding: 0.6rem 0.8rem; margin: 0.6rem 0; color: #e8d9a8; }
+      .flash-info { border: 1px solid #3c5a7a; background: #16222e; color: #a8c8e8; padding: 0.4rem 0.7rem; border-radius: 4px; margin: 0.4rem 0; }
+      .flash-error { border: 1px solid #7a3c3c; background: #2e1616; color: #e8a8a8; padding: 0.4rem 0.7rem; border-radius: 4px; margin: 0.4rem 0; }
+      table { border-collapse: collapse; width: 100%; }
+      th, td { text-align: left; padding: 0.3rem 0.5rem; border-bottom: 1px solid #232730; vertical-align: top; }
+      th { color: #9aa3af; font-weight: normal; font-size: 0.8rem; }
+      .seat-grid { display: flex; gap: 0.6rem; flex-wrap: wrap; margin: 0.5rem 0 1rem; }
+      .stat { display: inline-block; border: 1px solid #343943; border-radius: 4px; padding: 0.15rem 0.5rem; margin-right: 0.4rem; color: #9aa3af; font-size: 0.8rem; }
+      .stat b { color: #e6e8ec; font-weight: normal; }
+      .row-box { border: 1px solid #2a2e36; border-radius: 4px; padding: 0.3rem 0.6rem; margin-bottom: 0.4rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+    </style>
+    <script defer src="/assets/phoenix.min.js"></script>
+    <script defer src="/assets/phoenix_live_view.min.js"></script>
+    <script>
+      // Mounted on DOMContentLoaded (assets are deferred, so LiveSocket is defined by now).
+      window.addEventListener("DOMContentLoaded", () => {
+        const liveSocket = new LiveView.LiveSocket("/live", Phoenix.Socket, {
+          params: { _csrf_token: document.querySelector("meta[name='csrf-token']")?.content }
+        });
+        liveSocket.connect();
+      });
+    </script>
+  </head>
+  <body>
+    <main>
+      <.flash_group flash={@flash} />
+      <%= @inner_content %>
+    </main>
+  </body>
+</html>

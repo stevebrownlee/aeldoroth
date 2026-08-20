@@ -18,3 +18,14 @@ config :wire, Wire.Endpoint,
   adapter: Bandit.PhoenixAdapter,
   server: false,
   pubsub_server: Wire.PubSub
+
+# Web client endpoint (plan 7): LiveView socket + re-served wire socket.
+# server: false always — the serve script (Task 6) flips it on at boot;
+# tests boot their own Bandit on port 0.
+config :client_web, ClientWeb.Endpoint,
+  adapter: Bandit.PhoenixAdapter,
+  secret_key_base: "clientweb_dev_secret_key_base_not_for_production_0123456789abcdef",
+  server: false,
+  pubsub_server: ClientWeb.PubSub,
+  live_view: [signing_salt: "clientweb_lv_salt"],
+  render_errors: [formats: [html: ClientWeb.ErrorView], layout: false]
