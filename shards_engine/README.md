@@ -28,6 +28,7 @@ Every major actor in an adventure—human player character (PC), goblin sentry, 
    - [Running Verification & Test Suites](#running-verification--test-suites)
    - [Running the Headless Smoke Test](#running-the-headless-smoke-test)
    - [Starting a Live Adventure Server](#starting-a-live-adventure-server)
+   - [Connecting via the Web Console (Recommended)](#connecting-via-the-web-console-recommended)
    - [Connecting via the Reference Terminal Client (TUI)](#connecting-via-the-reference-terminal-client-tui)
    - [Connecting as GM / Spectator](#connecting-as-gm--spectator)
    - [LLM Gateway & Offline Fallback Modes](#llm-gateway--offline-fallback-modes)
@@ -326,6 +327,7 @@ shards_engine/
 │   ├── agents/        # Agent brain actors & prompt generators
 │   ├── referee/       # Adjudication pipeline, preference stack & Run.Session
 │   ├── wire/          # Phoenix Channels endpoint (RunChannel & SpectateChannel)
+│   ├── client_web/    # Web play surface: lobby, player seats, GM console (LiveView)
 │   ├── client_tui/    # Reference WebSocket terminal client (ClientTUI.CLI)
 │   └── llm_gateway/   # Budgeted LLM router & adapter chokepoint
 └── scripts/           # Standalone smoke and automation scripts
@@ -340,8 +342,7 @@ mix compile
 ---
 
 ### Running Verification & Test Suites
-
-Run the full umbrella test suite (288+ automated tests covering rules, truth barriers, channel isolation, and byte-identical determinism proofs):
+Run the full umbrella test suite (349 automated tests covering rules, truth barriers, channel isolation, and byte-identical determinism proofs):
 
 ```sh
 cd shards_engine
@@ -386,6 +387,22 @@ pcs = [
 yaml_path = Path.expand("../../../the-ruined-tower/ruined_tower.yaml", __DIR__)
 Referee.Run.Session.start_link("campaign_01", yaml_path, 42, pcs, data_dir: "runs")
 ```
+
+
+### Connecting via the Web Console (Recommended)
+
+The full play experience is served by `apps/client_web` — lobby, player seats, and GM console in a browser. Boot it with:
+
+```sh
+cd shards_engine
+MIX_ENV=dev mix run --no-halt scripts/web_server.exs   # serves http://localhost:4000
+```
+
+* **Lobby (`/`)** — the scenario card, a four-seat roster builder (Thistle and Bramble prefilled; blank rows drop on submit), an advanced disclosure (seed, adventure YAML, full-roster override), and the active-runs table.
+* **Player seat (`/runs/<run_id>/<pc_id>`)** — the truth-barrier play surface: scene summary with who else is here, one-click exit chips, a verb palette, a chronicle of perceptions, and the character rail (HP/AC/THAC0). Declarations go through the wire; the seat auto-rejoins after a drop.
+* **GM console (`/runs/<run_id>/gm`)** — the flow board (who holds the floor, who owes an answer, which seats are connected), advance and advance-until-input levers, pause & dossier, boundary states, the always-visible LLM spend header, and a readable live ledger preview.
+
+The seat surface is a wire client like any other — it holds zero authority; the GM console is a trusted referee surface calling `Referee.Run.Session` directly.
 
 ---
 

@@ -32,10 +32,10 @@ Open your browser to:
 http://localhost:4000/
 ```
 
-1. **Create a Run:** The home page prefills a new run using the starter adventure `the-ruined-tower/ruined_tower.yaml` and a 2-character party (Thistle the Fighter and Bramble the Thief). Click **Start Run**.
-2. **Claim a Seat:** You will land on `/runs/<run_id>`. Click a character name (e.g. **Thistle**) to claim that character's seat.
-3. **Open Multiple Players:** In a separate browser tab or window, navigate to `/runs/<run_id>` and claim **Bramble** to play with multiple party members!
-4. **Open the GM Console:** Open `/runs/<run_id>/gm` in another tab to observe the live dungeon state and advance game time.
+1. **Create a Run:** The landing page shows the scenario card for *The Ruined Tower* and a roster builder with four seat rows (Thistle the Fighter and Bramble the Thief prefilled). Fill or edit seats — rows with a blank PC name are dropped — and click **Start run**. The advanced disclosure offers a seed field, the adventure YAML path, and a paste-a-full-roster override.
+2. **Claim a Seat:** After the run starts, the seat-links panel lists every character (e.g. **Thistle**) plus the GM console link. Click a character to claim that seat — each seat opens its own page at `/runs/<run_id>/<pc_id>` and holds that character exclusively; one connection per player. Dropping the connection releases the seat and the page rejoins automatically.
+3. **Open Multiple Players:** In a separate browser tab or window, open the same seat-links panel and claim **Bramble** to play with multiple party members!
+4. **Open the GM Console:** Open `/runs/<run_id>/gm` in another tab to watch the flow board, the ledger, and advance game time.
 
 ### Option B: The Terminal Client (`client_tui`)
 
@@ -63,7 +63,7 @@ When you select a character, the **Truth Barrier** activates: your screen receiv
 
 ## 3. Taking Your Turn: Declaring Intent
 
-To act, simply type what you want your character to do into the **Declare** box and press Enter or click **Declare**.
+To act, simply type what you want your character to do into the **Declare** box and press Enter or click **Declare**. The seat page scaffolds this without taking over: the **scene panel** summarizes where you are and who else is here, one-click **exit chips** declare a move for you, clicking a **Here:** chip drops that name into your compose box (`attack ` + `goblin guard`), the **verb palette** suggests what the referee understands, the **chronicle** narrates everything you've perceived tick by tick, and the **character rail** tracks your HP, AC, and THAC0. The status ribbon shows connection state, the current tick, and whether the table is waiting on your answer.
 
 ### How to Declare Actions
 
@@ -187,11 +187,14 @@ In tabletop RPGs, players often accidentally act on metagame knowledge their cha
 
 If you are running the session as the Referee / Game Master, the **GM Console** at `/runs/<run_id>/gm` gives you complete oversight:
 
-* **Advance Time:** Click **Advance** to progress world time (advancing monster deliberations and patrol routes).
+* **Flow Board:** One row per living PC — who holds the floor (last declared intent), who owes the table an answer (outstanding clarification), and whether their seat is connected. The answer to "who is the table waiting on?"
+* **Advance Time:** Click **Advance** to progress world time by one tick (advancing monster deliberations and patrol routes).
+* **Advance Until Input:** Click **Advance until input** to run ticks unattended until a player owes the table an answer (or the 20-step safety cap); the console reports where it stopped.
 * **Pause & Secret Dossiers:** Click **Pause & dossier** to freeze the session and generate private summary dossiers detailing what each character remembers and secretly suspects.
 * **Resume:** Click **Resume** to reopen player declarations.
+* **LLM Spend:** Click **LLM spend** for the token/call report; the header always shows the running total.
 * **Inspect Spatial Boundaries:** See in real-time which dungeon rooms are `AWAKE` (consuming compute) versus `DORMANT` (sleeping until disturbed).
-* **Live Ledger Tail:** Watch raw immutable game events (`:world`, `:dice`, `:signal`, `:narration`) stream in sequence.
+* **Live Ledger Preview:** Watch raw immutable game events (`:world`, `:dice`, `:signal`, `:narration`, `:llm`) stream in sequence, rendered one readable line per event.
 
 ---
 

@@ -71,7 +71,7 @@ A typical player interaction looks like this on the wire:
 
 // server → client: join reply with the truth-barrier slice
 [null, "1", "run:castle-dracolich", "phx_reply",
-  {"status": "ok", "response": {"state": {...}, "dossier": {...}}}]
+  {"status": "ok", "response": {"state": {...}, "dossier": {...}, "paused": false}}]
 
 // client → server: declare intent
 [null, "2", "run:castle-dracolich", "declare_intent", {"text": "I inspect the altar."}]
@@ -129,7 +129,7 @@ def claim(run_id, pc_id) do
 end
 ```
 
-A successful join replies with the per-PC **truth barrier slice**: only information the character is allowed to see, produced by `Referee.Slice.for_actor/2`. The player cannot observe the full world state; the wire enforces the barrier at the channel boundary.
+A successful join replies with the per-PC **truth barrier slice** plus the most recent pause dossier and a `paused` flag (a seat joining mid-pause learns the state from the reply, not from a missed push): only information the character is allowed to see, produced by `Referee.Slice.for_actor/2`. The player cannot observe the full world state; the wire enforces the barrier at the channel boundary.
 
 Player events handled by `run:*`:
 
@@ -148,22 +148,30 @@ Server pushes to a player:
 | `prompt`     | `{"question": "..."}`                        | Interpreter clarification request. |
 | `dice`       | `{"event_payload": {...}}`                   | Dice task for this PC (if visibility is open). |
 | `ooc`        | `{"agent_id": "...", "text": "..."}`        | OOC message from another seat. |
+| `paused`     | `{}`                                         | The GM paused the run; declarations are refused until resume. |
+| `resumed`    | `{}`                                         | The GM resumed the run. |
 | `state_sync` | `{"slice": {...}}`                           | Updated truth-barrier slice. |
 
 ### `spectate:<id>` — GM observability
-
-`Wire.SpectateChannel` is the trusted observer seat. It requires role `:spectate` and replies with a full snapshot of engine truth:
 
 ```elixir
 snapshot = %{
   tick: state.tick,
   boundaries: JSONSafe.to_json(Server.boundaries(run_id)),
   spend: Spend.report(Writer.events(run_id)),
-  tail: Writer.events(run_id) |> Enum.take(-@tail_cap) |> JSONSafe.to_json()
+  tail: Writer.events(run_id) |> Enum.take(-@tail_cap) |> JSONSafe.to_json(),
+  awaiting: enrich_awaiting(run_id, Session.awaiting(run_id))
 }
 ```
 
-The tail is unfiltered: spectators see all ledger event classes. Dice visibility is the referee's preference-stack decision, not the wire's; the spectate channel simply streams whatever the engine emits.
+`awaiting` is the flow board: one row per living PC — `last_intent` (who holds
+the floor), `prompt` (an outstanding clarification that player owes the table),
+and `seated` (whether their seat connection is live). The tail is unfiltered:
+spectators see all ledger event classes. Dice visibility is the referee's
+preference-stack decision, not the wire's; the spectate channel simply streams
+whatever the engine emits.
+
+
 
 Spectator events:
 
@@ -181,6 +189,7 @@ Server pushes to a spectator:
 | ------------- | ---------------------------------- | --------- |
 | `ledger_tail` | `{"events": [...]}`                | New ledger events appended to the tail. |
 | `state_sync`  | `{"tick": n, "boundaries": [...]}` | Current tick and boundary states. |
+| `awaiting`    | `{"pcs": [rows]}`                  | Flow-board rows; pushed only when a row changes. |
 
 ## Client architectures
 
@@ -241,8 +250,8 @@ end
 
 Incoming wire pushes arrive as `{:chan, topic, event, payload}` messages, while replies arrive as `{:chan_reply, ref, status, payload}`. Each LiveView handles the subset of events relevant to its surface:
 
-- `ClientWeb.RunLive` handles player-seat pushes: `perception`, `prompt`, `dice`, `ooc`, `state_sync`.
-- `ClientWeb.SpectateLive` handles GM-console pushes: `ledger_tail`, `state_sync`, plus replies for `pause`, `resume`, and `spend`.
+- `ClientWeb.RunLive` handles player-seat pushes: `perception`, `prompt`, `dice`, `ooc`, `state_sync`, `paused`, `resumed`.
+- `ClientWeb.SpectateLive` handles GM-console pushes: `ledger_tail`, `state_sync`, `awaiting`, plus replies for `pause`, `resume`, and `spend`. Its `advance` and `advance until input` levers call `Referee.Run.Session` directly — the GM console is a trusted referee surface, not a wire client.
 
 ## Determinism note: wire is a view, never a source of truth
 

@@ -46,13 +46,16 @@ claim; the second join for a claimed character is refused with
 
 ### Join
 
-Reply: `{:ok, %{state: state, dossier: dossier}}`
+Reply: `{:ok, %{state: state, dossier: dossier, paused: boolean}}`
 
-- `state` — the PC's actor slice (`Referee.Slice.for_actor/2`): identity, body,
-  current place + exits, believed agents at that place, salient beliefs,
-  summary. This is the truth barrier: nothing outside the PC's beliefs or
-  perceptions ever appears.
+- `state` — the PC's actor slice (`Referee.Slice.for_actor/2`): identity, sheet
+  (hp/hp_max/ac/thac0/damage/conditions), current place + labeled exits,
+  believed agents (with `pc` flags for party-vs-monster), visible items,
+  salient beliefs, summary. This is the truth barrier: nothing outside the
+  PC's beliefs or perceptions ever appears.
 - `dossier` — the most recent pause dossier for this PC, or `null`.
+- `paused` — whether the run is currently paused (a seat that joins mid-pause
+  learns it from the reply, not from a missed push).
 
 Errors: `{"reason": "unauthorized"}` (no character on socket, character not in
 run, session absent) · `{"reason": "character_already_claimed"}`.
@@ -77,6 +80,8 @@ Unknown events reply `{"reason": "unknown_event"}`.
 | `dice` | `{"event_payload": {...}}` | a dice event whose `agent_id` is this PC — only when `dice_visibility` is `"open"` in the referee preference stack |
 | `state_sync` | `{"state": slice}` | after each pipeline step |
 | `ooc` | `{"agent_id": "...", "text": "..."}` | any OOC talk on the run |
+| `paused` | `{}` | the GM paused the run (declarations are refused until resume) |
+| `resumed` | `{}` | the GM resumed the run |
 
 Per-PC isolation is enforced at push: other PCs' narrations, prompts, and dice
 never arrive on this channel.
@@ -95,16 +100,28 @@ Join is refused for sockets carrying a `character_id`
 
 ### Join
 
-Reply: `{:ok, snapshot}` with
+Reply:
 
 ```json
 {
   "tick": n,
   "boundaries": {"<boundary_id>": {"state": "dormant|awake", "last_trigger_tick": n|null}},
   "spend": {"by_class": {...}, "by_agent": {...}},
-  "tail": [Ledger.Event.t]   // last 50, raw — all classes
+  "tail": [Ledger.Event.t],   // last 50, raw — all classes
+  "awaiting": [
+    {
+      "id": "pc_thistle", "name": "Thistle", "seated": true,
+      "last_intent": {"text": "go east", "tick": 3},   // or null
+      "prompt": {"question": "which one do you mean?", "tick": 3}  // or null
+    }
+  ]
 }
 ```
+
+`awaiting` is the flow board: one row per living PC — who holds the floor
+(`last_intent`), who owes the table an answer (`prompt` is an outstanding
+clarification with no newer narration for that PC), and whether their seat is
+connected (`seated`).
 
 ### Client → server
 
@@ -120,6 +137,7 @@ Reply: `{:ok, snapshot}` with
 |---|---|
 | `ledger_tail` | `{"events": [Ledger.Event.t]}` — every writer tail, unfiltered |
 | `state_sync` | `{"tick": n, "boundaries": {...}}` |
+| `awaiting` | `{"pcs": [rows]}` — same rows as the join snapshot; pushed only when a row changes (intent declared, prompt raised/answered, seat claimed/released) |
 
 Spectators see all event classes (including `:llm` audits) — observability is
 the point; dice visibility is the preference stack's call, not the wire's.
