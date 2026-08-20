@@ -46,7 +46,7 @@ defmodule EngineCore.World.Server do
   @spec dungeon_overview(String.t()) :: map()
   def dungeon_overview(run_id) do
     world = snapshot(run_id)
-    edge_labels = Map.new(world.edges, fn e -> {{e.from, e.to}, e.label} end)
+    edge_by_pair = Map.new(world.edges, fn e -> {{e.from, e.to}, e} end)
 
     places =
       world.places
@@ -56,15 +56,49 @@ defmodule EngineCore.World.Server do
         connections =
           (place.connections || [])
           |> Enum.map(fn target ->
-            label = Map.get(edge_labels, {place.id, target})
-            %{to: target, label: label, direction: label}
+            edge = Map.get(edge_by_pair, {place.id, target})
+            label = Map.get(edge, :label)
+            sealed = Map.get(edge, :sealed, false)
+            %{to: target, label: label, direction: label, sealed: sealed}
           end)
+
+        items =
+          world.items
+          |> Map.values()
+          |> Enum.filter(&(&1.place_id == place.id))
+          |> Enum.map(fn item ->
+            %{
+              id: item.id,
+              name: item.name,
+              value_gp: item.value_gp || 0,
+              is_hidden: item.is_hidden || false,
+              holder_id: item.holder_id
+            }
+          end)
+          |> Enum.sort_by(& &1.id)
+
+        hazards =
+          world.hazards
+          |> Map.values()
+          |> Enum.filter(&(&1.place_id == place.id))
+          |> Enum.map(fn h ->
+            %{
+              id: h.id,
+              kind: h.kind,
+              dc: h.dc || 12,
+              triggered: h.triggered || false,
+              damage: h.damage
+            }
+          end)
+          |> Enum.sort_by(& &1.id)
 
         %{
           id: place.id,
           name: place.name || place.id,
           kind: place.kind,
           connections: connections,
+          items: items,
+          hazards: hazards,
           agents:
             World.agents_in(world, place.id)
             |> Enum.map(fn a ->

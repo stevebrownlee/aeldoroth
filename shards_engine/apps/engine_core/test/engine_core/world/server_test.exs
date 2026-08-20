@@ -44,6 +44,26 @@ defmodule EngineCore.World.ServerTest do
     # At least one agent is loaded into the seed world.
     assert Enum.any?(places, &(length(&1.agents) > 0))
 
+    # --- Dungeon enrichment: hazards, items, sealed edges -------------------
+
+    # entry_hall contains the alarm tripwire hazard.
+    assert entry_hall.hazards != nil
+    assert Enum.any?(entry_hall.hazards, fn h ->
+      h.id == "alarm_tripwire" and h.kind == :alarm and h.dc == 12
+    end)
+
+    # library contains treasure items and a sealed connection down.
+    library = Enum.find(places, &(&1.id == "library"))
+    assert library.items != nil
+    assert Enum.any?(library.items, fn i ->
+      i.name == "Potion of Healing" and i.value_gp == 50 and i.is_hidden == true
+    end)
+
+    library_down = Enum.find(library.connections, &(&1.to == "ritual_chamber"))
+    assert library_down != nil
+    assert library_down.sealed == true
+    assert library_down.label == "down"
+
     for place <- places,
         agent <- place.agents do
       assert %{id: _, name: _, pc: _, hp: _, hp_max: _, conditions: _} = agent
