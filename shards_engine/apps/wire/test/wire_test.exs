@@ -53,7 +53,7 @@ defmodule WireTest do
     {:ok, run_id: id}
   end
 
-  test "spectate join snapshot includes dungeon overview", %{run_id: id} do
+  test "spectate join snapshot carries dungeon places and resident agents", %{run_id: id} do
     {:ok, _pid} = start_run(id)
     {:ok, socket} = connect(Wire.Socket, %{"run_id" => id})
 
@@ -76,6 +76,19 @@ defmodule WireTest do
     entry_hall = Enum.find(places, &(&1["id"] == "entry_hall"))
     assert entry_hall
     assert Enum.any?(entry_hall["agents"], &(&1["id"] == "pc_thistle"))
+
+    # Enriched dungeon places also surface items, hazards, and sealed exits.
+    assert is_list(entry_hall["items"])
+    assert is_list(entry_hall["hazards"])
+
+    library = Enum.find(places, &(&1["id"] == "library"))
+    assert library
+    assert is_list(library["items"]) and length(library["items"]) > 0
+    assert Enum.any?(library["items"], &(&1["id"] in ["healing_potion", "illusionists_spellbook"]))
+
+    assert Enum.any?(library["connections"], fn c ->
+             c["to"] == "ritual_chamber" and c["sealed"] == true
+           end)
   end
 
   test "gm_chat replies :ok and broadcasts an ooc push", %{run_id: id} do

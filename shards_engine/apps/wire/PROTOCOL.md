@@ -112,7 +112,15 @@ Reply:
         "id": "place_id",
         "name": "Place Name",
         "tags": [...],
-        "connections": [{"to": "...", "label": "..."}],
+        "connections": [
+          {"to": "...", "label": "...", "sealed": false}
+        ],
+        "items": [
+          {"id": "healing_potion", "name": "Potion of Healing", "value_gp": 50, "is_hidden": true, "holder_id": null}
+        ],
+        "hazards": [
+          {"id": "alarm_tripwire", "kind": "alarm", "dc": 12, "triggered": false, "damage": "0"}
+        ],
         "agents": [
           {
             "id": "agent_id",
@@ -137,9 +145,10 @@ Reply:
   ]
 }
 
-`dungeon` is the referee console view: every place, its labeled exits, and
-all resident agents with identity, HP, and conditions. It is derived from the
-same world snapshot as `boundaries`.
+`dungeon` is the referee console view: every place, its labeled exits (with
+`sealed` true for locked/password-blocked passages), the items and hazards
+present, and all resident agents with identity, HP, and conditions. It is
+derived from the same world snapshot as `boundaries`.
 ```
 
 `awaiting` is the flow board: one row per living PC — who holds the floor
