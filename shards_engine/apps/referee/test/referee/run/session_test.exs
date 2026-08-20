@@ -86,4 +86,20 @@ defmodule Referee.Run.SessionTest do
       assert bramble.place_name == "Entry Hall"
     end)
   end
+
+  test "awaiting reflects live agent place_id and place_name after movement", ctx do
+    with_session(ctx.test, fn id, _dir, _pid ->
+      assert {:ok, %{reply: _}} = Session.declare(id, "pc_thistle", "go east")
+      assert {:ok, _texts} = Session.advance(id)
+
+      assert {:ok, rows} = Session.awaiting(id)
+      thistle = Enum.find(rows, &(&1.id == "pc_thistle"))
+      assert thistle.place_id == "guard_room"
+      assert thistle.place_name == "Guard Room"
+
+      bramble = Enum.find(rows, &(&1.id == "pc_bramble"))
+      assert bramble.place_id == "entry_hall"
+      assert bramble.place_name == "Entry Hall"
+    end)
+  end
 end

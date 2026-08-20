@@ -297,17 +297,21 @@ defmodule Referee.Run.Session do
     rows =
       Enum.map(st.run.pcs, fn pc ->
         agent = World.agent(st.run.world, pc.id)
-        place = World.place(st.run.world, pc.place_id) || %{name: nil}
+        place_id = if agent, do: agent.place_id, else: nil
+        place = if place_id, do: World.place(st.run.world, place_id), else: nil
+        place_name = if place, do: place.name || place_id, else: nil
+        body = if agent, do: Map.get(agent, :body, %{}) || %{}, else: %{}
+        statblock = if agent, do: Map.get(agent, :statblock, %{}) || %{}, else: %{}
 
         %{
           id: pc.id,
           name: pc.name,
-          hp: agent && agent.body && agent.body.hp,
-          hp_max: agent && agent.statblock && agent.statblock.hp_max,
-          ac: agent && agent.statblock && agent.statblock.ac,
-          thac0: agent && agent.statblock && agent.statblock.thac0,
-          place_id: pc.place_id,
-          place_name: place.name,
+          hp: Map.get(body, :hp),
+          hp_max: Map.get(statblock, :hp_max),
+          ac: Map.get(statblock, :ac),
+          thac0: Map.get(statblock, :thac0),
+          place_id: place_id,
+          place_name: place_name,
           last_intent: Map.get(st.last_intents, pc.id),
           prompt: outstanding_prompt(st.run, pc.id)
         }
