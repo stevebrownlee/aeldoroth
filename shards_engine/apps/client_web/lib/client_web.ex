@@ -14,9 +14,15 @@ defmodule ClientWeb do
   def live_view do
     quote do
       use Phoenix.LiveView, layout: {ClientWeb.Layouts, :app}
-      unquote(html_helpers())
+      import Phoenix.HTML
+      import Plug.CSRFProtection, only: [get_csrf_token: 0]
     end
   end
+
+  # Phoenix.Component is pulled in by both `use Phoenix.Component` (plain
+  # HTML modules) and `use Phoenix.LiveView`; the :live_view path above
+  # must not repeat it — a second `use` defines a redundant
+  # __phoenix_component_verify__/1 clause.
 
   defp html_helpers do
     quote do

@@ -63,6 +63,7 @@ defmodule ClientWeb.RunLive do
   # Wire messages -----------------------------------------------------------
 
   # Join reply: seat claimed, here is the truth-barrier slice.
+  @impl true
   def handle_info({:chan_reply, _ref, :ok, %{"state" => slice} = reply}, socket) do
     {:noreply, assign(socket, slice: slice, dossier: reply["dossier"], roster: nil)}
   end
@@ -107,6 +108,7 @@ defmodule ClientWeb.RunLive do
 
   # Render ------------------------------------------------------------------
 
+  @impl true
   def render(assigns) do
     ~H"""
     <h1>Run <%= @run_id %></h1>

@@ -19,11 +19,11 @@ defmodule ClientWeb.TestSupport do
   @spec start_bandit!() :: pos_integer()
   def start_bandit! do
     {:ok, pid} = Bandit.start_link(plug: ClientWeb.Endpoint, scheme: :http, port: 0)
-    {:ok, %{port: port}} = ThousandIsland.listener_info(pid)
+    {:ok, {_listen_addr, port}} = ThousandIsland.listener_info(pid)
     Application.put_env(:client_web, :wire_url, "ws://127.0.0.1:#{port}")
 
     if Process.whereis(ExUnit.Server) do
-      ExUnit.on_exit(fn ->
+      ExUnit.Callbacks.on_exit(fn ->
         Application.delete_env(:client_web, :wire_url)
 
         try do
