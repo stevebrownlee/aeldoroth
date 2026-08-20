@@ -1,0 +1,187 @@
+---
+import Icon from '../icons/Icons.astro';
+
+interface Props {
+  class?: string;
+}
+
+const { class: className = '' } = Astro.props;
+const pathname = Astro.url.pathname;
+
+const navItems = [
+  { label: 'Handbook', href: '/handbook' },
+  { label: 'Pipeline', href: '/pipeline' },
+  { label: 'Dice 3D', href: '/dice-3d' },
+  { label: 'Ledger', href: '/ledger' },
+  { label: 'BDI Brains', href: '/bdi-brains' },
+  { label: 'Dungeon Map', href: '/dungeon-map' },
+];
+
+const githubUrl = 'https://github.com/stevebrownlee/aeldoroth';
+---
+
+<header class:list={['site-header', className]}>
+  <div class="header-inner">
+    <a class="header-brand" href="/" aria-label="The Shattered Kingdoms home">
+      <span class="brand-mark"><Icon name="d20" size={28} /></span>
+      <span class="brand-title">The Shattered Kingdoms</span>
+    </a>
+
+    <nav class="header-nav" aria-label="Primary">
+      <ul class="nav-list">
+        {navItems.map((item) => {
+          const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          return (
+            <li class="nav-item">
+              <a
+                class:list={['nav-link', { active: isActive }]}
+                href={item.href}
+                aria-current={isActive ? 'page' : undefined}
+              >
+                {item.label}
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+
+    <a class="header-source" href={githubUrl} target="_blank" rel="noopener noreferrer">
+      <Icon name="terminal" size={18} />
+      <span class="source-label">Source</span>
+    </a>
+  </div>
+</header>
+
+<style>
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    height: var(--header-height, 4rem);
+    backdrop-filter: blur(12px);
+    background: color-mix(in srgb, var(--bg-surface, #0c1017) 92%, transparent);
+    border-bottom: 1px solid var(--border-stone-subtle, #161d2a);
+    box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.35);
+  }
+
+  .header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    max-width: var(--content-max-width, 80rem);
+    height: 100%;
+    margin-inline: auto;
+    padding-inline: var(--content-padding, 1.5rem);
+  }
+
+  .header-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    color: var(--gold-bright, #f6d88e);
+    text-decoration: none;
+  }
+
+  .header-brand:hover,
+  .header-brand:focus {
+    color: var(--gold-bright, #f6d88e);
+    text-shadow: 0 0 0.75rem var(--gold-glow, rgba(223, 177, 91, 0.4));
+  }
+
+  .brand-mark {
+    display: flex;
+    color: var(--gold-primary, #dfb15b);
+    filter: drop-shadow(0 0 0.25rem var(--gold-glow, rgba(223, 177, 91, 0.4)));
+  }
+
+  .brand-title {
+    font-family: var(--font-display, Georgia, serif);
+    font-size: clamp(0.95rem, 2.2vw, 1.25rem);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+
+  .header-nav {
+    display: flex;
+    align-items: center;
+  }
+
+  .nav-list {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    list-style: none;
+  }
+
+  .nav-link {
+    padding: 0.45em 0.7em;
+    font-family: var(--font-display, Georgia, serif);
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--parchment-bg, #f5eedb);
+    text-decoration: none;
+    border-radius: var(--radius-sm, 0.25rem);
+    transition: color 0.2s ease, background 0.2s ease, text-shadow 0.2s ease;
+  }
+
+  .nav-link:hover,
+  .nav-link:focus {
+    color: var(--gold-bright, #f6d88e);
+    background: var(--bg-surface-raised, #131822);
+    text-shadow: 0 0 0.5rem var(--gold-glow, rgba(223, 177, 91, 0.4));
+  }
+
+  .nav-link.active {
+    color: var(--gold-bright, #f6d88e);
+    background: var(--bg-surface-raised, #131822);
+    box-shadow: inset 0 0 0 1px var(--gold-primary, #dfb15b);
+  }
+
+  .header-source {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45em 0.85em;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--bg-void, #06080c);
+    background: var(--gold-primary, #dfb15b);
+    border-radius: var(--radius-md, 0.5rem);
+    text-decoration: none;
+    transition: background 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .header-source:hover,
+  .header-source:focus {
+    background: var(--gold-bright, #f6d88e);
+    box-shadow: 0 0 0.75rem var(--gold-glow, rgba(223, 177, 91, 0.4));
+  }
+
+  .source-label {
+    display: inline;
+  }
+
+  @media (max-width: 980px) {
+    .header-nav {
+      display: none;
+    }
+
+    .brand-title {
+      display: none;
+    }
+
+    .header-inner {
+      justify-content: space-between;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .source-label {
+      display: none;
+    }
+  }
+</style>

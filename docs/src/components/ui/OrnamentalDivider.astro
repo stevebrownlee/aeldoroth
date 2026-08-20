@@ -1,0 +1,47 @@
+---
+interface Props {
+  class?: string;
+}
+
+const { class: className = '' } = Astro.props;
+---
+
+<div class:list={['ornamental-divider', className]} role="separator" aria-hidden="true">
+  <span class="divider-line"></span>
+  <span class="divider-fleurons">✦ ❖ ✦</span>
+  <span class="divider-line"></span>
+</div>
+
+<style>
+  .ornamental-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding-block: 0.5rem;
+  }
+
+  .divider-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      var(--gold-deep, #8c6721) 20%,
+      var(--gold-primary, #dfb15b) 50%,
+      var(--gold-deep, #8c6721) 80%,
+      transparent 100%
+    );
+    opacity: 0.75;
+  }
+
+  .divider-fleurons {
+    flex-shrink: 0;
+    font-family: var(--font-display, Georgia, serif);
+    font-size: 1rem;
+    letter-spacing: 0.25em;
+    color: var(--gold-bright, #f6d88e);
+    text-shadow: 0 0 0.375rem var(--gold-glow, rgba(223, 177, 91, 0.4));
+    white-space: nowrap;
+  }
+</style>

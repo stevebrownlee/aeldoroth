@@ -1,0 +1,67 @@
+/* Shattered Kingdoms — Design Tokens */
+
+@property --angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+:root {
+  /* Basalt Void */
+  --bg-void: #06080c;
+
+  /* Dark Stone Surface */
+  --bg-surface: #0c1017;
+  --bg-surface-raised: #131822;
+  --bg-surface-elevated: #1b2230;
+
+  /* Stone borders */
+  --border-stone: #242e40;
+  --border-stone-subtle: #161d2a;
+
+  /* Gold Leaf & Glow */
+  --gold-primary: #dfb15b;
+  --gold-bright: #f6d88e;
+  --gold-deep: #8c6721;
+  --gold-glow: rgba(223, 177, 91, 0.4);
+
+  /* Arcane Accents */
+  --amber-rune: #ff9d42;
+  --crimson-blood: #e05238;
+  --mana-azure: #38bdf8;
+  --shadow-crystal: #a855f7;
+  --emerald-rekindler: #10b981;
+
+  /* Parchment background & ink */
+  --parchment-bg: #f5eedb;
+  --parchment-ink: #1f1a14;
+  --parchment-muted: #574e41;
+
+  /* Font stacks */
+  --font-display: 'Cinzel', 'Trajan Pro', Georgia, serif;
+  --font-body: 'Charis SIL', 'Crimson Pro', Georgia, serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'Fira Code', Menlo, monospace;
+
+  /* Header sizing */
+  --header-height: 4rem;
+  --header-height-mobile: 3.5rem;
+
+  /* Sidebar sizing */
+  --sidebar-width: 18rem;
+  --sidebar-width-narrow: 16rem;
+
+  /* Layout spacing */
+  --content-max-width: 80rem;
+  --content-padding: 1.5rem;
+  --section-gap: 2.5rem;
+
+  /* Border radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+
+  /* Shadows */
+  --shadow-void: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.5);
+  --shadow-gold-sm: 0 0 0.5rem var(--gold-glow);
+  --shadow-gold-md: 0 0 1rem var(--gold-glow);
+}

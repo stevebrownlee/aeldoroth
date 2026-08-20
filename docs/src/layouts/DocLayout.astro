@@ -1,0 +1,204 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import Sidebar from '../components/layout/Sidebar.astro';
+
+interface Props {
+  currentSlug?: string;
+  title?: string;
+  description?: string;
+}
+
+const { currentSlug, title, description } = Astro.props;
+---
+
+<BaseLayout title={title} description={description}>
+  <div class="doc-shell">
+    <Sidebar currentSlug={currentSlug} />
+
+    <div class="doc-main">
+      <article class="doc-article parchment-scroll">
+        <slot />
+      </article>
+    </div>
+
+    <aside class="toc-rail" aria-label="On this page">
+      <nav class="toc-nav" aria-label="Table of contents">
+        <h4 class="toc-heading">On this page</h4>
+        <ul class="toc-list" id="toc-list">
+          <li class="toc-placeholder">Scroll to reveal headings…</li>
+        </ul>
+      </nav>
+    </aside>
+  </div>
+</BaseLayout>
+
+<script>
+  (function initToc() {
+    const article = document.querySelector('.doc-article');
+    const tocList = document.getElementById('toc-list');
+    if (!article || !tocList) return;
+
+    const headings = Array.from(
+      article.querySelectorAll('h2[id], h3[id], h4[id]')
+    );
+
+    if (headings.length === 0) {
+      tocList.innerHTML = '<li class="toc-empty">No headings found.</li>';
+      return;
+    }
+
+    tocList.innerHTML = '';
+    const links: HTMLAnchorElement[] = [];
+
+    headings.forEach((heading) => {
+      const level = heading.tagName.toLowerCase();
+      const link = document.createElement('a');
+      link.href = '#' + heading.id;
+      link.textContent = heading.textContent || '';
+      link.className = 'toc-link toc-link--' + level;
+      link.dataset.target = heading.id;
+
+      const li = document.createElement('li');
+      li.className = 'toc-item';
+      li.appendChild(link);
+      tocList.appendChild(li);
+      links.push(link);
+    });
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            links.forEach((link) => {
+              const active = link.dataset.target === entry.target.id;
+              link.classList.toggle('active', active);
+            });
+          }
+        });
+      },
+      {
+        rootMargin: '-10% 0px -70% 0px',
+        threshold: 0,
+      }
+    );
+
+    headings.forEach((heading) => observer.observe(heading));
+  })();
+</script>
+
+<style>
+  .doc-shell {
+    display: flex;
+    align-items: flex-start;
+    max-width: var(--page-max-width, 100rem);
+    margin-inline: auto;
+  }
+
+  .doc-main {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    justify-content: center;
+    padding: 2.5rem var(--content-padding, 1.5rem) 4rem;
+  }
+
+  .doc-article {
+    width: 100%;
+    max-width: var(--content-max-width, 48rem);
+  }
+
+  .toc-rail {
+    position: sticky;
+    top: calc(var(--header-height, 4rem) + 2rem);
+    width: 15rem;
+    max-height: calc(100vh - var(--header-height, 4rem) - 4rem);
+    overflow-y: auto;
+    padding: 1rem;
+    margin-right: 1.5rem;
+    border-left: 1px solid var(--border-stone-subtle, #161d2a);
+  }
+
+  .toc-heading {
+    margin: 0 0 0.75rem;
+    font-family: var(--font-display, Georgia, serif);
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--gold-bright, #f6d88e);
+  }
+
+  .toc-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    list-style: none;
+  }
+
+  .toc-link {
+    display: block;
+    padding: 0.35rem 0.5rem;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    color: var(--parchment-muted, #c7bca3);
+    text-decoration: none;
+    border-left: 2px solid transparent;
+    border-radius: 0 var(--radius-sm, 0.25rem) var(--radius-sm, 0.25rem) 0;
+    transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+  }
+
+  .toc-link:hover,
+  .toc-link:focus {
+    color: var(--parchment-bg, #f5eedb);
+    background: var(--bg-surface-raised, #131822);
+  }
+
+  .toc-link.active {
+    color: var(--gold-bright, #f6d88e);
+    border-left-color: var(--gold-primary, #dfb15b);
+    background: var(--bg-surface-raised, #131822);
+  }
+
+  .toc-link--h3 {
+    padding-left: 1rem;
+    font-size: 0.8rem;
+  }
+
+  .toc-link--h4 {
+    padding-left: 1.5rem;
+    font-size: 0.78rem;
+  }
+
+  .toc-empty,
+  .toc-placeholder {
+    font-size: 0.85rem;
+    font-style: italic;
+    color: var(--parchment-bg, #f5eedb);
+    opacity: 0.6;
+  }
+
+  @media (max-width: 1280px) {
+    .toc-rail {
+      display: none;
+    }
+  }
+
+  @media (max-width: 900px) {
+    .doc-shell {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    :global(.sidebar) {
+      position: static;
+      width: 100%;
+      height: auto;
+      border-right: none;
+      border-bottom: 1px solid var(--border-stone-subtle, #161d2a);
+    }
+
+    .doc-main {
+      padding-block: 1.5rem;
+    }
+  }
+</style>

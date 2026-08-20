@@ -1,0 +1,72 @@
+---
+interface Props {
+  title: string;
+  badge?: string;
+  class?: string;
+}
+
+const { title, badge, class: className = '' } = Astro.props;
+---
+
+<article class:list={['runic-card', 'runic-border-beam', className]}>
+  <header class="runic-card-header">
+    <h3 class="runic-card-title">{title}</h3>
+    {badge && <span class="runic-card-badge">{badge}</span>}
+  </header>
+  <div class="runic-card-body">
+    <slot />
+  </div>
+</article>
+
+<style>
+  .runic-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 1.25rem;
+    background: var(--bg-surface, #0c1017);
+    border-radius: var(--radius-lg, 0.75rem);
+    box-shadow: var(--shadow-void, 0 0.5rem 1.5rem rgba(0, 0, 0, 0.5));
+  }
+
+  .runic-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-stone, #242e40);
+  }
+
+  .runic-card-title {
+    margin: 0;
+    font-family: var(--font-display, Georgia, serif);
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--gold-bright, #f6d88e);
+  }
+
+  .runic-card-badge {
+    flex-shrink: 0;
+    padding: 0.2em 0.6em;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--bg-void, #06080c);
+    background: var(--amber-rune, #ff9d42);
+    border-radius: var(--radius-sm, 0.25rem);
+  }
+
+  .runic-card-body {
+    font-size: 0.95rem;
+    line-height: 1.7;
+    color: var(--parchment-bg, #f5eedb);
+  }
+
+  .runic-card-body :global(p:last-child) {
+    margin-bottom: 0;
+  }
+</style>

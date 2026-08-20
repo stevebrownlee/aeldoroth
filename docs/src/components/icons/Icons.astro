@@ -1,0 +1,103 @@
+---
+export type IconName =
+  | 'd20'
+  | 'shield'
+  | 'swords'
+  | 'brain'
+  | 'book'
+  | 'flame'
+  | 'terminal'
+  | 'scroll'
+  | 'chevron'
+  | 'search';
+
+interface Props {
+  name: IconName;
+  size?: number;
+  class?: string;
+}
+
+const { name, size = 24, class: className = '' } = Astro.props;
+
+const shared = {
+  xmlns: 'http://www.w3.org/2000/svg',
+  width: size,
+  height: size,
+  viewBox: '0 0 24 24',
+  fill: 'none',
+  stroke: 'currentColor',
+  'stroke-width': '1.5',
+  'stroke-linecap': 'round' as const,
+  'stroke-linejoin': 'round' as const,
+};
+---
+
+<svg {...shared} class:list={['icon', `icon-${name}`, className]} aria-hidden="true">
+  {name === 'd20' && (
+    <>
+      <polygon points="12,2 22,8 22,16 12,22 2,16 2,8" />
+      <polyline points="12 2 12 12 22 16" />
+      <polyline points="12 12 2 16" />
+      <polyline points="2 8 12 12 22 8" />
+      <line x1="12" y1="22" x2="12" y2="12" />
+    </>
+  )}
+  {name === 'shield' && (
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+  )}
+  {name === 'swords' && (
+    <>
+      <path d="M14.5 17.5L3 6V3h3l11.5 11.5" />
+      <path d="M13 19l6-6" />
+      <path d="M16 16l4 4" />
+      <path d="M19 21l2-2" />
+      <path d="M9.5 17.5L21 6V3h-3L6.5 14.5" />
+      <path d="M11 19l-6-6" />
+      <path d="M8 16l-4 4" />
+      <path d="M5 21l-2-2" />
+    </>
+  )}
+  {name === 'brain' && (
+    <>
+      <path d="M9.5 2A4.5 4.5 0 0 0 5 6.5c0 1.6.8 3 2 3.8" />
+      <path d="M14.5 2A4.5 4.5 0 0 1 19 6.5c0 1.6-.8 3-2 3.8" />
+      <path d="M9.5 22a4.5 4.5 0 0 1-4.5-4.5c0-1.6.8-3 2-3.8" />
+      <path d="M14.5 22a4.5 4.5 0 0 0 4.5-4.5c0-1.6-.8-3-2-3.8" />
+      <path d="M9 10.5c-.8.3-1.6 1-2 1.8" />
+      <path d="M15 10.5c.8.3 1.6 1 2 1.8" />
+      <path d="M12 10.5v3" />
+      <path d="M12 17v-3" />
+    </>
+  )}
+  {name === 'book' && (
+    <>
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+    </>
+  )}
+  {name === 'flame' && (
+    <path d="M12 2s-6 6-6 12a6 6 0 0 0 12 0c0-6-6-12-6-12z" />
+  )}
+  {name === 'terminal' && (
+    <>
+      <polyline points="4 17 10 11 4 5" />
+      <line x1="12" y1="19" x2="20" y2="19" />
+    </>
+  )}
+  {name === 'scroll' && (
+    <>
+      <path d="M6 3h12v18H6c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2z" />
+      <path d="M18 3v18" />
+      <path d="M6 9h12" />
+    </>
+  )}
+  {name === 'chevron' && (
+    <polyline points="6 9 12 15 18 9" />
+  )}
+  {name === 'search' && (
+    <>
+      <circle cx="11" cy="11" r="7" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </>
+  )}
+</svg>
