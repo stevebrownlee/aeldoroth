@@ -283,12 +283,25 @@ defmodule ClientWeb.SpectateLive do
 
   # Awaiting rows arrive JSON-decoded (string keys) from the wire; direct
   # session reads hand back atom keys. Accessor helpers accept both.
+  # `prompt` arrives as `%{"question" => ..., "tick" => ...}` (or atom keys
+  # from direct session reads); render its question, never the map.
   defp prompt_of(row) when is_map(row) do
-    Map.get(row, "prompt") || Map.get(row, :prompt)
+    case Map.get(row, "prompt") || Map.get(row, :prompt) do
+      %{question: q} -> q
+      %{"question" => q} -> q
+      q when is_binary(q) -> q
+      _ -> nil
+    end
   end
 
+  # `last_intent` is a map (`%{"text" => ..., "tick" => ...}`) or nil —
+  # render its text, never the raw map (Phoenix.HTML.Safe has no Map).
   defp last_intent_of(row) when is_map(row) do
-    Map.get(row, "last_intent") || Map.get(row, :last_intent)
+    case Map.get(row, "last_intent") || Map.get(row, :last_intent) do
+      %{text: text} -> text
+      %{"text" => text} -> text
+      _ -> nil
+    end
   end
 
   defp name_of(row) when is_map(row) do

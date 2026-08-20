@@ -84,7 +84,7 @@ defmodule Referee.Slice do
       salient: salient,
       commitments: commitments(agent),
       capabilities: agent.capabilities,
-      summary: summarize(place, believed, world)
+      summary: summarize(place, believed, world, agent.id)
     }
   end
 
@@ -168,9 +168,12 @@ defmodule Referee.Slice do
     |> Enum.sort_by(& &1.id)
   end
 
-  defp summarize(place, believed, world) do
+  # The mover perceives their own arrival, so `believed` can include the
+  # actor; the prose reads as who *else* is here (UX spec §4).
+  defp summarize(place, believed, world, actor_id) do
     names =
       believed
+      |> Enum.reject(&(&1 == actor_id))
       |> Enum.map(fn about ->
         case World.agent(world, about) do
           nil -> about

@@ -222,10 +222,10 @@ defmodule ClientWeb.RunLive do
             <h3><%= @slice["place"]["name"] %></h3>
             <p><%= @slice["summary"] %></p>
 
-            <p :if={@slice["believed_agents"] != []} class="here">
+            <p :if={others(@slice) != []} class="here">
               <strong>Here:</strong>
               <button
-                :for={who <- @slice["believed_agents"]}
+                :for={who <- others(@slice)}
                 type="button"
                 class="chip"
                 phx-click="scaffold"
@@ -356,6 +356,13 @@ defmodule ClientWeb.RunLive do
 
     slice["believed_agents"]
     |> Enum.filter(&(&1["pc"] == true and &1["id"] != me))
+  end
+
+  # Everything believed here except the seated player themselves — the
+  # mover perceives their own arrival, but "Here:" reads as who else is here.
+  defp others(slice) do
+    me = slice["agent"]["id"]
+    Enum.reject(slice["believed_agents"], &(&1["id"] == me))
   end
 
   defp verb_palette, do: @verb_palette

@@ -7,15 +7,34 @@ defmodule ClientWeb.SpectateLiveTest do
   use ClientWeb.ConnCase, async: false
 
   alias ClientWeb.TestSupport
+  alias LLMGateway.Adapters.Scripted
   alias Referee.Run.Session
 
   @yaml Path.expand("../../../../the-ruined-tower/ruined_tower.yaml", __DIR__)
 
   @pcs [
-    %{id: "pc_thistle", name: "Thistle", place_id: "entry_hall",
-      int: 13, ac: 5, hd: 1, hp: 12, thac0: 20, damage: "1d8"},
-    %{id: "pc_bramble", name: "Bramble", place_id: "entry_hall",
-      int: 12, ac: 6, hd: 1, hp: 8, thac0: 19, damage: "1d6"}
+    %{
+      id: "pc_thistle",
+      name: "Thistle",
+      place_id: "entry_hall",
+      int: 13,
+      ac: 5,
+      hd: 1,
+      hp: 12,
+      thac0: 20,
+      damage: "1d8"
+    },
+    %{
+      id: "pc_bramble",
+      name: "Bramble",
+      place_id: "entry_hall",
+      int: 12,
+      ac: 6,
+      hd: 1,
+      hp: 8,
+      thac0: 19,
+      damage: "1d6"
+    }
   ]
 
   setup %{test: test} do
@@ -36,6 +55,54 @@ defmodule ClientWeb.SpectateLiveTest do
     assert html =~ "Boundaries"
     assert html =~ "LLM spend"
     assert html =~ "calls:"
+  end
+
+  test "flow board shows a seated player's declared intent as text", %{conn: conn, run_id: id} do
+    # A declare before the console joins: last_intent is a map on the wire
+    # (%{"text", "tick"}) — the board must render its text, never the map
+    # (regression: raw map crashed Phoenix.HTML.Safe).
+    assert {:ok, _} = Session.declare(id, "pc_thistle", "go east")
+
+    {:ok, view, _html} = live(conn, "/runs/#{id}/gm")
+
+    eventually(fn -> render(view) =~ "go east" end)
+    refute render(view) =~ ~s(%{"text" =>)
+  end
+
+  test "flow board shows an outstanding clarify as text", %{conn: conn} do
+    # Real ambiguity: east into the guard room, both identically-named
+    # guards shout (beliefs form), garbage interpret forces the grammar,
+    # "attack the goblin" is a lethal-verb tie -> clarify. `prompt` is a
+    # map on the wire (%{"question", "tick"}) — the board must render its
+    # question text, never the map (regression: raw map crashed
+    # Phoenix.HTML.Safe on the first clarify).
+    scripts = %{
+      interpret: [move_east_json(), "{garbage", "{garbage", "{garbage"],
+      deliberate: [guard_shout("goblin_guard_1"), guard_shout("goblin_guard_2")],
+      salt: System.unique_integer()
+    }
+
+    routing =
+      for {class, _} <- scripts, class != :salt, into: %{} do
+        {class, %{adapter: Scripted, scripts: scripts}}
+      end
+
+    id = "run_clarify_#{:erlang.unique_integer([:positive])}"
+    {:ok, _pid} = Session.start_link(id, @yaml, 42, @pcs, routing: routing)
+    on_exit(fn -> TestSupport.stop_run(id) end)
+
+    assert {:ok, _} = Session.declare(id, "pc_thistle", "I head east")
+    advance_until_believed(id, "goblin_guard_1")
+    advance_until_believed(id, "goblin_guard_2")
+
+    assert {:ok, %{reply: q}} = Session.declare(id, "pc_thistle", "attack the goblin")
+    assert q =~ "which one"
+
+    {:ok, view, _html} = live(conn, "/runs/#{id}/gm")
+
+    eventually(fn -> render(view) =~ "needs input:" end)
+    assert render(view) =~ "which one"
+    refute render(view) =~ ~s(%{"question" =>)
   end
 
   test "advance grows the tail", %{conn: conn, run_id: id} do
@@ -81,6 +148,31 @@ defmodule ClientWeb.SpectateLiveTest do
 
     eventually(fn -> render(view) =~ "unauthorized" end)
     assert render(view) =~ "nope"
+  end
+
+  # Ambiguity staging (run_channel_test convention): one scripted move,
+  # then garbage interpret scripts so every later declare falls through
+  # to the deterministic grammar.
+  defp move_east_json,
+    do: ~s({"verb":"move","target_id":null,"params":{"direction":"east"}})
+
+  defp guard_shout(guard_id),
+    do: %{
+      agent_id: guard_id,
+      content:
+        ~s({"verb":"shout","target_id":null,"params":{"message":"Intruders!"},"reason":"raise the alarm"})
+    }
+
+  defp advance_until_believed(id, about, n \\ 20) do
+    pc = EngineCore.World.Server.snapshot(id).agents["pc_thistle"]
+
+    if get_in(pc.beliefs, ["guard_room", about]) != nil do
+      :ok
+    else
+      n > 0 || flunk("belief in #{about} never formed")
+      {:ok, _} = Session.advance(id)
+      advance_until_believed(id, about, n - 1)
+    end
   end
 
   defp eventually(fun, tries \\ 80) do
