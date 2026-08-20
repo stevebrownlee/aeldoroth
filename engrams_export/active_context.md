@@ -1,7 +1,7 @@
 ---
 identifier: active_context
 title: Active Context
-created: 2026-08-20T13:38:42Z
+created: 2026-08-20T18:50:36Z
 ---
 # Active Context
 
@@ -32,6 +32,11 @@ created: 2026-08-20T13:38:42Z
       "zero-timeout assert race",
       "caller-linked sessions"
     ],
+    "last_session": {
+      "date": "2026-08-20",
+      "open": "Spec open questions for user: verb palette set, cap tuning, believed monster HP on GM board, roster scope",
+      "work": "UX spec fully implemented: Phases A/B/C + post-smoke fixes (commits b85f8eb, 4a81ce1, a2113fd). Player surface (scene/believed/party rail/verb palette/exit chips/prompt banner), GM console (flow board/advance-until-input cap 20/ledger previews/spend header), lobby (scenario card/roster builder/seat links). Wire: awaiting+paused/resumed additive events. 349 tests green across 6 apps"
+    },
     "next": "post-v1: client_web LiveView client (spec §11), then v2 campaign memory (decision 34) / platform seams (decision 35)",
     "next_session": "After spec approval: writing-plans for Phase A (player surface + lobby)",
     "next_steps": [
@@ -62,7 +67,7 @@ created: 2026-08-20T13:38:42Z
     "watch": "Party's choice for the Shadow-Crystal (keep/sell/study/destroy) is the Act 1 pacing lever"
   },
   "name": "default",
-  "updated_at": "2026-08-20T13:38:42Z",
-  "version": 12
+  "updated_at": "2026-08-20T18:50:36Z",
+  "version": 13
 }
 ```
