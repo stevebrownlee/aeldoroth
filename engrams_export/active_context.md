@@ -1,20 +1,21 @@
 ---
 identifier: active_context
 title: Active Context
-created: 2026-08-20T13:01:14Z
+created: 2026-08-20T13:38:42Z
 ---
 # Active Context
 
 ```json
 {
   "content": {
-    "current_focus": "Grammar parser enhanced and tested for natural player actions (bare directions, room targets, exploration/search verbs)",
+    "current_focus": "Play surface & GM console UX redesign spec in user review (docs/superpowers/specs/2026-08-20-play-surface-ux-design.md)",
     "current_plan": "Plan 5 (protocol-live-runs) COMPLETE",
     "decisions": [
       47,
       48,
       49,
-      50
+      50,
+      55
     ],
     "expanded": {
       "content": {
@@ -32,18 +33,17 @@ created: 2026-08-20T13:01:14Z
       "caller-linked sessions"
     ],
     "next": "post-v1: client_web LiveView client (spec §11), then v2 campaign memory (decision 34) / platform seams (decision 35)",
-    "next_session": "Session 1: Thornhollow hook -> Ruined Tower Rooms 1-2 (possibly 3)",
+    "next_session": "After spec approval: writing-plans for Phase A (player surface + lobby)",
     "next_steps": [
       "develop commercial marketplace storefront and billing features",
       "explore v2 cross-run campaign memory layer",
       "run live campaign play sessions of The Ruined Tower"
     ],
     "open_questions": [
-      "Innkeeper canon: Mara/The Tired Traveler (README, world guide) vs Vara/The Broken Wheel (npc.md)",
-      "City spellings: Estereld/Arnroth/Ehorfall (world guide) vs Esfereld/Aroneth/Ebonfall (map spec)",
-      "Include traps.md-only traps (Room 5b dart, Room 6 chain snare) or follow README?",
-      "Wolf HP: 2d4+2 (xp-reference) vs 2d8 (yaml)",
-      "Regenerate degraded ruined_tower.yaml from README before automated use?"
+      "Verb palette set — core ten vs campaign-specific (Pry, Listen at door)",
+      "Advance-until-input cap (proposed 20 steps)",
+      "GM flow board: show believed monster HP or keep referee-only",
+      "Roster builder: canonical four seats vs arbitrary party size"
     ],
     "open_threads": [
       "referee suite had one transient port-race failure under parallel sweep — isolated runs green, watch for recurrence"
@@ -62,7 +62,7 @@ created: 2026-08-20T13:01:14Z
     "watch": "Party's choice for the Shadow-Crystal (keep/sell/study/destroy) is the Act 1 pacing lever"
   },
   "name": "default",
-  "updated_at": "2026-08-20T13:01:14Z",
-  "version": 11
+  "updated_at": "2026-08-20T13:38:42Z",
+  "version": 12
 }
 ```
