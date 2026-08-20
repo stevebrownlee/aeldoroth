@@ -291,7 +291,7 @@ defmodule ClientWeb.SpectateLive do
                 </ul>
                 <ul :if={place["connections"] != []} class="exits">
                   <li :for={conn <- place["connections"] || []}>
-                    <%= conn["direction"] %> → <%= conn["target_id"] %>
+                    <%= exit_label(conn) %> → <%= exit_to(conn) %>
                   </li>
                 </ul>
               </article>
@@ -487,6 +487,23 @@ defmodule ClientWeb.SpectateLive do
 
   defp thac0_of(row) when is_map(row) do
     Map.get(row, "thac0") || Map.get(row, :thac0) || "?"
+  end
+
+  # Dungeon overview exit connections may arrive with string or atom keys.
+  defp exit_label(conn) when is_map(conn) do
+    Map.get(conn, "label") ||
+      Map.get(conn, :label) ||
+      Map.get(conn, "direction") ||
+      Map.get(conn, :direction) ||
+      "exit"
+  end
+
+  defp exit_to(conn) when is_map(conn) do
+    Map.get(conn, "to") ||
+      Map.get(conn, :to) ||
+      Map.get(conn, "target_id") ||
+      Map.get(conn, :target_id) ||
+      "?"
   end
 
   defp hp_percent(row) do

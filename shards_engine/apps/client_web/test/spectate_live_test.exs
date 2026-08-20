@@ -197,6 +197,9 @@ defmodule ClientWeb.SpectateLiveTest do
     assert html =~ "Entry Hall"
     assert html =~ "Guard Room"
     assert html =~ ~r/giant rat/i
+    assert html =~ "north → library"
+    assert html =~ "east → guard_room"
+    assert html =~ "west → entry_hall"
   end
 
   test "unknown run shows an error without crashing", %{conn: conn} do

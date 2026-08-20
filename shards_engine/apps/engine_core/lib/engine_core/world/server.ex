@@ -46,17 +46,25 @@ defmodule EngineCore.World.Server do
   @spec dungeon_overview(String.t()) :: map()
   def dungeon_overview(run_id) do
     world = snapshot(run_id)
+    edge_labels = Map.new(world.edges, fn e -> {{e.from, e.to}, e.label} end)
 
     places =
       world.places
       |> Map.values()
       |> Enum.sort_by(& &1.id)
       |> Enum.map(fn place ->
+        connections =
+          (place.connections || [])
+          |> Enum.map(fn target ->
+            label = Map.get(edge_labels, {place.id, target})
+            %{to: target, label: label, direction: label}
+          end)
+
         %{
           id: place.id,
           name: place.name || place.id,
           kind: place.kind,
-          connections: Enum.map(place.connections || [], &normalize_connection/1),
+          connections: connections,
           agents:
             World.agents_in(world, place.id)
             |> Enum.map(fn a ->
@@ -77,12 +85,6 @@ defmodule EngineCore.World.Server do
 
     %{places: places}
   end
-
-  defp normalize_connection(to) when is_binary(to), do: %{to: to, label: nil}
-
-  defp normalize_connection({to, label}), do: %{to: to, label: label}
-
-  defp normalize_connection(%{to: to, label: label}), do: %{to: to, label: label}
 
 
   @doc """
