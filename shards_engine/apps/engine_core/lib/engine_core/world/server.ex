@@ -42,7 +42,7 @@ defmodule EngineCore.World.Server do
     end)
   end
 
-  @doc "Full dungeon overview for referee console: all places, connections, and resident agents."
+  @doc "Full dungeon overview for referee console: all places, connections, resident agents, items, and hazards."
   @spec dungeon_overview(String.t()) :: map()
   def dungeon_overview(run_id) do
     world = snapshot(run_id)
@@ -57,8 +57,8 @@ defmodule EngineCore.World.Server do
           (place.connections || [])
           |> Enum.map(fn target ->
             edge = Map.get(edge_by_pair, {place.id, target})
-            label = Map.get(edge, :label)
-            sealed = Map.get(edge, :sealed, false)
+            label = if edge, do: edge.label, else: nil
+            sealed = if edge, do: Map.get(edge, :sealed, false), else: false
             %{to: target, label: label, direction: label, sealed: sealed}
           end)
 

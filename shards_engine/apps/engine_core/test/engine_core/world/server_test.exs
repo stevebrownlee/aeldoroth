@@ -47,10 +47,15 @@ defmodule EngineCore.World.ServerTest do
     # --- Dungeon enrichment: hazards, items, sealed edges -------------------
 
     # entry_hall contains the alarm tripwire hazard.
-    assert entry_hall.hazards != nil
+    assert is_list(entry_hall.hazards)
     assert Enum.any?(entry_hall.hazards, fn h ->
       h.id == "alarm_tripwire" and h.kind == :alarm and h.dc == 12
     end)
+
+    # Non-secret connections default to sealed == false.
+    for c <- entry_hall.connections do
+      assert c.sealed == false
+    end
 
     # library contains treasure items and a sealed connection down.
     library = Enum.find(places, &(&1.id == "library"))
