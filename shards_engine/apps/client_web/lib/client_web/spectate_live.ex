@@ -97,7 +97,20 @@ defmodule ClientWeb.SpectateLive do
     {:noreply, socket}
   end
 
-  # GM table-wide chat is referee authority: ledgered as an OOC event from "GM".
+  # GM table-wide chat: prefer the wire (spectate channel) when connected,
+  # fall back to a direct Session call for offline/testing surfaces.
+  def handle_event("gm_chat", %{"text" => text}, %{assigns: %{conn: conn}} = socket)
+      when is_binary(text) and is_pid(conn) do
+    trimmed = String.trim(text)
+
+    if trimmed != "" do
+      :ok = Conn.send_event(conn, "gm_chat", %{"text" => trimmed})
+      {:noreply, assign(socket, gm_chat_draft: "")}
+    else
+      {:noreply, socket}
+    end
+  end
+
   def handle_event("gm_chat", %{"text" => text}, socket) when is_binary(text) do
     trimmed = String.trim(text)
 
@@ -199,14 +212,27 @@ defmodule ClientWeb.SpectateLive do
       </header>
 
       <section class="lever-row" data-testid="levers">
-        <button data-testid="advance" phx-click="advance">End Round <span class="dim">(advance)</span></button>
-        <button data-testid="advance_until_input" phx-click="advance_until_input">Auto-Run until Choice</button>
+        <div class="lever">
+          <button data-testid="advance" phx-click="advance">End Round (Run World)</button>
+          <p class="lever-subtitle">Executes declared player actions &amp; NPC AI deliberation for 1 round.</p>
+          <span class="badge readiness" data-testid="readiness-badge"><%= readiness(@awaiting) %>/<%= length(@awaiting) %> ready</span>
+        </div>
+        <div class="lever">
+          <button data-testid="advance_until_input" phx-click="advance_until_input">Auto-Run until Choice</button>
+          <p class="lever-subtitle">Steps rounds until a player decision is required.</p>
+        </div>
         <%= if @dossiers do %>
-          <button data-testid="resume" phx-click="resume">Resume</button>
+          <div class="lever">
+            <button data-testid="resume" phx-click="resume">Resume Play</button>
+          </div>
         <% else %>
-          <button data-testid="pause" phx-click="pause">Pause &amp; Dossier</button>
+          <div class="lever">
+            <button data-testid="pause" phx-click="pause">Pause &amp; Recap</button>
+          </div>
         <% end %>
-        <button data-testid="spend" phx-click="spend">LLM spend</button>
+        <div class="lever">
+          <button data-testid="spend" phx-click="spend">LLM spend</button>
+        </div>
       </section>
       <p :if={@auto_note} class="hint"><%= @auto_note %></p>
       <p :if={@resumed && !@auto_note} class="hint">run resumed</p>
@@ -221,13 +247,26 @@ defmodule ClientWeb.SpectateLive do
                 <span class="seat-dot" data-seated={seated?(row)}></span>
                 <div class="flow-card">
                   <strong class="pc-name"><%= name_of(row) %></strong>
+                  <div class="location"><%= place_name_of(row) %></div>
                   <%= if prompt = prompt_of(row) do %>
-                    <em class="prompt">needs input: <%= prompt %></em>
+                    <span class="badge badge-prompt">NEEDS INPUT</span>
+                    <em class="prompt"><%= prompt %></em>
                   <% else %>
-                    <span class="intent"><%= last_intent_of(row) || "waiting for intent" %></span>
+                    <%= if intent = last_intent_of(row) do %>
+                      <span class="badge badge-ready">READY</span>
+                      <span class="intent"><%= intent %></span>
+                    <% else %>
+                      <span class="badge badge-thinking">THINKING</span>
+                      <span class="intent">Waiting for player action...</span>
+                    <% end %>
                   <% end %>
+                  <div class="hpbar" data-testid="hpbar">
+                    <div style={"width: #{hp_percent(row)}%;"}></div>
+                  </div>
                   <div class="vitals">
                     HP <%= hp_of(row) %>/<%= max_hp_of(row) %>
+                    <span class="stat">AC <%= ac_of(row) %></span>
+                    <span class="stat">THAC0 <%= thac0_of(row) %></span>
                   </div>
                 </div>
               </li>
@@ -374,9 +413,8 @@ defmodule ClientWeb.SpectateLive do
   defp status_badge(_, _), do: "paused — dossier review"
 
   defp readiness(rows) do
-    rows
-    |> Enum.count(fn row ->
-      last_intent_of(row) != nil || prompt_of(row) != nil
+    Enum.count(rows, fn row ->
+      last_intent_of(row) != nil && prompt_of(row) == nil
     end)
   end
 
@@ -438,6 +476,32 @@ defmodule ClientWeb.SpectateLive do
   defp seated?(row) when is_map(row) do
     Map.get(row, "seated") || Map.get(row, :seated) || false
   end
+
+  defp place_name_of(row) when is_map(row) do
+    Map.get(row, "place_name") || Map.get(row, :place_name) || "?"
+  end
+
+  defp ac_of(row) when is_map(row) do
+    Map.get(row, "ac") || Map.get(row, :ac) || "?"
+  end
+
+  defp thac0_of(row) when is_map(row) do
+    Map.get(row, "thac0") || Map.get(row, :thac0) || "?"
+  end
+
+  defp hp_percent(row) do
+    hp = to_num(hp_of(row))
+    max = to_num(max_hp_of(row))
+
+    if max > 0 do
+      trunc(hp / max * 100)
+    else
+      0
+    end
+  end
+
+  defp to_num(n) when is_integer(n), do: n
+  defp to_num(_), do: 0
 
   defp state_value(state) when is_map(state),
     do: Map.get(state, "state") || Map.get(state, :state) || "?"

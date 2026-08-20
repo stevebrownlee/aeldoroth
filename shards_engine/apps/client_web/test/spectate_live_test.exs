@@ -67,6 +67,14 @@ defmodule ClientWeb.SpectateLiveTest do
 
     eventually(fn -> render(view) =~ "go east" end)
     refute render(view) =~ ~s(%{"text" =>)
+
+    html = render(view)
+    assert html =~ "READY"
+    assert html =~ "Entry Hall"
+    assert html =~ "HP 12/12"
+    assert html =~ "AC 5"
+    assert html =~ "THAC0 20"
+    assert html =~ ~s(data-testid="hpbar")
   end
 
   test "flow board shows an outstanding clarify as text", %{conn: conn} do
@@ -100,13 +108,24 @@ defmodule ClientWeb.SpectateLiveTest do
 
     {:ok, view, _html} = live(conn, "/runs/#{id}/gm")
 
-    eventually(fn -> render(view) =~ "needs input:" end)
-    assert render(view) =~ "which one"
-    refute render(view) =~ ~s(%{"question" =>)
+    eventually(fn -> render(view) =~ "NEEDS INPUT" end)
+    html = render(view)
+    assert html =~ "which one"
+    refute html =~ ~s(%{"question" =>)
   end
 
   test "advance grows the tail", %{conn: conn, run_id: id} do
     {:ok, view, _html} = live(conn, "/runs/#{id}/gm")
+
+    eventually(fn ->
+      html = render(view)
+      html =~ "End Round (Run World)" and
+        html =~ "Auto-Run until Choice"
+    end)
+
+    assert render(view) =~ "Executes declared player actions &amp; NPC AI deliberation for 1 round."
+    assert render(view) =~ "Steps rounds until a player decision is required."
+
     eventually(fn -> render(view) =~ "seq-" end)
 
     before = render(view)
@@ -123,6 +142,7 @@ defmodule ClientWeb.SpectateLiveTest do
 
   test "pause returns dossiers and resume re-enables advance", %{conn: conn, run_id: id} do
     {:ok, view, _html} = live(conn, "/runs/#{id}/gm")
+    eventually(fn -> render(view) =~ "Pause &amp; Recap" end)
     eventually(fn -> render(view) =~ "seq-" end)
 
     view |> element("[data-testid=pause]") |> render_click()
@@ -130,7 +150,22 @@ defmodule ClientWeb.SpectateLiveTest do
     assert render(view) =~ "Thistle"
 
     view |> element("[data-testid=resume]") |> render_click()
-    eventually(fn -> render(view) =~ "run resumed" end)
+    eventually(fn -> render(view) =~ "Resume Play" end)
+    eventually(fn -> render(view) =~ "End Round (Run World)" end)
+  end
+
+  test "flow board shows a thinking badge while waiting for action", %{conn: conn, run_id: id} do
+    {:ok, view, _html} = live(conn, "/runs/#{id}/gm")
+    eventually(fn ->
+      html = render(view)
+      html =~ "THINKING" and html =~ "Waiting for player action..."
+    end)
+
+    assert {:ok, _} = Session.declare(id, "pc_thistle", "go east")
+    eventually(fn ->
+      html = render(view)
+      html =~ "READY" and html =~ "go east"
+    end)
   end
 
   test "spend lever fetches the report over the wire", %{conn: conn, run_id: id} do

@@ -99,6 +99,9 @@
       .lever-row button { font-size: 0.95rem; }
       .lever-row button[data-testid="advance"] { background: #3d2e1c; color: #f0d49a; border-color: #7a6a3a; font-weight: bold; }
       .lever-row button[data-testid="advance"]:hover { background: #4a3a24; }
+      .lever { display: flex; flex-direction: column; align-items: flex-start; gap: 0.25rem; }
+      .lever-subtitle { margin: 0; font-size: 0.75rem; color: #9aa3af; max-width: 18rem; }
+      .lever .badge.readiness { font-size: 0.75rem; background: #262b33; color: #9edab0; border: 1px solid #2d5a45; border-radius: 4px; padding: 0.05rem 0.35rem; }
       .status-ribbon .badge { border: 1px solid #2a2e36; border-radius: 4px; padding: 0.1rem 0.5rem; }
       .status-ribbon .badge b { color: #f0d49a; }
       .flow-list { list-style: none; margin: 0.5rem 0 0; padding: 0; }
@@ -110,9 +113,17 @@
       .seat-dot[data-seated="true"] { background: #7ec98f; }
       .flow-card { flex: 1; }
       .pc-name { color: #e6e8ec; font-size: 1rem; }
-      .flow-card .intent { display: block; color: #b9c2cf; font-style: italic; margin: 0.15rem 0; }
-      .flow-card .prompt { display: block; color: #e8c96a; margin: 0.15rem 0; }
+      .flow-card .location { color: #9aa3af; font-size: 0.8rem; margin: 0.05rem 0 0.2rem; }
+      .flow-card .badge { border-radius: 4px; padding: 0.05rem 0.35rem; font-size: 0.75rem; font-style: normal; font-weight: bold; margin-right: 0.35rem; }
+      .flow-card .badge-prompt { background: #3a2e1c; color: #f0d49a; border: 1px solid #7a6a3a; }
+      .flow-card .badge-ready { background: #1c3a2e; color: #9edab0; border: 1px solid #2d5a45; }
+      .flow-card .badge-thinking { background: #262b33; color: #9aa3af; border: 1px solid #3b424e; }
+      .flow-card .intent { display: block; color: #b9c2cf; margin: 0.15rem 0; }
+      .flow-card .prompt { display: block; color: #e8c96a; margin: 0.15rem 0; font-style: italic; }
+      .flow-card .hpbar { width: 100%; height: 0.5rem; background: #2a2e36; border-radius: 3px; overflow: hidden; margin: 0.35rem 0; }
+      .flow-card .hpbar > div { height: 100%; background: #7ec98f; border-radius: 3px; }
       .flow-card .vitals { color: #9aa3af; font-size: 0.8rem; }
+      .flow-card .vitals .stat { margin-left: 0.5rem; }
       .dungeon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.7rem; margin-top: 0.5rem; }
       .room-card { border: 1px solid #2a2e36; border-radius: 6px; padding: 0.6rem 0.8rem; background: #181b21; }
       .room-card h3 { margin: 0 0 0.15rem; font-size: 0.95rem; color: #e8d9a8; }
