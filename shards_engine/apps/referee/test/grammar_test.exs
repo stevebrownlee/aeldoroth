@@ -37,6 +37,29 @@ defmodule Referee.GrammarTest do
              Grammar.parse(world(), "pc", "go north")
   end
 
+  test "bare directions and abbreviations parse to move actions" do
+    assert %Types.Action{actor_id: "pc", verb: :move, params: %{direction: "north"}} =
+             Grammar.parse(world(), "pc", "north")
+    assert %Types.Action{actor_id: "pc", verb: :move, params: %{direction: "east"}} =
+             Grammar.parse(world(), "pc", "e")
+    assert %Types.Action{actor_id: "pc", verb: :move, params: %{direction: "down"}} =
+             Grammar.parse(world(), "pc", "down")
+  end
+
+  test "movement with natural prepositions parses cleanly" do
+    assert %Types.Action{actor_id: "pc", verb: :move, params: %{direction: "north"}} =
+             Grammar.parse(world(), "pc", "I walk to the north")
+    assert %Types.Action{actor_id: "pc", verb: :move, params: %{direction: "east"}} =
+             Grammar.parse(world(), "pc", "head into the east")
+  end
+
+  test "observation and search verbs parse to observant wait actions" do
+    assert %Types.Action{actor_id: "pc", verb: :wait} = Grammar.parse(world(), "pc", "look around")
+    assert %Types.Action{actor_id: "pc", verb: :wait} = Grammar.parse(world(), "pc", "search for traps")
+    assert %Types.Action{actor_id: "pc", verb: :wait} = Grammar.parse(world(), "pc", "examine the room")
+    assert %Types.Action{actor_id: "pc", verb: :wait} = Grammar.parse(world(), "pc", "listen carefully")
+  end
+
   test "attack resolves the target by token match against believed agent names" do
     assert %Types.Action{actor_id: "pc", verb: :strike, target_id: "goblin_guard_1"} =
              Grammar.parse(world(), "pc", "attack the goblin guard")
