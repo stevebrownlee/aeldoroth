@@ -106,6 +106,26 @@ Reply:
 {
   "tick": n,
   "boundaries": {"<boundary_id>": {"state": "dormant|awake", "last_trigger_tick": n|null}},
+  "dungeon": {
+    "places": [
+      {
+        "id": "place_id",
+        "name": "Place Name",
+        "tags": [...],
+        "connections": [{"to": "...", "label": "..."}],
+        "agents": [
+          {
+            "id": "agent_id",
+            "name": "Agent Name",
+            "kind": "pc|monster|npc",
+            "hp": n,
+            "hp_max": n,
+            "conditions": [...]
+          }
+        ]
+      }
+    ]
+  },
   "spend": {"by_class": {...}, "by_agent": {...}},
   "tail": [Ledger.Event.t],   // last 50, raw — all classes
   "awaiting": [
@@ -116,6 +136,10 @@ Reply:
     }
   ]
 }
+
+`dungeon` is the referee console view: every place, its labeled exits, and
+all resident agents with identity, HP, and conditions. It is derived from the
+same world snapshot as `boundaries`.
 ```
 
 `awaiting` is the flow board: one row per living PC — who holds the floor
@@ -125,18 +149,20 @@ connected (`seated`).
 
 ### Client → server
 
-| Event | Reply |
-|---|---|
-| `pause` | `{:ok, %{"dossiers": {pc_id: text}}}` · `{:error, %{"reason": "already_paused"}}` |
-| `resume` | `{:ok, %{"resumed": true}}` (distinct from heartbeat acks `{}`) · `{:error, %{"reason": "not_paused"}}` |
-| `spend` | `{:ok, %{"spend": report}}` |
+| Event | Payload | Reply |
+|---|---|---|
+| `pause` | | `{:ok, %{"dossiers": {pc_id: text}}}` · `{:error, %{"reason": "already_paused"}}` |
+| `resume` | | `{:ok, %{"resumed": true}}` (distinct from heartbeat acks `{}`) · `{:error, %{"reason": "not_paused"}}` |
+| `spend` | | `{:ok, %{"spend": report}}` |
+| `gm_chat` | `{"text": "..."}` | `:ok` — ledgered as `:ooc`, broadcast to `spectate:*` and `run:*` topics |
 
 ### Server → client
 
 | Event | Payload |
 |---|---|
 | `ledger_tail` | `{"events": [Ledger.Event.t]}` — every writer tail, unfiltered |
-| `state_sync` | `{"tick": n, "boundaries": {...}}` |
+| `state_sync` | `{"tick": n, "boundaries": {...}, "dungeon": {...}}` |
+| `ooc` | `{"agent_id": "...", "text": "..."}` — any OOC talk on the run, including GM chat |
 | `awaiting` | `{"pcs": [rows]}` — same rows as the join snapshot; pushed only when a row changes (intent declared, prompt raised/answered, seat claimed/released) |
 
 Spectators see all event classes (including `:llm` audits) — observability is

@@ -9,6 +9,7 @@ defmodule Wire.SpectateChannel do
 
   use Phoenix.Channel
 
+  alias EngineCore.Ledger
   alias EngineCore.Ledger.Writer
   alias EngineCore.World.Server
   alias Referee.Run.Session
@@ -27,6 +28,7 @@ defmodule Wire.SpectateChannel do
       snapshot = %{
         tick: state.tick,
         boundaries: JSONSafe.to_json(Server.boundaries(run_id)),
+        dungeon: JSONSafe.to_json(Server.dungeon_overview(run_id)),
         spend: Spend.report(Writer.events(run_id)),
         tail: Writer.events(run_id) |> Enum.take(-@tail_cap) |> JSONSafe.to_json(),
         awaiting: awaiting
@@ -60,12 +62,24 @@ defmodule Wire.SpectateChannel do
     {:reply, {:ok, %{spend: Spend.report(Writer.events(run_id(socket)))}}, socket}
   end
 
+  def handle_in("gm_chat", %{"text" => text}, socket) do
+    case Session.gm_chat(run_id(socket), text) do
+      :ok -> {:reply, :ok, socket}
+      {:error, reason} -> {:reply, {:error, %{reason: inspect(reason)}}, socket}
+    end
+  end
+
   def handle_in(_event, _params, socket),
     do: {:reply, {:error, %{reason: "unknown_event"}}, socket}
 
   @impl true
   def handle_info({:ledger_events, _run_id, events}, socket) do
     :ok = push(socket, "ledger_tail", %{events: JSONSafe.to_json(events)})
+
+    for %Ledger.Event{class: :ooc, payload: %{agent_id: id, text: text}} <- events do
+      :ok = push(socket, "ooc", %{agent_id: id, text: text})
+    end
+
     push_state_sync(socket)
     {:noreply, push_awaiting(socket)}
   end
@@ -78,7 +92,8 @@ defmodule Wire.SpectateChannel do
     :ok =
       push(socket, "state_sync", %{
         tick: tick_of(run_id),
-        boundaries: JSONSafe.to_json(Server.boundaries(run_id))
+        boundaries: JSONSafe.to_json(Server.boundaries(run_id)),
+        dungeon: JSONSafe.to_json(Server.dungeon_overview(run_id))
       })
   end
 
