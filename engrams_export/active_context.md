@@ -1,14 +1,14 @@
 ---
 identifier: active_context
 title: Active Context
-created: 2026-08-20T02:05:58Z
+created: 2026-08-20T04:25:38Z
 ---
 # Active Context
 
 ```json
 {
   "content": {
-    "current_focus": "Plan 7 client_web complete — all 8 v1 build phases + TUI + acceptance harness + web client done",
+    "current_focus": "Platform documentation & interactive showcase site complete in docs/ — Astro v5, 5 visualizers, 9 handbook chapters",
     "current_plan": "Plan 5 (protocol-live-runs) COMPLETE",
     "decisions": [
       47,
@@ -34,9 +34,9 @@ created: 2026-08-20T02:05:58Z
     "next": "post-v1: client_web LiveView client (spec §11), then v2 campaign memory (decision 34) / platform seams (decision 35)",
     "next_session": "Session 1: Thornhollow hook -> Ruined Tower Rooms 1-2 (possibly 3)",
     "next_steps": [
-      "campaign play: run The Ruined Tower via web (mix run scripts/web_server.exs) or TUI",
-      "cross-run learning + platform packaging remain future (decisions 34/35)",
-      "spec §13 acceptance harness green (plan 6)"
+      "develop commercial marketplace storefront and billing features",
+      "explore v2 cross-run campaign memory layer",
+      "run live campaign play sessions of The Ruined Tower"
     ],
     "open_questions": [
       "Innkeeper canon: Mara/The Tired Traveler (README, world guide) vs Vara/The Broken Wheel (npc.md)",
@@ -62,7 +62,7 @@ created: 2026-08-20T02:05:58Z
     "watch": "Party's choice for the Shadow-Crystal (keep/sell/study/destroy) is the Act 1 pacing lever"
   },
   "name": "default",
-  "updated_at": "2026-08-20T02:05:58Z",
-  "version": 7
+  "updated_at": "2026-08-20T04:25:38Z",
+  "version": 8
 }
 ```
