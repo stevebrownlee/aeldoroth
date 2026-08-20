@@ -120,7 +120,8 @@ defmodule ClientWeb.RunLive do
   end
 
   def handle_info({:chan, _topic, "ooc", %{"agent_id" => id, "text" => text}}, socket) do
-    {:noreply, stream_insert(socket, :log, log_row("ooc", "#{id}: #{text}"))}
+    label = if id == "GM", do: "[GM] #{text}", else: "#{id}: #{text}"
+    {:noreply, stream_insert(socket, :log, log_row("ooc", label))}
   end
 
   def handle_info({:chan, _topic, "prompt", %{"question" => question}}, socket) do

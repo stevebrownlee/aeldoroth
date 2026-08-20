@@ -92,8 +92,49 @@
       .ledger-preview .lc-meta { color: #6f7885; }
       .ledger-preview .lc-world { color: #7ec98f; }
       .dim { color: #6f7885; }
+
+      /* GM console redesign (Task 4): round loop, party vitals, dungeon
+         overview, GM chat, and collapsible diagnostics. */
+      .lever-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 0.5rem 0 0.8rem; }
+      .lever-row button { font-size: 0.95rem; }
+      .lever-row button[data-testid="advance"] { background: #3d2e1c; color: #f0d49a; border-color: #7a6a3a; font-weight: bold; }
+      .lever-row button[data-testid="advance"]:hover { background: #4a3a24; }
+      .status-ribbon .badge { border: 1px solid #2a2e36; border-radius: 4px; padding: 0.1rem 0.5rem; }
+      .status-ribbon .badge b { color: #f0d49a; }
+      .flow-list { list-style: none; margin: 0.5rem 0 0; padding: 0; }
+      .flow-card-outer { display: flex; align-items: flex-start; gap: 0.5rem; border: 1px solid #2a2e36; border-radius: 6px; padding: 0.5rem 0.7rem; margin-bottom: 0.5rem; }
+      .flow-card-outer.needs { border-left: 4px solid #e8c96a; }
+      .flow-card-outer.ready { border-left: 4px solid #7ec98f; }
+      .flow-card-outer.idle { border-left: 4px solid #6f7885; }
+      .seat-dot { width: 0.6rem; height: 0.6rem; border-radius: 50%; background: #6f7885; margin-top: 0.35rem; flex-shrink: 0; }
+      .seat-dot[data-seated="true"] { background: #7ec98f; }
+      .flow-card { flex: 1; }
+      .pc-name { color: #e6e8ec; font-size: 1rem; }
+      .flow-card .intent { display: block; color: #b9c2cf; font-style: italic; margin: 0.15rem 0; }
+      .flow-card .prompt { display: block; color: #e8c96a; margin: 0.15rem 0; }
+      .flow-card .vitals { color: #9aa3af; font-size: 0.8rem; }
+      .dungeon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.7rem; margin-top: 0.5rem; }
+      .room-card { border: 1px solid #2a2e36; border-radius: 6px; padding: 0.6rem 0.8rem; background: #181b21; }
+      .room-card h3 { margin: 0 0 0.15rem; font-size: 0.95rem; color: #e8d9a8; }
+      .room-card .residents { list-style: none; margin: 0.4rem 0; padding: 0; }
+      .room-card .residents li { margin: 0.2rem 0; }
+      .room-card .residents .badge { border-radius: 4px; padding: 0.05rem 0.35rem; font-size: 0.8rem; }
+      .room-card .residents .badge.pc { background: #1c3a2e; color: #9edab0; border: 1px solid #2d5a45; }
+      .room-card .residents .badge.monster { background: #3a1c1c; color: #e8a8a8; border: 1px solid #5a2d2d; }
+      .room-card .exits { list-style: none; margin: 0.3rem 0 0; padding: 0; font-size: 0.8rem; color: #9aa3af; }
+      .gm-rail .chronicle { max-height: 22rem; overflow-y: auto; }
+      details.diagnostics { margin: 0.8rem 0; border: 1px solid #2a2e36; border-radius: 4px; padding: 0.4rem 0.7rem; }
+      details.diagnostics summary { cursor: pointer; color: #9aa3af; font-size: 0.9rem; }
+      details.diagnostics[open] summary { margin-bottom: 0.6rem; }
+      .diagnostics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; }
+      .diagnostics-grid .panel { margin-bottom: 0; }
+      .boundary-table td { vertical-align: middle; }
+      .boundary { font-size: 0.8rem; border-radius: 4px; padding: 0.05rem 0.35rem; }
+      .boundary.state-active { background: #3a2e1c; color: #f0d49a; border: 1px solid #7a6a3a; }
+      .boundary.state-inactive { background: #262b33; color: #9aa3af; border: 1px solid #3b424e; }
+      .error { color: #e88f8f; }
       @media (max-width: 900px) {
-        .layout-seat, .layout-gm { grid-template-columns: 1fr; }
+        .layout-seat, .layout-gm, .diagnostics-grid { grid-template-columns: 1fr; }
         .roster-row { grid-template-columns: repeat(4, 1fr); }
       }
     </style>

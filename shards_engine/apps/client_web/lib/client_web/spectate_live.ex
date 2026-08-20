@@ -1,10 +1,15 @@
 defmodule ClientWeb.SpectateLive do
   @moduledoc """
-  GM console (UX spec §6, Phase C): flow board (who the table waits on),
-  referee levers (advance, advance-until-input, pause/resume, spend), the
-  dungeon boundary panel, always-visible LLM spend header, and a readable
-  ledger preview. Views ride the spectate channel (tail + state_sync +
-  awaiting); advance levers call `Referee.Run.Session` directly — trusted
+  GM console (UX spec §6, Phase C): 2-column tabletop referee screen.
+
+  Left column: round loop + party intent cards with vitals, and an
+  omniscient dungeon overview. Right column: live story chronicle,
+  GM-to-table chat, and pause-time character dossiers. Bottom: collapsible
+  diagnostics drawer (LLM spend, ledger preview, boundary states).
+
+  The spectate channel feeds tick, state_sync, dungeon, awaiting, and
+  ledger_tail pushes. Referee levers (advance, advance-until-input,
+  pause/resume, spend) call `Referee.Run.Session` directly — trusted
   surface, the advance lever is the referee, not a seat.
   """
 
@@ -25,11 +30,13 @@ defmodule ClientWeb.SpectateLive do
         tick: nil,
         tail: [],
         boundaries: nil,
+        dungeon: nil,
         awaiting: [],
         dossiers: nil,
         resumed: false,
         spend: nil,
-        auto_note: nil
+        auto_note: nil,
+        gm_chat_draft: ""
       )
 
     if connected?(socket) && wire_url() do
@@ -90,18 +97,33 @@ defmodule ClientWeb.SpectateLive do
     {:noreply, socket}
   end
 
+  # GM table-wide chat is referee authority: ledgered as an OOC event from "GM".
+  def handle_event("gm_chat", %{"text" => text}, socket) when is_binary(text) do
+    trimmed = String.trim(text)
+
+    if trimmed != "" do
+      case Session.gm_chat(socket.assigns.run_id, trimmed) do
+        :ok -> {:noreply, assign(socket, gm_chat_draft: "")}
+        {:error, :no_run} -> {:noreply, assign(socket, error: "run not found")}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
   def handle_event(_other, _params, socket), do: {:noreply, socket}
 
-  # Wire messages ---------------------------------------------------------
+  # Wire messages -------------------------------------------------------------
 
   # Spectate join reply: initial snapshot (tail + tick + boundaries + spend
-  # + the flow board).
+  # + dungeon + the flow board).
   @impl true
   def handle_info({:chan_reply, _ref, :ok, %{"tail" => tail} = reply}, socket) do
     {:noreply,
      assign(socket,
        tick: reply["tick"],
        boundaries: reply["boundaries"],
+       dungeon: reply["dungeon"],
        spend: reply["spend"],
        awaiting: reply["awaiting"] || [],
        tail: tail
@@ -130,7 +152,11 @@ defmodule ClientWeb.SpectateLive do
 
   def handle_info({:chan, _topic, "state_sync", %{"tick" => tick} = push}, socket) do
     {:noreply,
-     assign(socket, tick: tick, boundaries: push["boundaries"] || socket.assigns.boundaries)}
+     assign(socket,
+       tick: tick,
+       boundaries: push["boundaries"] || socket.assigns.boundaries,
+       dungeon: push["dungeon"] || socket.assigns.dungeon
+     )}
   end
 
   # Flow board refresh (UX spec §6): awaiting rows pushed on change.
@@ -163,50 +189,110 @@ defmodule ClientWeb.SpectateLive do
     <p :if={@error} class="error">spectate: <%= @error %></p>
 
     <%= if @tick do %>
-      <p class="status-ribbon">Tick <%= @tick %></p>
+      <header class="status-ribbon">
+        <span class="badge"><b>Tick <%= @tick %></b></span>
+        <span class="badge">Round <%= round_of(@tick) %></span>
+        <span class="badge">Status: <%= status_badge(@resumed, @dossiers) %></span>
+        <span class="badge" data-testid="party-readiness">
+          Party readiness: <%= readiness(@awaiting) %>/<%= length(@awaiting) %>
+        </span>
+      </header>
+
+      <section class="lever-row" data-testid="levers">
+        <button data-testid="advance" phx-click="advance">End Round <span class="dim">(advance)</span></button>
+        <button data-testid="advance_until_input" phx-click="advance_until_input">Auto-Run until Choice</button>
+        <%= if @dossiers do %>
+          <button data-testid="resume" phx-click="resume">Resume</button>
+        <% else %>
+          <button data-testid="pause" phx-click="pause">Pause &amp; Dossier</button>
+        <% end %>
+        <button data-testid="spend" phx-click="spend">LLM spend</button>
+      </section>
+      <p :if={@auto_note} class="hint"><%= @auto_note %></p>
+      <p :if={@resumed && !@auto_note} class="hint">run resumed</p>
+
       <div class="layout-gm">
         <div class="gm-main">
           <section class="panel" data-testid="flow-board">
             <h2>Flow board</h2>
             <p class="hint">Who the table is waiting on.</p>
             <ul class="flow-list">
-              <li :for={row <- @awaiting} class={if prompt_of(row), do: "flow-row needs", else: "flow-row"}>
+              <li :for={row <- @awaiting} class={card_class(row)}>
                 <span class="seat-dot" data-seated={seated?(row)}></span>
-                <strong><%= name_of(row) %></strong>
-                <%= if prompt = prompt_of(row) do %>
-                  <em class="prompt">needs input: <%= prompt %></em>
-                <% else %>
-                  <span class="intent"><%= last_intent_of(row) || "waiting for intent" %></span>
-                <% end %>
+                <div class="flow-card">
+                  <strong class="pc-name"><%= name_of(row) %></strong>
+                  <%= if prompt = prompt_of(row) do %>
+                    <em class="prompt">needs input: <%= prompt %></em>
+                  <% else %>
+                    <span class="intent"><%= last_intent_of(row) || "waiting for intent" %></span>
+                  <% end %>
+                  <div class="vitals">
+                    HP <%= hp_of(row) %>/<%= max_hp_of(row) %>
+                  </div>
+                </div>
               </li>
             </ul>
           </section>
 
-          <section class="panel">
-            <h2>Levers</h2>
-            <div class="lever-row">
-              <button data-testid="advance" phx-click="advance">Advance</button>
-              <button data-testid="advance_until_input" phx-click="advance_until_input">Advance until input</button>
-              <button data-testid="pause" phx-click="pause">Pause &amp; dossier</button>
-              <button data-testid="resume" phx-click="resume" :if={@dossiers}>Resume</button>
-              <button data-testid="spend" phx-click="spend">LLM spend</button>
+          <section class="panel" data-testid="dungeon-overview">
+            <h2>Dungeon overview</h2>
+            <p class="hint">Omniscient view of places and resident agents.</p>
+            <div class="dungeon-grid">
+              <article :for={place <- dungeon_places(@dungeon)} class="room-card">
+                <h3><%= place["name"] %></h3>
+                <p class="hint"><%= place["id"] %> · <%= place["kind"] %></p>
+                <ul class="residents">
+                  <li :for={agent <- place["agents"] || []}>
+                    <span :if={agent["pc"]} class="badge pc"><%= agent["name"] %></span>
+                    <span :if={!agent["pc"]} class="badge monster"><%= agent["name"] %></span>
+                    <%= if hp = agent["hp"] do %>
+                      <span class="dim">HP <%= hp %>/<%= agent["hp_max"] || "?" %></span>
+                    <% end %>
+                  </li>
+                </ul>
+                <ul :if={place["connections"] != []} class="exits">
+                  <li :for={conn <- place["connections"] || []}>
+                    <%= conn["direction"] %> → <%= conn["target_id"] %>
+                  </li>
+                </ul>
+              </article>
             </div>
-            <p :if={@auto_note} class="hint"><%= @auto_note %></p>
-            <p :if={@resumed && !@auto_note} class="hint">run resumed</p>
-          </section>
-
-          <section class="panel">
-            <h2>Ledger</h2>
-            <ul class="ledger-preview" id="ledger">
-              <li :for={ev <- @tail} id={"seq-#{ev["seq"]}"} class={ev["class"]}>
-                <span class="seq"><%= ev["seq"] %></span>
-                <%= render_event(ev) %>
-              </li>
-            </ul>
           </section>
         </div>
 
         <aside class="gm-rail">
+          <section class="panel" data-testid="chronicle">
+            <h2>Story chronicle</h2>
+            <ul class="chronicle log" id="chronicle" phx-hook="ChronicleScroll">
+              <li :for={ev <- @tail} class={"kind-#{ev["class"]}"}>
+                <%= render_event(ev) %>
+              </li>
+            </ul>
+          </section>
+
+          <section class="panel">
+            <h2>GM chat</h2>
+            <form phx-submit="gm_chat" data-testid="gm-chat-form" class="compose">
+              <input name="text" type="text" placeholder="Message the table…" required />
+              <button type="submit">Send to table</button>
+            </form>
+          </section>
+
+          <%= if @dossiers do %>
+            <section class="panel" data-testid="dossiers">
+              <h2>Dossiers</h2>
+              <%= for {pc_id, text} <- Enum.sort(@dossiers) do %>
+                <h3><%= pc_id %></h3>
+                <pre><%= text %></pre>
+              <% end %>
+            </section>
+          <% end %>
+        </aside>
+      </div>
+
+      <details class="diagnostics" data-testid="diagnostics">
+        <summary>Diagnostics</summary>
+        <div class="diagnostics-grid">
           <%= if @spend do %>
             <section class="panel">
               <h2>LLM spend</h2>
@@ -232,17 +318,17 @@ defmodule ClientWeb.SpectateLive do
             </section>
           <% end %>
 
-          <%= if @dossiers do %>
-            <section class="panel">
-              <h2>Dossiers</h2>
-              <%= for {pc_id, text} <- Enum.sort(@dossiers) do %>
-                <h3><%= pc_id %></h3>
-                <pre><%= text %></pre>
-              <% end %>
-            </section>
-          <% end %>
-        </aside>
-      </div>
+          <section class="panel">
+            <h2>Ledger</h2>
+            <ul class="ledger-preview" id="ledger">
+              <li :for={ev <- @tail} id={"seq-#{ev["seq"]}"} class={ev["class"]}>
+                <span class="seq"><%= ev["seq"] %></span>
+                <%= render_event(ev) %>
+              </li>
+            </ul>
+          </section>
+        </div>
+      </details>
     <% end %>
     """
   end
@@ -281,6 +367,25 @@ defmodule ClientWeb.SpectateLive do
     end
   end
 
+  defp round_of(tick) when is_integer(tick), do: div(tick, 10) + 1
+
+  defp status_badge(true, _), do: "running"
+  defp status_badge(_, nil), do: "running"
+  defp status_badge(_, _), do: "paused — dossier review"
+
+  defp readiness(rows) do
+    rows
+    |> Enum.count(fn row ->
+      last_intent_of(row) != nil || prompt_of(row) != nil
+    end)
+  end
+
+  defp dungeon_places(nil), do: []
+
+  defp dungeon_places(dungeon) when is_map(dungeon) do
+    dungeon["places"] || dungeon[:places] || []
+  end
+
   # Awaiting rows arrive JSON-decoded (string keys) from the wire; direct
   # session reads hand back atom keys. Accessor helpers accept both.
   # `prompt` arrives as `%{"question" => ..., "tick" => ...}` (or atom keys
@@ -294,6 +399,8 @@ defmodule ClientWeb.SpectateLive do
     end
   end
 
+  defp prompt_of(_), do: nil
+
   # `last_intent` is a map (`%{"text" => ..., "tick" => ...}`) or nil —
   # render its text, never the raw map (Phoenix.HTML.Safe has no Map).
   defp last_intent_of(row) when is_map(row) do
@@ -301,6 +408,26 @@ defmodule ClientWeb.SpectateLive do
       %{text: text} -> text
       %{"text" => text} -> text
       _ -> nil
+    end
+  end
+
+  defp last_intent_of(_), do: nil
+
+  defp hp_of(row) when is_map(row) do
+    Map.get(row, "hp") || Map.get(row, :hp) || "?"
+  end
+
+  defp max_hp_of(row) when is_map(row) do
+    Map.get(row, "hp_max") || Map.get(row, :hp_max) || "?"
+  end
+
+  defp card_class(row) do
+    base = "flow-card-outer"
+
+    cond do
+      prompt_of(row) -> "#{base} needs"
+      last_intent_of(row) -> "#{base} ready"
+      true -> "#{base} idle"
     end
   end
 

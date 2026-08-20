@@ -143,6 +143,27 @@ defmodule ClientWeb.SpectateLiveTest do
     assert render(view) =~ "calls:"
   end
 
+  test "gm chat form submits a table-wide message", %{conn: conn, run_id: id} do
+    {:ok, view, _html} = live(conn, "/runs/#{id}/gm")
+    eventually(fn -> render(view) =~ "seq-" end)
+
+    view
+    |> form("[data-testid=gm-chat-form]", %{text: "Party, hold position."})
+    |> render_submit()
+
+    eventually(fn -> render(view) =~ "Party, hold position." end)
+    assert render(view) =~ "GM"
+  end
+
+  test "dungeon overview shows rooms and resident monsters", %{conn: conn, run_id: id} do
+    {:ok, view, _html} = live(conn, "/runs/#{id}/gm")
+    eventually(fn -> render(view) =~ ~s(data-testid="dungeon-overview") end)
+    html = render(view)
+    assert html =~ "Entry Hall"
+    assert html =~ "Guard Room"
+    assert html =~ ~r/giant rat/i
+  end
+
   test "unknown run shows an error without crashing", %{conn: conn} do
     {:ok, view, _html} = live(conn, "/runs/nope/gm")
 
