@@ -1,28 +1,23 @@
 ---
 identifier: active_context
 title: Active Context
-created: 2026-08-21T02:22:13Z
+created: 2026-08-21T02:23:44Z
 ---
 # Active Context
 
 ```json
 {
   "content": {
-    "content": {
-      "current_focus": "Starting Place & Tabletop Character Card Redesign complete & verified",
-      "last_session": {
-        "date": "2026-08-21",
-        "work": "Added maras_inn settlement node to YAML, Loader and Validator dynamic starting_place support, character gear/inventory/spells/prayers to PC.build, Slice, and RunLive, and redesigned HomeLive with full AD&D character card roster builder. 361 tests green."
-      }
-    },
-    "current_focus": "Dungeon Overview Enrichment (Treasure, Traps & Secret Doors) complete & verified",
+    "current_focus": "Starting Place & Tabletop Character Card Redesign complete & verified",
     "current_plan": "Plan 5 (protocol-live-runs) COMPLETE",
     "decisions": [
       47,
       48,
       49,
       50,
-      55
+      55,
+      58,
+      59
     ],
     "expanded": {
       "content": {
@@ -40,9 +35,9 @@ created: 2026-08-21T02:22:13Z
       "caller-linked sessions"
     ],
     "last_session": {
-      "date": "2026-08-20",
+      "date": "2026-08-21",
       "open": "Spec open questions for user: verb palette set, cap tuning, believed monster HP on GM board, roster scope",
-      "work": "Dungeon Overview fully enriched and browser-verified: room cards now render resident monsters with HP, treasure items with gold values and HIDDEN/CARRIED tags, traps/hazards with DCs and ARMED/TRIGGERED tags, and exits with SECRET/SEALED tags. 358 tests green."
+      "work": "Added maras_inn settlement node to YAML, Loader and Validator dynamic starting_place support, character gear/inventory/spells/prayers to PC.build, Slice, and RunLive, and redesigned HomeLive with full AD&D character card roster builder. 361 tests green."
     },
     "next": "post-v1: client_web LiveView client (spec §11), then v2 campaign memory (decision 34) / platform seams (decision 35)",
     "next_session": "After spec approval: writing-plans for Phase A (player surface + lobby)",
@@ -69,12 +64,12 @@ created: 2026-08-21T02:22:13Z
       "Log session progress + decisions into engrams"
     ],
     "spec": "docs/superpowers/specs/agent-engine-spec.md",
-    "tests": "232 green umbrella (engine_core 97, llm_gateway 38, agents 25, referee 72)",
+    "tests": "361 green umbrella (engine_core 107, llm_gateway 38, agents 25, referee 128, wire 25, client_tui 14, client_web 24)",
     "v1_status": "all 8 spec phases complete (plans 1-6); acceptance harness green, exits 0",
     "watch": "Party's choice for the Shadow-Crystal (keep/sell/study/destroy) is the Act 1 pacing lever"
   },
   "name": "default",
-  "updated_at": "2026-08-21T02:22:13Z",
-  "version": 16
+  "updated_at": "2026-08-21T02:23:44Z",
+  "version": 17
 }
 ```
