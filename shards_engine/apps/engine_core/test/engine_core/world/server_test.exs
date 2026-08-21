@@ -48,9 +48,10 @@ defmodule EngineCore.World.ServerTest do
 
     # entry_hall contains the alarm tripwire hazard.
     assert is_list(entry_hall.hazards)
+
     assert Enum.any?(entry_hall.hazards, fn h ->
-      h.id == "alarm_tripwire" and h.kind == :alarm and h.dc == 12
-    end)
+             h.id == "alarm_tripwire" and h.kind == :alarm and h.dc == 12
+           end)
 
     # Non-secret connections default to sealed == false.
     for c <- entry_hall.connections do
@@ -60,9 +61,10 @@ defmodule EngineCore.World.ServerTest do
     # library contains treasure items and a sealed connection down.
     library = Enum.find(places, &(&1.id == "library"))
     assert library.items != nil
+
     assert Enum.any?(library.items, fn i ->
-      i.name == "Potion of Healing" and i.value_gp == 50 and i.is_hidden == true
-    end)
+             i.name == "Potion of Healing" and i.value_gp == 50 and i.is_hidden == true
+           end)
 
     library_down = Enum.find(library.connections, &(&1.to == "ritual_chamber"))
     assert library_down != nil

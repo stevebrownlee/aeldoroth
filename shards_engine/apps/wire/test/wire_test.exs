@@ -84,7 +84,11 @@ defmodule WireTest do
     library = Enum.find(places, &(&1["id"] == "library"))
     assert library
     assert is_list(library["items"]) and length(library["items"]) > 0
-    assert Enum.any?(library["items"], &(&1["id"] in ["healing_potion", "illusionists_spellbook"]))
+
+    assert Enum.any?(
+             library["items"],
+             &(&1["id"] in ["healing_potion", "illusionists_spellbook"])
+           )
 
     assert Enum.any?(library["connections"], fn c ->
              c["to"] == "ritual_chamber" and c["sealed"] == true

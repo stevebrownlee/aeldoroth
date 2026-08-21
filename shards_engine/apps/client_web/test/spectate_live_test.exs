@@ -195,7 +195,10 @@ defmodule ClientWeb.SpectateLiveTest do
     assert render(view) =~ "GM"
   end
 
-  test "dungeon overview shows rooms, residents, treasure, hazards, and sealed exits", %{conn: conn, run_id: id} do
+  test "dungeon overview shows rooms, residents, treasure, hazards, and sealed exits", %{
+    conn: conn,
+    run_id: id
+  } do
     {:ok, view, _html} = live(conn, "/runs/#{id}/gm")
     eventually(fn -> render(view) =~ ~s(data-testid="dungeon-overview") end)
     html = render(view)
