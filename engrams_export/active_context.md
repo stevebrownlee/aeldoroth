@@ -1,14 +1,14 @@
 ---
 identifier: active_context
 title: Active Context
-created: 2026-08-20T23:11:57Z
+created: 2026-08-21T00:04:10Z
 ---
 # Active Context
 
 ```json
 {
   "content": {
-    "current_focus": "GM Console & Tabletop Round Loop Redesign complete & verified",
+    "current_focus": "Dungeon Overview Enrichment (Treasure, Traps & Secret Doors) complete & verified",
     "current_plan": "Plan 5 (protocol-live-runs) COMPLETE",
     "decisions": [
       47,
@@ -35,7 +35,7 @@ created: 2026-08-20T23:11:57Z
     "last_session": {
       "date": "2026-08-20",
       "open": "Spec open questions for user: verb palette set, cap tuning, believed monster HP on GM board, roster scope",
-      "work": "GM console redesign fully implemented and browser-verified: 4-step round loop, End Round button with readiness badging, live PC intent & vitals cards, omniscient dungeon overview with resident monsters and exits, live GM table chat, and collapsible diagnostics drawer. All 358 tests green."
+      "work": "Dungeon Overview fully enriched and browser-verified: room cards now render resident monsters with HP, treasure items with gold values and HIDDEN/CARRIED tags, traps/hazards with DCs and ARMED/TRIGGERED tags, and exits with SECRET/SEALED tags. 358 tests green."
     },
     "next": "post-v1: client_web LiveView client (spec §11), then v2 campaign memory (decision 34) / platform seams (decision 35)",
     "next_session": "After spec approval: writing-plans for Phase A (player surface + lobby)",
@@ -67,7 +67,7 @@ created: 2026-08-20T23:11:57Z
     "watch": "Party's choice for the Shadow-Crystal (keep/sell/study/destroy) is the Act 1 pacing lever"
   },
   "name": "default",
-  "updated_at": "2026-08-20T23:11:57Z",
-  "version": 14
+  "updated_at": "2026-08-21T00:04:10Z",
+  "version": 15
 }
 ```
