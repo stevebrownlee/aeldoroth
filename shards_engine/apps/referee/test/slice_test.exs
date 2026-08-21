@@ -164,6 +164,7 @@ defmodule Referee.SliceTest do
              int: 8,
              hd: 1,
              class: nil,
+             race: nil,
              armor: nil,
              weapons: nil,
              inventory: nil,

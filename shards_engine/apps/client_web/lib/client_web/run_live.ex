@@ -307,7 +307,7 @@ defmodule ClientWeb.RunLive do
         <aside class="rail">
           <section class="sheet panel">
             <%= if sh = @slice["sheet"] do %>
-              <h3>Character<%= if sh["class"], do: " • #{sh["class"]}" %></h3>
+              <h3>Character<%= if sh["race"] || sh["class"], do: " • #{Enum.filter([sh["race"], sh["class"]], &(&1 && &1 != "")) |> Enum.join(" ")}" %></h3>
               <p class="hp">
                 <strong>HP</strong>
                 <span class="hp-numbers"><%= sh["hp"] %><%= if sh["hp_max"], do: " / #{sh["hp_max"]}" %></span>

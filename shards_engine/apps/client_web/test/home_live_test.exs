@@ -23,17 +23,50 @@ defmodule ClientWeb.HomeLiveTest do
       int: 12, hd: 1, hp: 8, ac: 6, thac0: 19, damage: "1d6"}
   ]
 
-  test "renders scenario card with starting place, inventory, and spell slots", %{conn: conn} do
+  test "renders scenario card with starting place, race/class selects, inventory, and spell slots", %{conn: conn} do
     {:ok, _view, html} = live(conn, "/")
     assert html =~ "The Ruined Tower"
     assert html =~ "Mara&#39;s Inn (Common Room), Thornhollow"
     assert html =~ "Assemble Your Party"
+    assert html =~ "-- Race --"
+    assert html =~ "-- Class --"
+    assert html =~ "Fighter"
+    assert html =~ "THAC0 (1E)"
     assert html =~ "Initial Inventory &amp; Supplies"
     assert html =~ "Spells Prepared (Magic-Users / Illusionists)"
     assert html =~ "Prayers Prepared (Clerics)"
     assert html =~ "Enter The Ruined Tower"
+    refute html =~ "Internal Character ID"
   end
 
+  test "auto-derives character ID from name when not provided", %{conn: conn} do
+    slug = "home_autoid_#{:erlang.unique_integer([:positive])}"
+    on_exit(fn -> ClientWeb.TestSupport.stop_run(slug) end)
+    {:ok, view, _html} = live(conn, "/")
+
+    html =
+      view
+      |> form("#new_run",
+        run: %{run_id: slug, seed: "42", yaml: @yaml},
+        seat: %{
+          "0" => %{
+            "name" => "Valerius the Bold",
+            "race" => "Human",
+            "class" => "Paladin",
+            "hp" => "10",
+            "ac" => "4",
+            "damage" => "1d8",
+            "int" => "14"
+          },
+          "1" => %{"name" => ""}
+        }
+      )
+      |> render_submit()
+
+    assert html =~ ~s|data-testid="seat-link-pc_valerius_the_bold"|
+    assert %{status: :running} = Session.state(slug)
+    assert [%{id: "pc_valerius_the_bold", name: "Valerius the Bold"}] = Session.roster(slug)
+  end
   test "creates a run and shows seat links", %{conn: conn} do
     slug = "home_#{:erlang.unique_integer([:positive])}"
     on_exit(fn -> ClientWeb.TestSupport.stop_run(slug) end)
@@ -86,22 +119,20 @@ defmodule ClientWeb.HomeLiveTest do
         seat: %{
           "0" => %{
             "name" => "Thistle",
-            "id" => "pc_thistle",
-            "place_id" => "entry_hall",
+            "race" => "Human",
+            "class" => "Fighter",
             "int" => "13",
             "hp" => "12",
             "ac" => "5",
-            "thac0" => "20",
             "damage" => "1d8"
           },
           "1" => %{
             "name" => "Bramble",
-            "id" => "pc_bramble",
-            "place_id" => "entry_hall",
+            "race" => "Halfling",
+            "class" => "Thief",
             "int" => "12",
             "hp" => "8",
             "ac" => "6",
-            "thac0" => "19",
             "damage" => "1d6"
           }
         }
@@ -137,7 +168,7 @@ defmodule ClientWeb.HomeLiveTest do
     assert submit_html =~ ~s|data-testid="seat-link-pc_thistle"|
     assert submit_html =~ ~s|data-testid="seat-link-pc_bramble"|
     assert submit_html =~ ~s|data-testid="seat-link-pc_mirage"|
-    assert submit_html =~ ~s|data-testid="seat-link-pc_lyra"|
+    assert submit_html =~ ~s|data-testid="seat-link-pc_sister_lyra"|
     assert %{status: :running} = Session.state(slug)
     roster = Session.roster(slug)
     assert length(roster) == 4

@@ -14,6 +14,10 @@ defmodule Referee.PC do
 
   @spec build(map()) :: Types.Agent.t()
   def build(pc_map) do
+    level = pc_map[:level] || pc_map[:hd] || 1
+    class = pc_map[:class]
+    thac0 = pc_map[:thac0] || calculate_thac0(class, level)
+
     struct!(
       Types.Agent,
       id: pc_map.id,
@@ -22,13 +26,14 @@ defmodule Referee.PC do
       place_id: pc_map[:place_id] || "entry_hall",
       statblock: %{
         ac: pc_map[:ac] || 10,
-        hd: pc_map[:hd] || 1,
+        hd: level,
         hp_max: pc_map[:hp] || 1,
-        thac0: pc_map[:thac0] || 20,
+        thac0: thac0,
         morale: 12,
         int: pc_map[:int] || 10,
         damage: parse_damage(Map.fetch!(pc_map, :damage)),
-        class: pc_map[:class],
+        class: class,
+        race: pc_map[:race],
         armor: pc_map[:armor],
         weapons: pc_map[:weapons],
         inventory: pc_map[:inventory],
@@ -44,6 +49,50 @@ defmodule Referee.PC do
       pc: true
     )
   end
+
+  @doc """
+  Calculates AD&D 1E base THAC0 based on class and character level (PHB / DMG p. 74).
+  """
+  @spec calculate_thac0(String.t() | nil, integer()) :: integer()
+  def calculate_thac0(class, level \\ 1)
+
+  def calculate_thac0(class, level) when is_integer(level) and level >= 1 do
+    normalized = if is_binary(class), do: String.downcase(String.trim(class)), else: ""
+
+    case normalized do
+      f when f in ["fighter", "paladin", "ranger"] ->
+        group = div(level - 1, 2)
+        max(20 - group * 2, 4)
+
+      c when c in ["cleric", "druid", "monk"] ->
+        group = div(level - 1, 3)
+        max(20 - group * 2, 9)
+
+      t when t in ["thief", "assassin"] ->
+        cond do
+          level <= 4 -> 20
+          level <= 8 -> 19
+          level <= 12 -> 16
+          level <= 16 -> 14
+          level <= 20 -> 12
+          true -> 10
+        end
+
+      m when m in ["magic-user", "magic user", "illusionist"] ->
+        cond do
+          level <= 5 -> 20
+          level <= 10 -> 19
+          level <= 15 -> 16
+          level <= 20 -> 13
+          true -> 11
+        end
+
+      _ ->
+        20
+    end
+  end
+
+  def calculate_thac0(_, _), do: 20
 
   @doc """
   One `:agent_added` event folding the PC in at `pc.place_id` (the entry place).

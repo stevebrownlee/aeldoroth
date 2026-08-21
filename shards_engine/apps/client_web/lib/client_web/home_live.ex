@@ -11,11 +11,34 @@ defmodule ClientWeb.HomeLive do
 
   alias EngineCore.Loader
   alias Referee.Run.Session
+  @classes [
+    "Fighter",
+    "Paladin",
+    "Ranger",
+    "Cleric",
+    "Druid",
+    "Magic-User",
+    "Illusionist",
+    "Thief",
+    "Assassin",
+    "Monk"
+  ]
+
+  @races [
+    "Human",
+    "Elf",
+    "Half-Elf",
+    "Dwarf",
+    "Gnome",
+    "Halfling",
+    "Half-Orc"
+  ]
 
   @canonical_party [
     %{
       name: "Thistle",
       id: "pc_thistle",
+      race: "Human",
       class: "Fighter",
       int: 13,
       hp: 12,
@@ -31,11 +54,12 @@ defmodule ClientWeb.HomeLive do
     %{
       name: "Bramble",
       id: "pc_bramble",
+      race: "Halfling",
       class: "Thief",
       int: 12,
       hp: 8,
       ac: 6,
-      thac0: 19,
+      thac0: 20,
       damage: "1d6",
       armor: "Leather armor",
       weapons: "Shortsword (1d6), Shortbow (1d6), Dagger (1d4)",
@@ -46,7 +70,8 @@ defmodule ClientWeb.HomeLive do
     %{
       name: "Mirage",
       id: "pc_mirage",
-      class: "Magic-User",
+      race: "Gnome",
+      class: "Illusionist",
       int: 17,
       hp: 4,
       ac: 10,
@@ -55,12 +80,13 @@ defmodule ClientWeb.HomeLive do
       armor: "Robes",
       weapons: "Quarterstaff (1d6), Darts (1d3), Silver Dagger (1d4)",
       inventory: "Spellbook, component pouch, parchment & quill, ink vial, chalk, lantern, 8 gp",
-      spells: "Magic Missile, Sleep, Shield",
+      spells: "Color Spray, Phantasmal Force, Read Magic",
       prayers: ""
     },
     %{
       name: "Sister Lyra",
       id: "pc_lyra",
+      race: "Human",
       class: "Cleric",
       int: 11,
       hp: 8,
@@ -87,6 +113,8 @@ defmodule ClientWeb.HomeLive do
        yaml: yaml,
        starting_place: starting_place,
        starting_place_label: place_label(starting_place),
+       classes: @classes,
+       races: @races,
        roster: "",
        seat_rows: default_seat_rows(starting_place),
        created: nil,
@@ -212,7 +240,7 @@ defmodule ClientWeb.HomeLive do
                 <%= if row.name != "", do: row.name, else: "New Adventurer" %>
               </h3>
               <span :if={row.class != ""} class={"badge-class " <> class_slug(row.class)}>
-                <%= row.class %>
+                <%= if row.race != "", do: "#{row.race} ", else: "" %><%= row.class %>
               </span>
             </div>
 
@@ -226,8 +254,18 @@ defmodule ClientWeb.HomeLive do
                 <input name={"seat[#{row.index}][name]"} value={row.name} placeholder="Name" />
               </div>
               <div class="card-field">
-                <label>Class / Role</label>
-                <input name={"seat[#{row.index}][class]"} value={row.class} placeholder="e.g. Fighter" />
+                <label>Race</label>
+                <select name={"seat[#{row.index}][race]"}>
+                  <option value="" disabled={row.race != ""}>-- Race --</option>
+                  <option :for={r <- @races} value={r} selected={row.race == r}><%= r %></option>
+                </select>
+              </div>
+              <div class="card-field">
+                <label>Class</label>
+                <select name={"seat[#{row.index}][class]"}>
+                  <option value="" disabled={row.class != ""}>-- Class --</option>
+                  <option :for={c <- @classes} value={c} selected={row.class == c}><%= c %></option>
+                </select>
               </div>
               <div class="card-field">
                 <label>HP</label>
@@ -239,10 +277,6 @@ defmodule ClientWeb.HomeLive do
                 <span class="hint-text">Desc (10..2)</span>
               </div>
               <div class="card-field">
-                <label>THAC0</label>
-                <input name={"seat[#{row.index}][thac0]"} value={row.thac0} inputmode="numeric" placeholder="20" />
-              </div>
-              <div class="card-field">
                 <label>Damage</label>
                 <input name={"seat[#{row.index}][damage]"} value={row.damage} placeholder="1d8" />
               </div>
@@ -250,14 +284,13 @@ defmodule ClientWeb.HomeLive do
                 <label>INT</label>
                 <input name={"seat[#{row.index}][int]"} value={row.int} inputmode="numeric" placeholder="10" />
               </div>
+              <div class="card-field">
+                <label>THAC0 (1E)</label>
+                <div class="thac0-badge">
+                  <%= thac0_for(row) %>
+                </div>
+              </div>
             </div>
-
-            <!-- Optional ID field for advanced customization -->
-            <div class="card-field" style="margin-bottom: 0.5rem;">
-              <label style="font-size: 0.75rem; color: #6f7885;">Internal Character ID (leave blank to auto-generate)</label>
-              <input name={"seat[#{row.index}][id]"} value={row.id} placeholder={"pc_" <> (if row.name != "", do: String.downcase(row.name), else: "hero")} style="font-size: 0.8rem; padding: 0.25rem 0.4rem;" />
-            </div>
-
             <!-- Equipment & Combat Gear -->
             <div class="char-section">
               <div class="char-section-title">Equipment & Combat Gear</div>
@@ -491,16 +524,20 @@ defmodule ClientWeb.HomeLive do
   end
 
   defp seat_row_from_pc(pc, index) do
+    class = to_string(pc[:class] || "")
+    thac0 = to_string(pc[:thac0] || Referee.PC.calculate_thac0(class, 1))
+
     %{
       index: index,
       id: to_string(pc[:id] || auto_id(pc[:name] || "")),
       name: to_string(pc[:name] || ""),
-      class: to_string(pc[:class] || ""),
+      race: to_string(pc[:race] || ""),
+      class: class,
       place_id: to_string(pc[:place_id] || "maras_inn"),
       int: to_string(pc[:int] || ""),
       hp: to_string(pc[:hp] || ""),
       ac: to_string(pc[:ac] || ""),
-      thac0: to_string(pc[:thac0] || ""),
+      thac0: thac0,
       damage: to_string(pc[:damage] || ""),
       armor: to_string(pc[:armor] || ""),
       weapons: to_string(pc[:weapons] || ""),
@@ -516,12 +553,13 @@ defmodule ClientWeb.HomeLive do
       index: index,
       id: "",
       name: "",
+      race: "",
       class: "",
       place_id: starting_place,
       int: "",
       hp: "",
       ac: "",
-      thac0: "",
+      thac0: "20",
       damage: "",
       armor: "",
       weapons: "",
@@ -531,7 +569,6 @@ defmodule ClientWeb.HomeLive do
       errors: []
     }
   end
-
   defp seat_rows_from_params(seat_params, default_place) do
     seat_params = seat_params || %{}
 
@@ -548,6 +585,7 @@ defmodule ClientWeb.HomeLive do
         index: i,
         id: to_string(fields["id"] || ""),
         name: to_string(fields["name"] || ""),
+        race: to_string(fields["race"] || ""),
         class: to_string(fields["class"] || ""),
         place_id: place_id,
         int: to_string(fields["int"] || ""),
@@ -624,25 +662,33 @@ defmodule ClientWeb.HomeLive do
     place_id = if place_id != "", do: place_id, else: default_place
     damage = String.trim(row.damage || "")
     class = String.trim(row.class || "")
+    race = String.trim(row.race || "")
     armor = String.trim(row.armor || "")
     weapons = String.trim(row.weapons || "")
     inventory = String.trim(row.inventory || "")
     spells = String.trim(row.spells || "")
     prayers = String.trim(row.prayers || "")
 
-    with {:id, true} <- {:id, id != ""},
+    thac0_val =
+      case Integer.parse(String.trim(to_string(row.thac0 || ""))) do
+        {t, ""} -> t
+        _ -> Referee.PC.calculate_thac0(class, 1)
+      end
+
+    with {:name, true} <- {:name, name != ""},
+         {:id, true} <- {:id, id != ""},
          {:place, true} <- {:place, place_id != ""},
          {:damage, true} <- {:damage, damage != ""},
          {:ok, int} <- int_attr(row.int, "INT"),
          {:ok, hp} <- int_attr(row.hp, "HP"),
-         {:ok, ac} <- int_attr(row.ac, "AC"),
-         {:ok, thac0} <- int_attr(row.thac0, "THAC0") do
+         {:ok, ac} <- int_attr(row.ac, "AC") do
       {:ok,
        %{
          id: id,
          name: name,
          place_id: place_id,
          class: if(class != "", do: class, else: nil),
+         race: if(race != "", do: race, else: nil),
          armor: if(armor != "", do: armor, else: nil),
          weapons: if(weapons != "", do: weapons, else: nil),
          inventory: if(inventory != "", do: inventory, else: nil),
@@ -652,14 +698,22 @@ defmodule ClientWeb.HomeLive do
          hd: 1,
          hp: hp,
          ac: ac,
-         thac0: thac0,
+         thac0: thac0_val,
          damage: damage
        }}
     else
+      {:name, false} -> {:error, "name is required"}
       {:id, false} -> {:error, "id is required"}
       {:place, false} -> {:error, "place is required"}
       {:damage, false} -> {:error, "damage is required"}
       {:error, msg} -> {:error, msg}
+    end
+  end
+
+  defp thac0_for(row) do
+    case Integer.parse(String.trim(to_string(row.thac0 || ""))) do
+      {t, ""} -> t
+      _ -> Referee.PC.calculate_thac0(row.class, 1)
     end
   end
 
