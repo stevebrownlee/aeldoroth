@@ -1,14 +1,14 @@
 ---
 identifier: active_context
 title: Active Context
-created: 2026-08-21T12:58:49Z
+created: 2026-08-21T22:34:22Z
 ---
 # Active Context
 
 ```json
 {
   "content": {
-    "current_focus": "AD&D 1E Level, XP & Spell/Prayer Preparation System complete & verified",
+    "current_focus": "AD&D 1E 2nd-Level Spell Catalogs & Visual Browser Verification complete & verified",
     "current_plan": "Plan 5 (protocol-live-runs) COMPLETE",
     "decisions": [
       47,
@@ -19,7 +19,8 @@ created: 2026-08-21T12:58:49Z
       58,
       59,
       60,
-      61
+      61,
+      62
     ],
     "expanded": {
       "content": {
@@ -39,7 +40,7 @@ created: 2026-08-21T12:58:49Z
     "last_session": {
       "date": "2026-08-21",
       "open": "Spec open questions for user: verb palette set, cap tuning, believed monster HP on GM board, roster scope",
-      "work": "Added Level & XP across PC, Slice, HomeLive, and RunLive; implemented 1E spell catalogs (Magic-User, Illusionist, Cleric, Druid) with interactive Add to Spellbook and Add Prayer controls; class-conditional rendering for magic vs divine vs martial classes; enhanced input padding. 364 tests green."
+      "work": "Added 2nd-level spell lists for all 4 casting classes gated on Level 3+; refactored character card vitals into two clean responsive rows (Identity and Combat Stats); verified interactively with agent-browser. 365 tests green."
     },
     "next": "post-v1: client_web LiveView client (spec §11), then v2 campaign memory (decision 34) / platform seams (decision 35)",
     "next_session": "After spec approval: writing-plans for Phase A (player surface + lobby)",
@@ -66,12 +67,12 @@ created: 2026-08-21T12:58:49Z
       "Log session progress + decisions into engrams"
     ],
     "spec": "docs/superpowers/specs/agent-engine-spec.md",
-    "tests": "364 green umbrella (engine_core 107, llm_gateway 38, agents 25, referee 129, wire 25, client_tui 14, client_web 26)",
+    "tests": "365 green umbrella (engine_core 107, llm_gateway 38, agents 25, referee 129, wire 25, client_tui 14, client_web 27)",
     "v1_status": "all 8 spec phases complete (plans 1-6); acceptance harness green, exits 0",
     "watch": "Party's choice for the Shadow-Crystal (keep/sell/study/destroy) is the Act 1 pacing lever"
   },
   "name": "default",
-  "updated_at": "2026-08-21T12:58:49Z",
-  "version": 19
+  "updated_at": "2026-08-21T22:34:22Z",
+  "version": 20
 }
 ```

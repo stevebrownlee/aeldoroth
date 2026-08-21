@@ -57,11 +57,32 @@ defmodule ClientWeb.HomeLiveTest do
     assert canon_html =~ "Cure Light Wounds"
   end
 
+  test "unlocks 2nd-level spells and prayers when character level is 3 or higher", %{conn: conn} do
+    {:ok, view, _html} = live(conn, "/")
+    # Change Slot 0 to Level 3 Magic-User
+    html =
+      view
+      |> form("#new_run",
+        seat: %{
+          "0" => %{
+            "name" => "Archmage",
+            "race" => "Human",
+            "class" => "Magic-User",
+            "level" => "3"
+          }
+        }
+      )
+      |> render_change()
+
+    assert html =~ "Invisibility (2nd)"
+    assert html =~ "Mirror Image (2nd)"
+    assert html =~ "Web (2nd)"
+  end
+
   test "auto-derives character ID from name when not provided", %{conn: conn} do
     slug = "home_autoid_#{:erlang.unique_integer([:positive])}"
     on_exit(fn -> ClientWeb.TestSupport.stop_run(slug) end)
     {:ok, view, _html} = live(conn, "/")
-
     html =
       view
       |> form("#new_run",

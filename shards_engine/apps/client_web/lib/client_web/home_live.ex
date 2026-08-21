@@ -34,7 +34,7 @@ defmodule ClientWeb.HomeLive do
     "Half-Orc"
   ]
 
-  @mu_spells [
+  @mu_spells_1 [
     "Burning Hands",
     "Charm Person",
     "Comprehend Languages",
@@ -65,7 +65,33 @@ defmodule ClientWeb.HomeLive do
     "Ventriloquism"
   ]
 
-  @illusionist_spells [
+  @mu_spells_2 [
+    "Audible Glamer",
+    "Continual Light",
+    "Darkness, 15' Radius",
+    "Detect Evil",
+    "Detect Invisibility",
+    "ESP",
+    "Fool's Gold",
+    "Forget",
+    "Invisibility",
+    "Knock",
+    "Levitate",
+    "Locate Object",
+    "Magic Mouth",
+    "Mirror Image",
+    "Pyrotechnics",
+    "Ray of Enfeeblement",
+    "Rope Trick",
+    "Scare",
+    "Shatter",
+    "Stinking Cloud",
+    "Strength",
+    "Web",
+    "Wizard Lock"
+  ]
+
+  @illusionist_spells_1 [
     "Auditory Illusion",
     "Chromatic Orb",
     "Color Spray",
@@ -83,7 +109,26 @@ defmodule ClientWeb.HomeLive do
     "Wall of Fog"
   ]
 
-  @cleric_prayers [
+  @illusionist_spells_2 [
+    "Blindness",
+    "Blur",
+    "Deafness",
+    "Detect Magic",
+    "False Trap",
+    "Fascinate",
+    "Fog Cloud",
+    "Hypnotic Pattern",
+    "Invisibility",
+    "Magic Mouth",
+    "Mirror Image",
+    "Misdirection",
+    "Paralyze",
+    "Ultravision",
+    "Ventriliquism",
+    "Whispering Wind"
+  ]
+
+  @cleric_prayers_1 [
     "Bless",
     "Command",
     "Create Water",
@@ -98,7 +143,22 @@ defmodule ClientWeb.HomeLive do
     "Sanctuary"
   ]
 
-  @druid_prayers [
+  @cleric_prayers_2 [
+    "Augury",
+    "Chant",
+    "Detect Charm",
+    "Find Traps",
+    "Hold Person",
+    "Know Alignment",
+    "Resist Fire",
+    "Silence, 15' Radius",
+    "Slow Poison",
+    "Snake Charm",
+    "Speak with Animals",
+    "Spiritual Hammer"
+  ]
+
+  @druid_prayers_1 [
     "Animal Friendship",
     "Ceremony",
     "Detect Balance",
@@ -113,6 +173,25 @@ defmodule ClientWeb.HomeLive do
     "Purify Water",
     "Shillelagh",
     "Speak with Animals"
+  ]
+
+  @druid_prayers_2 [
+    "Barkskin",
+    "Charm Person or Mammal",
+    "Create Water",
+    "Cure Light Wounds",
+    "Feather Fall",
+    "Fire Trap",
+    "Flame Blade",
+    "Goodberry",
+    "Heat Metal",
+    "Locate Plants",
+    "Obscurement",
+    "Produce Flame",
+    "Reflecting Pool",
+    "Slow Poison",
+    "Trip",
+    "Warp Wood"
   ]
 
   @canonical_party [
@@ -425,8 +504,8 @@ defmodule ClientWeb.HomeLive do
             <!-- Hidden or background fields -->
             <input type="text" name={"seat[#{row.index}][place_id]"} value={row.place_id} style="display: none;" />
 
-            <!-- Core Identity & Vitals -->
-            <div class="card-grid-vitals">
+            <!-- Core Identity & Progression -->
+            <div class="card-grid-identity">
               <div class="card-field">
                 <label>PC Name</label>
                 <input name={"seat[#{row.index}][name]"} value={row.name} placeholder="Name" />
@@ -453,6 +532,10 @@ defmodule ClientWeb.HomeLive do
                 <label>XP</label>
                 <input name={"seat[#{row.index}][xp]"} value={row.xp} inputmode="numeric" placeholder="0" />
               </div>
+            </div>
+
+            <!-- Combat Vitals & Stats -->
+            <div class="card-grid-stats">
               <div class="card-field">
                 <label>HP</label>
                 <input name={"seat[#{row.index}][hp]"} value={row.hp} inputmode="numeric" placeholder="10" />
@@ -751,12 +834,37 @@ defmodule ClientWeb.HomeLive do
   end
   defp has_prayers?(_), do: false
 
-  defp available_spells("Illusionist", _level), do: @illusionist_spells
-  defp available_spells(_class, _level), do: @mu_spells
+  defp available_spells("Illusionist", level) do
+    if parse_int(level, 1) >= 3 do
+      @illusionist_spells_1 ++ Enum.map(@illusionist_spells_2, &"#{&1} (2nd)")
+    else
+      @illusionist_spells_1
+    end
+  end
 
-  defp available_prayers("Druid", _level), do: @druid_prayers
-  defp available_prayers(_class, _level), do: @cleric_prayers
+  defp available_spells(_class, level) do
+    if parse_int(level, 1) >= 3 do
+      @mu_spells_1 ++ Enum.map(@mu_spells_2, &"#{&1} (2nd)")
+    else
+      @mu_spells_1
+    end
+  end
 
+  defp available_prayers("Druid", level) do
+    if parse_int(level, 1) >= 3 do
+      @druid_prayers_1 ++ Enum.map(@druid_prayers_2, &"#{&1} (2nd)")
+    else
+      @druid_prayers_1
+    end
+  end
+
+  defp available_prayers(_class, level) do
+    if parse_int(level, 1) >= 3 do
+      @cleric_prayers_1 ++ Enum.map(@cleric_prayers_2, &"#{&1} (2nd)")
+    else
+      @cleric_prayers_1
+    end
+  end
   defp parse_int(raw, default) when is_binary(raw) do
     case Integer.parse(String.trim(raw)) do
       {n, ""} -> n
