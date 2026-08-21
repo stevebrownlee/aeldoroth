@@ -208,10 +208,12 @@ defmodule ClientWeb.SpectateLiveTest do
     assert html =~ "west → entry_hall"
 
     entry_hall = room_html(html, "entry_hall")
-    assert entry_hall =~ "HAZARD"
+    assert entry_hall =~ "TRAP"
     assert entry_hall =~ "alarm"
     assert entry_hall =~ "DC 12"
     assert entry_hall =~ "ARMED"
+    assert entry_hall =~ "class=\"badge trap\""
+    assert entry_hall =~ "class=\"badge armed-tag\""
 
     library = room_html(html, "library")
     assert library =~ "Potion of Healing"
@@ -221,6 +223,9 @@ defmodule ClientWeb.SpectateLiveTest do
     assert library =~ "500 gp"
     assert library =~ "SEALED"
     assert library =~ "down"
+    assert library =~ "class=\"badge item\""
+    assert library =~ "class=\"badge hidden-tag\""
+    assert library =~ "class=\"badge sealed-tag\""
   end
 
   test "unknown run shows an error without crashing", %{conn: conn} do

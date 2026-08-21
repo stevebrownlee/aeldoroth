@@ -291,27 +291,24 @@ defmodule ClientWeb.SpectateLive do
                 </ul>
                 <ul :if={(place["items"] || []) != []} class="items">
                   <li :for={item <- place["items"] || []}>
-                    <span class="badge treasure">TREASURE</span>
-                    <%= item["name"] %>
-                    <span class="dim"><%= item["value_gp"] || 0 %> gp</span>
-                    <span :if={item["is_hidden"]} class="badge hidden">HIDDEN</span>
-                    <span :if={item["holder_id"]} class="badge carried">CARRIED</span>
+                    <span class="badge item">TREASURE</span>
+                    <%= item["name"] %> (<%= item["value_gp"] || 0 %> gp)
+                    <span :if={item["is_hidden"]} class="badge hidden-tag">HIDDEN</span>
+                    <span :if={item["holder_id"]} class="badge carried-tag">CARRIED</span>
                   </li>
                 </ul>
                 <ul :if={(place["hazards"] || []) != []} class="hazards">
                   <li :for={hazard <- place["hazards"] || []}>
-                    <span class="badge hazard">HAZARD</span>
-                    <%= hazard["kind"] %>
-                    <span class="dim">DC <%= hazard["dc"] %></span>
-                    <span class={"badge " <> if(hazard["triggered"], do: "triggered", else: "armed")}>
-                      <%= if hazard["triggered"], do: "TRIGGERED", else: "ARMED" %>
-                    </span>
+                    <span class="badge trap">TRAP</span>
+                    <%= hazard["kind"] || hazard["id"] %> (DC <%= hazard["dc"] %>)
+                    <span :if={hazard["triggered"]} class="badge triggered-tag">TRIGGERED</span>
+                    <span :if={!hazard["triggered"]} class="badge armed-tag">ARMED</span>
                   </li>
                 </ul>
                 <ul :if={place["connections"] != []} class="exits">
                   <li :for={conn <- place["connections"] || []}>
                     <%= exit_label(conn) %> → <%= exit_to(conn) %>
-                    <span :if={conn["sealed"]} class="badge sealed">SECRET / SEALED</span>
+                    <span :if={conn["sealed"]} class="badge sealed-tag">SECRET / SEALED</span>
                   </li>
                 </ul>
               </article>
