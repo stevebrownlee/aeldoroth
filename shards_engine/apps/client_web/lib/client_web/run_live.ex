@@ -316,6 +316,8 @@ defmodule ClientWeb.RunLive do
                 <div class="hp-fill" style={"width: #{hp_percent(sh)}%"}></div>
               </div>
               <dl class="stats">
+                <div><dt>Level</dt><dd><%= sh["level"] || 1 %></dd></div>
+                <div><dt>XP</dt><dd><%= sh["xp"] || 0 %></dd></div>
                 <div><dt>AC</dt><dd><%= sh["ac"] %></dd></div>
                 <div><dt>THAC0</dt><dd><%= sh["thac0"] %></dd></div>
                 <div><dt>Damage</dt><dd><%= sh["damage"] || "—" %></dd></div>

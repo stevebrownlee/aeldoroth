@@ -21,8 +21,8 @@
       label { display: block; margin: 0.6rem 0 0.15rem; color: #9aa3af; font-size: 0.85rem; }
       input[type=text], input[type=number], select, textarea {
         width: 100%; background: #1c1f25; color: #e6e8ec;
-        border: 1px solid #343943; border-radius: 4px; padding: 0.4rem 0.5rem;
-        font: inherit;
+        border: 1px solid #343943; border-radius: 4px; padding: 0.55rem 0.75rem;
+        font: inherit; font-size: 0.9rem; line-height: 1.4;
       }
       textarea { min-height: 5.5rem; }
       button {
@@ -89,18 +89,31 @@
       .character-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.7rem; border-bottom: 1px solid #232730; padding-bottom: 0.5rem; }
       .character-card-header h3 { margin: 0; font-size: 1.05rem; color: #e8d9a8; font-weight: normal; display: flex; align-items: center; gap: 0.6rem; }
       .card-slot-badge { background: #262b33; color: #9aa3af; border: 1px solid #3b424e; border-radius: 4px; padding: 0.1rem 0.45rem; font-size: 0.75rem; }
-      .card-grid-vitals { display: grid; grid-template-columns: 2fr 1.2fr 1.2fr 0.9fr 0.9fr 1.1fr 0.9fr 0.9fr; gap: 0.5rem; align-items: start; margin-bottom: 0.7rem; }
+      .card-grid-vitals { display: grid; grid-template-columns: 2fr 1.1fr 1.1fr 0.7fr 0.8fr 0.7fr 0.7fr 1fr 0.7fr 0.8fr; gap: 0.5rem; align-items: start; margin-bottom: 0.7rem; }
       .card-grid-gear { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-bottom: 0.7rem; }
       .card-field { display: flex; flex-direction: column; }
       .card-field label { margin: 0 0 0.2rem; font-size: 0.8rem; color: #9aa3af; }
       .card-field .hint-text { font-size: 0.72rem; color: #6f7885; margin-top: 0.15rem; }
-      .thac0-badge { background: #1c2233; color: #a8c8e8; border: 1px solid #3c5a7a; border-radius: 4px; padding: 0.38rem 0.5rem; font-weight: bold; text-align: center; font-size: 0.9rem; }
+      .thac0-badge { background: #1c2233; color: #a8c8e8; border: 1px solid #3c5a7a; border-radius: 4px; padding: 0.55rem 0.5rem; font-weight: bold; text-align: center; font-size: 0.9rem; }
       .char-section { margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid #20242c; }
       .char-section-title { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: #7f8a9a; margin: 0 0 0.4rem; }
-      .magic-box { border: 1px dashed #4e3a6a; background: #1c1524; border-radius: 4px; padding: 0.5rem 0.7rem; margin-top: 0.5rem; }
-      .magic-box label { color: #d0a8e8; }
-      .cleric-box { border: 1px dashed #3a506a; background: #141c24; border-radius: 4px; padding: 0.5rem 0.7rem; margin-top: 0.5rem; }
-      .cleric-box label { color: #a8c8e8; }
+      .magic-box { border: 1px dashed #5a3c7a; background: #181320; border-radius: 4px; padding: 0.7rem 0.8rem; margin-top: 0.5rem; }
+      .magic-box label { color: #d0a8e8; font-weight: 600; margin-bottom: 0.35rem; }
+      .cleric-box { border: 1px dashed #3c5a7a; background: #121820; border-radius: 4px; padding: 0.7rem 0.8rem; margin-top: 0.5rem; }
+      .cleric-box label { color: #a8c8e8; font-weight: 600; margin-bottom: 0.35rem; }
+      .spell-add-row { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; }
+      .spell-add-row select { flex: 1; }
+      .spell-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; min-height: 2.2rem; padding: 0.4rem 0.6rem; background: #120e18; border: 1px solid #2d203d; border-radius: 4px; align-items: center; }
+      .prayer-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; min-height: 2.2rem; padding: 0.4rem 0.6rem; background: #0e141a; border: 1px solid #202e3d; border-radius: 4px; align-items: center; }
+      .spell-badge { display: inline-flex; align-items: center; gap: 0.35rem; background: #2b1f3d; color: #e8d0fa; border: 1px solid #5a3c7a; border-radius: 4px; padding: 0.2rem 0.55rem; font-size: 0.82rem; }
+      .prayer-badge { display: inline-flex; align-items: center; gap: 0.35rem; background: #1a2838; color: #d0e4fa; border: 1px solid #3c5a7a; border-radius: 4px; padding: 0.2rem 0.55rem; font-size: 0.82rem; }
+      .btn-remove-spell { background: transparent; border: none; color: #e88f8f; cursor: pointer; padding: 0 0.15rem; font-size: 0.95rem; font-weight: bold; line-height: 1; }
+      .btn-remove-spell:hover { color: #ff5555; }
+      .btn-add-spell { background: #3d2c54; color: #e8d0fa; border: 1px solid #63438a; padding: 0.55rem 0.9rem; font-size: 0.85rem; border-radius: 4px; cursor: pointer; white-space: nowrap; }
+      .btn-add-spell:hover { background: #4d376b; border-color: #7d54b0; color: #ffffff; }
+      .btn-add-prayer { background: #24384d; color: #d0e4fa; border: 1px solid #3c5f85; padding: 0.55rem 0.9rem; font-size: 0.85rem; border-radius: 4px; cursor: pointer; white-space: nowrap; }
+      .btn-add-prayer:hover { background: #2d4863; border-color: #4a77a6; color: #ffffff; }
+      .empty-chips-hint { color: #6f7885; font-size: 0.8rem; font-style: italic; }
       .location-badge { display: inline-flex; align-items: center; gap: 0.4rem; background: #1a2230; color: #a8c8e8; border: 1px solid #2d4160; border-radius: 4px; padding: 0.25rem 0.65rem; margin-top: 0.5rem; font-size: 0.85rem; }
       .location-badge strong { color: #f0d49a; font-weight: normal; }
       .preset-bar { display: flex; justify-content: space-between; align-items: center; margin: 1rem 0 0.5rem; }

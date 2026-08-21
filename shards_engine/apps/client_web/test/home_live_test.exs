@@ -23,7 +23,7 @@ defmodule ClientWeb.HomeLiveTest do
       int: 12, hd: 1, hp: 8, ac: 6, thac0: 19, damage: "1d6"}
   ]
 
-  test "renders scenario card with starting place, race/class selects, inventory, and spell slots", %{conn: conn} do
+  test "renders scenario card with starting place, race/class selects, level/xp, inventory, and spell slots", %{conn: conn} do
     {:ok, _view, html} = live(conn, "/")
     assert html =~ "The Ruined Tower"
     assert html =~ "Mara&#39;s Inn (Common Room), Thornhollow"
@@ -31,12 +31,30 @@ defmodule ClientWeb.HomeLiveTest do
     assert html =~ "-- Race --"
     assert html =~ "-- Class --"
     assert html =~ "Fighter"
+    assert html =~ "Level"
+    assert html =~ "XP"
     assert html =~ "THAC0 (1E)"
     assert html =~ "Initial Inventory &amp; Supplies"
-    assert html =~ "Spells Prepared (Magic-Users / Illusionists)"
-    assert html =~ "Prayers Prepared (Clerics)"
     assert html =~ "Enter The Ruined Tower"
     refute html =~ "Internal Character ID"
+  end
+
+  test "spells appear only for magic users and prayers only for divine casters", %{conn: conn} do
+    {:ok, view, html} = live(conn, "/")
+    # Slot 0 (Fighter) and Slot 1 (Thief) do not have spellbook/prayers by default
+    refute html =~ "Arcane Spellbook"
+    refute html =~ "Divine Prayers"
+    canon_html =
+      view
+      |> element("button", "Load Canonical Party")
+      |> render_click()
+
+    assert canon_html =~ "Arcane Spellbook"
+    assert canon_html =~ "Divine Prayers"
+    assert canon_html =~ "Add to Spellbook"
+    assert canon_html =~ "Add Prayer"
+    assert canon_html =~ "Color Spray"
+    assert canon_html =~ "Cure Light Wounds"
   end
 
   test "auto-derives character ID from name when not provided", %{conn: conn} do
@@ -157,8 +175,8 @@ defmodule ClientWeb.HomeLiveTest do
 
     assert html =~ "Mirage"
     assert html =~ "Sister Lyra"
-    assert html =~ "Magic Missile, Sleep, Shield"
-    assert html =~ "Cure Light Wounds, Bless, Purify Food and Drink"
+    assert html =~ "Color Spray"
+    assert html =~ "Cure Light Wounds"
 
     submit_html =
       view

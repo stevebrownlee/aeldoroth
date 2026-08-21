@@ -163,6 +163,8 @@ defmodule Referee.SliceTest do
              morale: 7,
              int: 8,
              hd: 1,
+             level: 1,
+             xp: 0,
              class: nil,
              race: nil,
              armor: nil,

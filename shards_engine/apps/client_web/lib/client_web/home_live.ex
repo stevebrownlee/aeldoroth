@@ -34,12 +34,95 @@ defmodule ClientWeb.HomeLive do
     "Half-Orc"
   ]
 
+  @mu_spells [
+    "Burning Hands",
+    "Charm Person",
+    "Comprehend Languages",
+    "Detect Magic",
+    "Enlarge",
+    "Erase",
+    "Feather Fall",
+    "Find Familiar",
+    "Friends",
+    "Hold Portal",
+    "Hypnotism",
+    "Identify",
+    "Jump",
+    "Light",
+    "Magic Missile",
+    "Mending",
+    "Message",
+    "Nystul's Magic Aura",
+    "Protection from Evil",
+    "Push",
+    "Read Magic",
+    "Shield",
+    "Shocking Grasp",
+    "Sleep",
+    "Spider Climb",
+    "Tenser's Floating Disc",
+    "Unseen Servant",
+    "Ventriloquism"
+  ]
+
+  @illusionist_spells [
+    "Auditory Illusion",
+    "Chromatic Orb",
+    "Color Spray",
+    "Dancing Lights",
+    "Darkness",
+    "Detect Illusion",
+    "Detect Invisibility",
+    "Gaze Reflection",
+    "Hypnotism",
+    "Light",
+    "Minor Illusion",
+    "Phantasmal Force",
+    "Phantom Armor",
+    "Spook",
+    "Wall of Fog"
+  ]
+
+  @cleric_prayers [
+    "Bless",
+    "Command",
+    "Create Water",
+    "Cure Light Wounds",
+    "Detect Evil",
+    "Detect Magic",
+    "Light",
+    "Protection from Evil",
+    "Purify Food and Drink",
+    "Remove Fear",
+    "Resist Cold",
+    "Sanctuary"
+  ]
+
+  @druid_prayers [
+    "Animal Friendship",
+    "Ceremony",
+    "Detect Balance",
+    "Detect Magic",
+    "Detect Snares and Pits",
+    "Entangle",
+    "Faerie Fire",
+    "Invisibility to Animals",
+    "Locate Animals",
+    "Pass without Trace",
+    "Predict Weather",
+    "Purify Water",
+    "Shillelagh",
+    "Speak with Animals"
+  ]
+
   @canonical_party [
     %{
       name: "Thistle",
       id: "pc_thistle",
       race: "Human",
       class: "Fighter",
+      level: 1,
+      xp: 0,
       int: 13,
       hp: 12,
       ac: 5,
@@ -48,14 +131,16 @@ defmodule ClientWeb.HomeLive do
       armor: "Chain mail & Shield",
       weapons: "Longsword (1d8), Dagger (1d4)",
       inventory: "Backpack, 50ft hemp rope, 3 torches, rations (7 days), waterskin, whetstone, 12 gp",
-      spells: "",
-      prayers: ""
+      spells_list: [],
+      prayers_list: []
     },
     %{
       name: "Bramble",
       id: "pc_bramble",
       race: "Halfling",
       class: "Thief",
+      level: 1,
+      xp: 0,
       int: 12,
       hp: 8,
       ac: 6,
@@ -64,14 +149,16 @@ defmodule ClientWeb.HomeLive do
       armor: "Leather armor",
       weapons: "Shortsword (1d6), Shortbow (1d6), Dagger (1d4)",
       inventory: "Thieves' tools, lockpicks, hooded lantern, flask of oil, 30ft silk rope, grappling hook, 18 gp",
-      spells: "",
-      prayers: ""
+      spells_list: [],
+      prayers_list: []
     },
     %{
       name: "Mirage",
       id: "pc_mirage",
       race: "Gnome",
       class: "Illusionist",
+      level: 1,
+      xp: 0,
       int: 17,
       hp: 4,
       ac: 10,
@@ -80,14 +167,16 @@ defmodule ClientWeb.HomeLive do
       armor: "Robes",
       weapons: "Quarterstaff (1d6), Darts (1d3), Silver Dagger (1d4)",
       inventory: "Spellbook, component pouch, parchment & quill, ink vial, chalk, lantern, 8 gp",
-      spells: "Color Spray, Phantasmal Force, Read Magic",
-      prayers: ""
+      spells_list: ["Color Spray", "Phantasmal Force", "Read Magic"],
+      prayers_list: []
     },
     %{
       name: "Sister Lyra",
       id: "pc_lyra",
       race: "Human",
       class: "Cleric",
+      level: 1,
+      xp: 0,
       int: 11,
       hp: 8,
       ac: 5,
@@ -96,11 +185,10 @@ defmodule ClientWeb.HomeLive do
       armor: "Scale mail & Wooden Shield",
       weapons: "Warhammer (1d4+1), Mace (1d6)",
       inventory: "Wooden holy symbol, holy water (2 vials), healer's kit, bandages, iron rations, 15 gp",
-      spells: "",
-      prayers: "Cure Light Wounds, Bless, Purify Food and Drink"
+      spells_list: [],
+      prayers_list: ["Cure Light Wounds", "Bless", "Purify Food and Drink"]
     }
   ]
-
   @impl true
   def mount(_params, _session, socket) do
     yaml = default_yaml()
@@ -138,6 +226,96 @@ defmodule ClientWeb.HomeLive do
      )}
   end
 
+  def handle_event("form_change", %{"seat" => seat_params}, socket) do
+    sp = socket.assigns.starting_place
+    current_rows = socket.assigns.seat_rows
+
+    updated_rows =
+      Enum.map(current_rows, fn row ->
+        fields = Map.get(seat_params, "#{row.index}") || Map.get(seat_params, row.index) || %{}
+
+        %{
+          row
+          | name: to_string(fields["name"] || row.name),
+            race: to_string(fields["race"] || row.race),
+            class: to_string(fields["class"] || row.class),
+            level: to_string(fields["level"] || row.level),
+            xp: to_string(fields["xp"] || row.xp),
+            hp: to_string(fields["hp"] || row.hp),
+            ac: to_string(fields["ac"] || row.ac),
+            damage: to_string(fields["damage"] || row.damage),
+            int: to_string(fields["int"] || row.int),
+            armor: to_string(fields["armor"] || row.armor),
+            weapons: to_string(fields["weapons"] || row.weapons),
+            inventory: to_string(fields["inventory"] || row.inventory),
+            chosen_spell: to_string(fields["chosen_spell"] || row.chosen_spell),
+            chosen_prayer: to_string(fields["chosen_prayer"] || row.chosen_prayer),
+            place_id: to_string(fields["place_id"] || row.place_id || sp)
+        }
+      end)
+
+    {:noreply, assign(socket, seat_rows: updated_rows)}
+  end
+
+  def handle_event("form_change", _params, socket), do: {:noreply, socket}
+
+  def handle_event("add_spell", %{"index" => idx_str}, socket) do
+    idx = String.to_integer(idx_str)
+    rows = socket.assigns.seat_rows
+    row = Enum.at(rows, idx)
+
+    spell =
+      case row.chosen_spell do
+        "" -> List.first(available_spells(row.class, parse_int(row.level, 1)))
+        s -> s
+      end
+
+    updated_row =
+      if spell && spell != "" && spell not in row.spells_list do
+        %{row | spells_list: row.spells_list ++ [spell]}
+      else
+        row
+      end
+
+    {:noreply, assign(socket, seat_rows: List.replace_at(rows, idx, updated_row))}
+  end
+
+  def handle_event("remove_spell", %{"index" => idx_str, "spell" => spell}, socket) do
+    idx = String.to_integer(idx_str)
+    rows = socket.assigns.seat_rows
+    row = Enum.at(rows, idx)
+    updated_row = %{row | spells_list: List.delete(row.spells_list, spell)}
+    {:noreply, assign(socket, seat_rows: List.replace_at(rows, idx, updated_row))}
+  end
+
+  def handle_event("add_prayer", %{"index" => idx_str}, socket) do
+    idx = String.to_integer(idx_str)
+    rows = socket.assigns.seat_rows
+    row = Enum.at(rows, idx)
+
+    prayer =
+      case row.chosen_prayer do
+        "" -> List.first(available_prayers(row.class, parse_int(row.level, 1)))
+        p -> p
+      end
+
+    updated_row =
+      if prayer && prayer != "" && prayer not in row.prayers_list do
+        %{row | prayers_list: row.prayers_list ++ [prayer]}
+      else
+        row
+      end
+
+    {:noreply, assign(socket, seat_rows: List.replace_at(rows, idx, updated_row))}
+  end
+
+  def handle_event("remove_prayer", %{"index" => idx_str, "prayer" => prayer}, socket) do
+    idx = String.to_integer(idx_str)
+    rows = socket.assigns.seat_rows
+    row = Enum.at(rows, idx)
+    updated_row = %{row | prayers_list: List.delete(row.prayers_list, prayer)}
+    {:noreply, assign(socket, seat_rows: List.replace_at(rows, idx, updated_row))}
+  end
   def handle_event("create", %{"run" => _} = params, socket) do
     run_params = params["run"]
     yaml = String.trim(run_params["yaml"] || default_yaml())
@@ -223,7 +401,7 @@ defmodule ClientWeb.HomeLive do
 
     <section class="panel">
       <h2>Assemble Your Party</h2>
-      <form id="new_run" phx-submit="create">
+      <form id="new_run" phx-change="form_change" phx-submit="create">
         <div class="preset-bar">
           <span class="hint">Configure adventurer vitals, equipment, inventory, and spells:</span>
           <div>
@@ -268,6 +446,14 @@ defmodule ClientWeb.HomeLive do
                 </select>
               </div>
               <div class="card-field">
+                <label>Level</label>
+                <input name={"seat[#{row.index}][level]"} value={row.level} inputmode="numeric" placeholder="1" />
+              </div>
+              <div class="card-field">
+                <label>XP</label>
+                <input name={"seat[#{row.index}][xp]"} value={row.xp} inputmode="numeric" placeholder="0" />
+              </div>
+              <div class="card-field">
                 <label>HP</label>
                 <input name={"seat[#{row.index}][hp]"} value={row.hp} inputmode="numeric" placeholder="10" />
               </div>
@@ -291,6 +477,7 @@ defmodule ClientWeb.HomeLive do
                 </div>
               </div>
             </div>
+
             <!-- Equipment & Combat Gear -->
             <div class="char-section">
               <div class="char-section-title">Equipment & Combat Gear</div>
@@ -310,16 +497,49 @@ defmodule ClientWeb.HomeLive do
               </div>
             </div>
 
-            <!-- Arcane Spells & Divine Prayers -->
-            <div class="char-section">
-              <div class="char-section-title">Arcane Spells & Divine Prayers</div>
+            <%!-- Arcane Spells (Magic-Users & Illusionists only) --%>
+            <div :if={has_magic_spells?(row.class)} class="char-section">
+              <div class="char-section-title" style="color: #d0a8e8;">Arcane Spellbook</div>
               <div class="magic-box">
-                <label>✨ Spells Prepared (Magic-Users / Illusionists)</label>
-                <input name={"seat[#{row.index}][spells]"} value={row.spells} placeholder="e.g. Magic Missile, Sleep, Shield, Read Magic" />
+                <label>✨ Spells Available for Level <%= row.level %></label>
+                <div class="spell-add-row">
+                  <select name={"seat[#{row.index}][chosen_spell]"}>
+                    <option value="" disabled={row.chosen_spell != ""}>-- Choose <%= row.class %> Spell --</option>
+                    <option :for={sp <- available_spells(row.class, parse_int(row.level, 1))} value={sp} selected={row.chosen_spell == sp}><%= sp %></option>
+                  </select>
+                  <button type="button" class="btn-add-spell" phx-click="add_spell" phx-value-index={row.index}>Add to Spellbook</button>
+                </div>
+                <div class="spell-chips">
+                  <span :for={sp <- row.spells_list} class="spell-badge">
+                    ✨ <%= sp %>
+                    <button type="button" class="btn-remove-spell" phx-click="remove_spell" phx-value-index={row.index} phx-value-spell={sp}>×</button>
+                  </span>
+                  <span :if={row.spells_list == []} class="empty-chips-hint">Spellbook empty — select a spell above to prepare it.</span>
+                </div>
+                <input type="hidden" name={"seat[#{row.index}][spells]"} value={Enum.join(row.spells_list, ", ")} />
               </div>
+            </div>
+
+            <%!-- Divine Prayers (Clerics & Druids only) --%>
+            <div :if={has_prayers?(row.class)} class="char-section">
+              <div class="char-section-title" style="color: #a8c8e8;">Divine Prayers</div>
               <div class="cleric-box">
-                <label>🙏 Prayers Prepared (Clerics)</label>
-                <input name={"seat[#{row.index}][prayers]"} value={row.prayers} placeholder="e.g. Cure Light Wounds, Bless, Purify Food and Drink" />
+                <label>🙏 Prayers Available for Level <%= row.level %></label>
+                <div class="spell-add-row">
+                  <select name={"seat[#{row.index}][chosen_prayer]"}>
+                    <option value="" disabled={row.chosen_prayer != ""}>-- Choose <%= row.class %> Prayer --</option>
+                    <option :for={pr <- available_prayers(row.class, parse_int(row.level, 1))} value={pr} selected={row.chosen_prayer == pr}><%= pr %></option>
+                  </select>
+                  <button type="button" class="btn-add-prayer" phx-click="add_prayer" phx-value-index={row.index}>Add Prayer</button>
+                </div>
+                <div class="prayer-chips">
+                  <span :for={pr <- row.prayers_list} class="prayer-badge">
+                    🙏 <%= pr %>
+                    <button type="button" class="btn-remove-spell" phx-click="remove_prayer" phx-value-index={row.index} phx-value-prayer={pr}>×</button>
+                  </span>
+                  <span :if={row.prayers_list == []} class="empty-chips-hint">No prayers prepared — select a prayer above.</span>
+                </div>
+                <input type="hidden" name={"seat[#{row.index}][prayers]"} value={Enum.join(row.prayers_list, ", ")} />
               </div>
             </div>
 
@@ -361,47 +581,46 @@ defmodule ClientWeb.HomeLive do
           <button type="submit" class="btn-start-run">Enter The Ruined Tower</button>
         </div>
       </form>
-    </section>
+      <div :if={@created} class="seat-links panel">
+        <h2>Seat links — <%= @created.run_id %></h2>
+        <ul>
+          <li :for={seat <- @created.seats}>
+            <.link navigate={"/runs/#{@created.run_id}/#{seat.id}"} data-testid={"seat-link-#{seat.id}"}>
+              <%= seat.name %>
+            </.link>
+          </li>
+        </ul>
+        <.link navigate={"/runs/#{@created.run_id}/gm"} data-testid="gm-console-link">GM console</.link>
+      </div>
 
-    <div :if={@created} class="seat-links panel">
-      <h2>Seat links — <%= @created.run_id %></h2>
-      <ul>
-        <li :for={seat <- @created.seats}>
-          <.link navigate={"/runs/#{@created.run_id}/#{seat.id}"} data-testid={"seat-link-#{seat.id}"}>
-            <%= seat.name %>
-          </.link>
-        </li>
-      </ul>
-      <.link navigate={"/runs/#{@created.run_id}/gm"} data-testid="gm-console-link">GM console</.link>
-    </div>
-
-    <section class="panel">
-      <h2>Active runs</h2>
-      <table>
-        <thead>
-          <tr><th>Run</th><th>Status</th><th>Tick</th><th></th></tr>
-        </thead>
-        <tbody>
-          <tr :for={run <- @runs}>
-            <td>
-              <.link navigate={"/runs/#{run.id}"} data-testid={"run-link-#{run.id}"}>
-                <%= run.id %>
-              </.link>
-            </td>
-            <td><%= run.status %></td>
-            <td><%= run.tick %></td>
-            <td>
-              <.link navigate={"/runs/#{run.id}/gm"}>GM console</.link>
-            </td>
-          </tr>
-          <tr :if={@runs == []}>
-            <td colspan="4">No active runs.</td>
-          </tr>
-          <tr class="dim">
-            <td colspan="4"><%= length(@runs) %> run(s)</td>
-          </tr>
-        </tbody>
-      </table>
+      <section class="panel">
+        <h2>Active runs</h2>
+        <table>
+          <thead>
+            <tr><th>Run</th><th>Status</th><th>Tick</th><th></th></tr>
+          </thead>
+          <tbody>
+            <tr :for={run <- @runs}>
+              <td>
+                <.link navigate={"/runs/#{run.id}"} data-testid={"run-link-#{run.id}"}>
+                  <%= run.id %>
+                </.link>
+              </td>
+              <td><%= run.status %></td>
+              <td><%= run.tick %></td>
+              <td>
+                <.link navigate={"/runs/#{run.id}/gm"}>GM console</.link>
+              </td>
+            </tr>
+            <tr :if={@runs == []}>
+              <td colspan="4">No active runs.</td>
+            </tr>
+            <tr class="dim">
+              <td colspan="4"><%= length(@runs) %> run(s)</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
     </section>
     """
   end
@@ -522,10 +741,50 @@ defmodule ClientWeb.HomeLive do
       empty_seat_row(3, starting_place)
     ]
   end
+  defp has_magic_spells?(class) when is_binary(class) do
+    String.downcase(String.trim(class)) in ["magic-user", "magic user", "illusionist"]
+  end
+  defp has_magic_spells?(_), do: false
+
+  defp has_prayers?(class) when is_binary(class) do
+    String.downcase(String.trim(class)) in ["cleric", "druid"]
+  end
+  defp has_prayers?(_), do: false
+
+  defp available_spells("Illusionist", _level), do: @illusionist_spells
+  defp available_spells(_class, _level), do: @mu_spells
+
+  defp available_prayers("Druid", _level), do: @druid_prayers
+  defp available_prayers(_class, _level), do: @cleric_prayers
+
+  defp parse_int(raw, default) when is_binary(raw) do
+    case Integer.parse(String.trim(raw)) do
+      {n, ""} -> n
+      _ -> default
+    end
+  end
+  defp parse_int(n, _default) when is_integer(n), do: n
+  defp parse_int(_, default), do: default
 
   defp seat_row_from_pc(pc, index) do
     class = to_string(pc[:class] || "")
-    thac0 = to_string(pc[:thac0] || Referee.PC.calculate_thac0(class, 1))
+    level = to_string(pc[:level] || pc[:hd] || "1")
+    xp = to_string(pc[:xp] || "0")
+    thac0 = to_string(pc[:thac0] || Referee.PC.calculate_thac0(class, parse_int(level, 1)))
+
+    spells_list =
+      cond do
+        is_list(pc[:spells_list]) -> pc[:spells_list]
+        is_binary(pc[:spells]) and pc[:spells] != "" -> String.split(pc[:spells], ~r/,\s*/, trim: true)
+        true -> []
+      end
+
+    prayers_list =
+      cond do
+        is_list(pc[:prayers_list]) -> pc[:prayers_list]
+        is_binary(pc[:prayers]) and pc[:prayers] != "" -> String.split(pc[:prayers], ~r/,\s*/, trim: true)
+        true -> []
+      end
 
     %{
       index: index,
@@ -533,6 +792,8 @@ defmodule ClientWeb.HomeLive do
       name: to_string(pc[:name] || ""),
       race: to_string(pc[:race] || ""),
       class: class,
+      level: level,
+      xp: xp,
       place_id: to_string(pc[:place_id] || "maras_inn"),
       int: to_string(pc[:int] || ""),
       hp: to_string(pc[:hp] || ""),
@@ -542,8 +803,10 @@ defmodule ClientWeb.HomeLive do
       armor: to_string(pc[:armor] || ""),
       weapons: to_string(pc[:weapons] || ""),
       inventory: to_string(pc[:inventory] || ""),
-      spells: to_string(pc[:spells] || ""),
-      prayers: to_string(pc[:prayers] || ""),
+      chosen_spell: "",
+      chosen_prayer: "",
+      spells_list: spells_list,
+      prayers_list: prayers_list,
       errors: []
     }
   end
@@ -555,6 +818,8 @@ defmodule ClientWeb.HomeLive do
       name: "",
       race: "",
       class: "",
+      level: "1",
+      xp: "0",
       place_id: starting_place,
       int: "",
       hp: "",
@@ -564,11 +829,14 @@ defmodule ClientWeb.HomeLive do
       armor: "",
       weapons: "",
       inventory: "",
-      spells: "",
-      prayers: "",
+      chosen_spell: "",
+      chosen_prayer: "",
+      spells_list: [],
+      prayers_list: [],
       errors: []
     }
   end
+
   defp seat_rows_from_params(seat_params, default_place) do
     seat_params = seat_params || %{}
 
@@ -581,12 +849,23 @@ defmodule ClientWeb.HomeLive do
           p -> p
         end
 
+      spells_raw = to_string(fields["spells"] || "")
+      prayers_raw = to_string(fields["prayers"] || "")
+
+      spells_list =
+        if spells_raw != "", do: String.split(spells_raw, ~r/,\s*/, trim: true), else: []
+
+      prayers_list =
+        if prayers_raw != "", do: String.split(prayers_raw, ~r/,\s*/, trim: true), else: []
+
       %{
         index: i,
         id: to_string(fields["id"] || ""),
         name: to_string(fields["name"] || ""),
         race: to_string(fields["race"] || ""),
         class: to_string(fields["class"] || ""),
+        level: to_string(fields["level"] || "1"),
+        xp: to_string(fields["xp"] || "0"),
         place_id: place_id,
         int: to_string(fields["int"] || ""),
         hp: to_string(fields["hp"] || ""),
@@ -596,8 +875,10 @@ defmodule ClientWeb.HomeLive do
         armor: to_string(fields["armor"] || ""),
         weapons: to_string(fields["weapons"] || ""),
         inventory: to_string(fields["inventory"] || ""),
-        spells: to_string(fields["spells"] || ""),
-        prayers: to_string(fields["prayers"] || ""),
+        chosen_spell: to_string(fields["chosen_spell"] || ""),
+        chosen_prayer: to_string(fields["chosen_prayer"] || ""),
+        spells_list: spells_list,
+        prayers_list: prayers_list,
         errors: []
       }
     end)
@@ -666,13 +947,28 @@ defmodule ClientWeb.HomeLive do
     armor = String.trim(row.armor || "")
     weapons = String.trim(row.weapons || "")
     inventory = String.trim(row.inventory || "")
-    spells = String.trim(row.spells || "")
-    prayers = String.trim(row.prayers || "")
+
+    spells =
+      if row[:spells_list] && row[:spells_list] != [] do
+        Enum.join(row[:spells_list], ", ")
+      else
+        String.trim(to_string(row[:spells] || ""))
+      end
+
+    prayers =
+      if row[:prayers_list] && row[:prayers_list] != [] do
+        Enum.join(row[:prayers_list], ", ")
+      else
+        String.trim(to_string(row[:prayers] || ""))
+      end
+
+    level_val = parse_int(row[:level], 1)
+    xp_val = parse_int(row[:xp], 0)
 
     thac0_val =
       case Integer.parse(String.trim(to_string(row.thac0 || ""))) do
         {t, ""} -> t
-        _ -> Referee.PC.calculate_thac0(class, 1)
+        _ -> Referee.PC.calculate_thac0(class, level_val)
       end
 
     with {:name, true} <- {:name, name != ""},
@@ -689,13 +985,15 @@ defmodule ClientWeb.HomeLive do
          place_id: place_id,
          class: if(class != "", do: class, else: nil),
          race: if(race != "", do: race, else: nil),
+         level: level_val,
+         xp: xp_val,
          armor: if(armor != "", do: armor, else: nil),
          weapons: if(weapons != "", do: weapons, else: nil),
          inventory: if(inventory != "", do: inventory, else: nil),
          spells: if(spells != "", do: spells, else: nil),
          prayers: if(prayers != "", do: prayers, else: nil),
          int: int,
-         hd: 1,
+         hd: level_val,
          hp: hp,
          ac: ac,
          thac0: thac0_val,
@@ -711,9 +1009,10 @@ defmodule ClientWeb.HomeLive do
   end
 
   defp thac0_for(row) do
+    level = parse_int(row.level, 1)
     case Integer.parse(String.trim(to_string(row.thac0 || ""))) do
       {t, ""} -> t
-      _ -> Referee.PC.calculate_thac0(row.class, 1)
+      _ -> Referee.PC.calculate_thac0(row.class, level)
     end
   end
 

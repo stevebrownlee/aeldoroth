@@ -27,6 +27,8 @@ defmodule Referee.PC do
       statblock: %{
         ac: pc_map[:ac] || 10,
         hd: level,
+        level: level,
+        xp: pc_map[:xp] || 0,
         hp_max: pc_map[:hp] || 1,
         thac0: thac0,
         morale: 12,
