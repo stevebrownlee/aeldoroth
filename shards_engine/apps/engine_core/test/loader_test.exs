@@ -9,7 +9,9 @@ defmodule EngineCore.LoaderTest do
 
   test "loads the tower into a coherent world" do
     {:ok, w} = EngineCore.Loader.load(@yaml)
-    assert map_size(w.places) == 7
+    assert map_size(w.places) == 8
+    assert w.starting_place == "maras_inn"
+    assert w.places["maras_inn"].kind == :settlement
     assert w.tick == 0
     tiers = w.agents |> Map.values() |> Map.new(&{&1.tier, true})
     assert tiers[3] and tiers[2] and tiers[0] and tiers[1]

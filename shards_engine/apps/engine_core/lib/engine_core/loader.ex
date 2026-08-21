@@ -27,12 +27,24 @@ defmodule EngineCore.Loader do
       {:ok, build(parsed)}
     end
   end
+  @doc """
+  Reads the starting place from an adventure YAML path, parsed map, or World struct.
+  """
+  def starting_place(%World{starting_place: sp}) when is_binary(sp) and sp != "", do: sp
+  def starting_place(path) when is_binary(path) do
+    case YamlElixir.read_from_file(path) do
+      {:ok, %{} = yaml} -> yaml["starting_place"] || yaml["starting_room"] || "entry_hall"
+      _ -> "entry_hall"
+    end
+  end
+  def starting_place(%{} = yaml), do: yaml["starting_place"] || yaml["starting_room"] || "entry_hall"
+  def starting_place(_), do: "entry_hall"
 
   @doc """
   Builds an EngineCore.World struct from a parsed YAML map.
   """
   def build(yaml) when is_map(yaml) do
-    rooms = extract_elements(yaml, ["rooms"])
+    rooms = extract_elements(yaml, ["rooms", "places"])
 
     places =
       Map.new(rooms, fn r ->
@@ -41,7 +53,7 @@ defmodule EngineCore.Loader do
         place = %Types.Place{
           id: id,
           name: r["name"] || id,
-          kind: :room,
+          kind: parse_kind(r["kind"] || r["type"]),
           connections: extract_connections(r)
         }
 
@@ -65,7 +77,8 @@ defmodule EngineCore.Loader do
     treasures = extract_elements(yaml, ["initial_treasure", "treasures"])
     items = Map.new(treasures, fn t -> {t["id"], item_from(t)} end)
 
-    world = %World{places: places, edges: edges, agents: agents, items: items, tick: 0}
+    starting_place = yaml["starting_place"] || yaml["starting_room"] || "entry_hall"
+    world = %World{places: places, edges: edges, agents: agents, items: items, tick: 0, starting_place: starting_place}
 
     world
     |> put_boundaries(yaml)
@@ -347,4 +360,27 @@ defmodule EngineCore.Loader do
 
     %{world | agents: agents}
   end
+
+  defp parse_kind(nil), do: :room
+  defp parse_kind(k) when is_atom(k), do: k
+  defp parse_kind(k) when is_binary(k) do
+    case String.downcase(String.trim(k)) do
+      "settlement" -> :settlement
+      "town" -> :settlement
+      "village" -> :settlement
+      "tavern" -> :settlement
+      "inn" -> :settlement
+      "wilderness" -> :wilderness
+      "forest" -> :wilderness
+      "dungeon" -> :room
+      "room" -> :room
+      other ->
+        try do
+          String.to_existing_atom(other)
+        rescue
+          ArgumentError -> :room
+        end
+    end
+  end
+  defp parse_kind(_), do: :room
 end

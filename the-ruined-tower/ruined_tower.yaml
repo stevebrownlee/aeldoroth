@@ -2,7 +2,8 @@ name: "The Ruined Tower"
 description: "A collapsed wizard's tower infested by goblins who have been raiding the nearby village of Thornhollow. The tower hides secrets of shadow magic and failed rituals from 30 years ago. Recommended for 4 level 1 characters."
 recommended_level: "1"
 difficulty_level: "balanced"
-starting_room: "entry_hall"
+starting_place: "maras_inn"
+starting_room: "maras_inn"
 opening_narrative: "You stand in the warm common room of Mara's inn in Thornhollow, listening to Mayor Grevik's worried voice. 'The livestock disappearances grow worse,' he says, his weathered face grave. 'Strange lights flicker from the old wizard's tower on the hill—ruins that have stood silent for thirty years. The villagers are terrified. Will you investigate and stop this threat? I can offer 100 gold pieces for your aid.' Through the window, you can see the crumbled silhouette of the tower against the autumn sky."
 
 # --- Referee preference module layer (spec section 10; core < module < personal) ---
@@ -103,10 +104,25 @@ home_base:
     - "Mara whispers that Vaelith's ghost might still haunt the ruins, angry at being disturbed after so long."
 
 rooms:
+  maras_inn:
+    id: "maras_inn"
+    name: "Mara's Inn (Common Room)"
+    kind: "settlement"
+    description: "The cozy common room of Mara's inn in Thornhollow. A hearth crackles warmly against the autumn chill. Mayor Grevik sits at the head table with a furrowed brow, while Mara tends the counter and worried villagers murmur nearby. Through the front door, a winding trail leads up the hill toward the crumbled silhouette of the wizard's tower."
+    terrain: "warm wooden floorboards"
+    lighting: "bright (hearth and lanterns)"
+    structures: ["stone hearth", "heavy oak tables", "innkeeper's counter", "door to trail"]
+    atmosphere: "Warm, bustling with anxious tavern folk, smell of hearty stew and spiced ale."
+    exits:
+      north: "entry_hall"
+      tower: "entry_hall"
+    features: ["Mayor Grevik offering 100 gp bounty", "warm hearthfire", "local rumors and gossip"]
+    traps: []
+
   entry_hall:
     id: "entry_hall"
     name: "Entry Hall"
-    description: "The entrance to the tower is partially collapsed. Rubble litters the floor, and sections of the ceiling have fallen in, allowing dim daylight to filter through. The remains of what was once an impressive stone archway stand broken and weathered. Fresh tracks—small, clawed footprints—are visible in the dust and dirt. Two passages lead deeper into the ruins: one north, one east."
+    description: "The entrance to the tower is partially collapsed. Rubble litters the floor, and sections of the ceiling have fallen in, allowing dim daylight to filter through. The remains of what was once an impressive stone archway stand broken and weathered. Fresh tracks—small, clawed footprints—are visible in the dust and dirt. Passages lead deeper into the ruins north and east, while the southern path heads back toward Thornhollow."
     terrain: "rubble-strewn stone floor"
     lighting: "dim (daylight from collapsed ceiling)"
     structures: ["broken stone archway", "collapsed ceiling sections", "rubble piles", "cracked walls"]
@@ -114,6 +130,7 @@ rooms:
     exits:
       north: "library"
       east: "guard_room"
+      south: "maras_inn"
     features: ["goblin tracks in dust", "unstable ceiling (1 in 6 chance of collapse if loud noise)", "evidence of recent traffic"]
     traps:
       - id: "alarm_tripwire"

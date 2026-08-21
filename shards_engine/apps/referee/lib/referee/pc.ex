@@ -19,7 +19,7 @@ defmodule Referee.PC do
       id: pc_map.id,
       name: pc_map.name,
       tier: 3,
-      place_id: pc_map.place_id,
+      place_id: pc_map[:place_id] || "entry_hall",
       statblock: %{
         ac: pc_map[:ac] || 10,
         hd: pc_map[:hd] || 1,
@@ -27,7 +27,13 @@ defmodule Referee.PC do
         thac0: pc_map[:thac0] || 20,
         morale: 12,
         int: pc_map[:int] || 10,
-        damage: parse_damage(Map.fetch!(pc_map, :damage))
+        damage: parse_damage(Map.fetch!(pc_map, :damage)),
+        class: pc_map[:class],
+        armor: pc_map[:armor],
+        weapons: pc_map[:weapons],
+        inventory: pc_map[:inventory],
+        spells: pc_map[:spells],
+        prayers: pc_map[:prayers]
       },
       body: %{hp: pc_map[:hp] || 1, conditions: []},
       capabilities: @pc_capabilities,

@@ -162,7 +162,13 @@ defmodule Referee.SliceTest do
              conditions: [],
              morale: 7,
              int: 8,
-             hd: 1
+             hd: 1,
+             class: nil,
+             armor: nil,
+             weapons: nil,
+             inventory: nil,
+             spells: nil,
+             prayers: nil
            }
 
     # pc flags mark party vs. monster — truth-barrier-safe hostility proxy

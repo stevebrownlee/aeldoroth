@@ -306,8 +306,8 @@ defmodule ClientWeb.RunLive do
 
         <aside class="rail">
           <section class="sheet panel">
-            <h3>Character</h3>
             <%= if sh = @slice["sheet"] do %>
+              <h3>Character<%= if sh["class"], do: " • #{sh["class"]}" %></h3>
               <p class="hp">
                 <strong>HP</strong>
                 <span class="hp-numbers"><%= sh["hp"] %><%= if sh["hp_max"], do: " / #{sh["hp_max"]}" %></span>
@@ -319,10 +319,30 @@ defmodule ClientWeb.RunLive do
                 <div><dt>AC</dt><dd><%= sh["ac"] %></dd></div>
                 <div><dt>THAC0</dt><dd><%= sh["thac0"] %></dd></div>
                 <div><dt>Damage</dt><dd><%= sh["damage"] || "—" %></dd></div>
+                <div :if={sh["int"]}><dt>INT</dt><dd><%= sh["int"] %></dd></div>
               </dl>
               <p :if={sh["conditions"] != []} class="conditions">
                 <span :for={c <- sh["conditions"]} class="chip-static"><%= c %></span>
               </p>
+
+              <div :if={sh["armor"] || sh["weapons"] || sh["inventory"]} class="char-section">
+                <div class="char-section-title">Equipment & Inventory</div>
+                <ul class="sheet-gear-list">
+                  <li :if={sh["armor"]}><span class="gear-label">Armor:</span> <%= sh["armor"] %></li>
+                  <li :if={sh["weapons"]}><span class="gear-label">Weapons:</span> <%= sh["weapons"] %></li>
+                  <li :if={sh["inventory"]}><span class="gear-label">Gear:</span> <%= sh["inventory"] %></li>
+                </ul>
+              </div>
+
+              <div :if={sh["spells"]} class="char-section">
+                <div class="char-section-title" style="color: #d0a8e8;">✨ Spells</div>
+                <div style="font-size: 0.85rem; color: #e8d9a8;"><%= sh["spells"] %></div>
+              </div>
+
+              <div :if={sh["prayers"]} class="char-section">
+                <div class="char-section-title" style="color: #a8c8e8;">🙏 Prayers</div>
+                <div style="font-size: 0.85rem; color: #e8d9a8;"><%= sh["prayers"] %></div>
+              </div>
             <% end %>
           </section>
 

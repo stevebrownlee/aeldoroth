@@ -32,7 +32,13 @@ defmodule Referee.Slice do
             conditions: [atom()],
             morale: integer(),
             int: integer(),
-            hd: integer()
+            hd: integer(),
+            class: String.t() | nil,
+            armor: String.t() | nil,
+            weapons: String.t() | nil,
+            inventory: String.t() | nil,
+            spells: String.t() | nil,
+            prayers: String.t() | nil
           },
           place: %{
             id: String.t(),
@@ -101,7 +107,13 @@ defmodule Referee.Slice do
       conditions: body.conditions,
       morale: Map.get(st, :morale),
       int: Map.get(st, :int),
-      hd: Map.get(st, :hd)
+      hd: Map.get(st, :hd),
+      class: Map.get(st, :class),
+      armor: Map.get(st, :armor),
+      weapons: Map.get(st, :weapons),
+      inventory: Map.get(st, :inventory),
+      spells: Map.get(st, :spells),
+      prayers: Map.get(st, :prayers)
     }
   end
 

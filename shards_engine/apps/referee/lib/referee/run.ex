@@ -54,7 +54,8 @@ defmodule Referee.Run do
 
   defp inject_pcs(run, pcs) do
     Enum.reduce(pcs, run, fn pc_map, acc ->
-      pc = PC.build(pc_map)
+      place_id = pc_map[:place_id] || acc.world.starting_place || "entry_hall"
+      pc = PC.build(Map.put_new(pc_map, :place_id, place_id))
       acc = push(acc, :world, acc.world.tick, %{kind: :agent_added, agent: pc})
       [event | _] = acc.events
       %{acc | world: Fold.fold(acc.world, [event])}

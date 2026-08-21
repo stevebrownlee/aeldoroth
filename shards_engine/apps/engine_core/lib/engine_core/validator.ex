@@ -27,9 +27,9 @@ defmodule EngineCore.Validator do
       monster_errors(yaml) ++
         text_errors(yaml) ++
         room_errors(yaml) ++
+        starting_place_errors(yaml, rooms_set) ++
         boundary_errors(yaml, rooms_set) ++
         commitment_errors(yaml, agents_set)
-
     if errors == [] do
       :ok
     else
@@ -66,17 +66,11 @@ defmodule EngineCore.Validator do
     |> Enum.map(&"#{&1.path}: orphan fragment #{inspect(&1.elem)}")
   end
 
-  defp room_errors(%{"rooms" => rooms}) when is_map(rooms) do
-    room_ids =
-      rooms
-      |> Enum.flat_map(fn {k, r} ->
-        id = if is_map(r), do: r["id"], else: nil
-        [k, id]
-      end)
-      |> Enum.filter(&is_binary/1)
-      |> MapSet.new()
+  defp room_errors(yaml) when is_map(yaml) do
+    rooms_map = extract_places_map(yaml)
+    room_ids = extract_places_set(yaml)
 
-    Enum.flat_map(Map.values(rooms), fn r ->
+    Enum.flat_map(Map.values(rooms_map), fn r ->
       if is_map(r) do
         room_id = r["id"] || "?"
         exits = r["exits"]
@@ -104,9 +98,15 @@ defmodule EngineCore.Validator do
       end
     end)
   end
+  defp starting_place_errors(yaml, room_ids) when is_map(yaml) do
+    sp = yaml["starting_place"] || yaml["starting_room"]
 
-  defp room_errors(_), do: []
-
+    if is_binary(sp) and sp != "" and not MapSet.member?(room_ids, sp) and MapSet.size(room_ids) > 0 do
+      ["starting_place #{inspect(sp)}: unknown room/place"]
+    else
+      []
+    end
+  end
   defp walk_strings(term, path \\ "$")
 
   defp walk_strings(m, path) when is_map(m) do
@@ -126,25 +126,40 @@ defmodule EngineCore.Validator do
   defp walk_strings(s, path) when is_binary(s), do: [%{path: path, elem: s}]
   defp walk_strings(_, _), do: []
 
-  defp room_ids(%{"rooms" => rooms}) when is_map(rooms) do
-    rooms
-    |> Enum.flat_map(fn {k, r} ->
-      id = if is_map(r), do: r["id"], else: nil
-      [k, id]
-    end)
-    |> Enum.filter(&is_binary/1)
-    |> MapSet.new()
+  defp room_ids(yaml), do: extract_places_set(yaml)
+
+  defp extract_places_map(yaml) do
+    rooms = Map.get(yaml, "rooms") || %{}
+    places = Map.get(yaml, "places") || %{}
+
+    m1 = if is_map(rooms), do: rooms, else: %{}
+    m2 = if is_map(places), do: places, else: %{}
+    Map.merge(m1, m2)
   end
 
-  defp room_ids(%{"rooms" => rooms}) when is_list(rooms) do
-    rooms
-    |> Enum.map(fn r -> if is_map(r), do: r["id"], else: nil end)
-    |> Enum.filter(&is_binary/1)
-    |> MapSet.new()
+  defp extract_places_set(yaml) do
+    rooms_map = extract_places_map(yaml)
+
+    set1 =
+      rooms_map
+      |> Enum.flat_map(fn {k, r} ->
+        id = if is_map(r), do: r["id"], else: nil
+        [k, id]
+      end)
+      |> Enum.filter(&is_binary/1)
+      |> MapSet.new()
+
+    list_elems =
+      (as_list(Map.get(yaml, "rooms")) ++ as_list(Map.get(yaml, "places")))
+      |> Enum.map(fn r -> if is_map(r), do: r["id"], else: nil end)
+      |> Enum.filter(&is_binary/1)
+      |> MapSet.new()
+
+    MapSet.union(set1, list_elems)
   end
 
-  defp room_ids(_), do: MapSet.new()
-
+  defp as_list(l) when is_list(l), do: l
+  defp as_list(_), do: []
   defp agent_ids(yaml) do
     enemies = yaml["initial_enemies"] || yaml["monsters"]
 

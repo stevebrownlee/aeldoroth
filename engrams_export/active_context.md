@@ -1,13 +1,20 @@
 ---
 identifier: active_context
 title: Active Context
-created: 2026-08-21T00:04:10Z
+created: 2026-08-21T02:22:13Z
 ---
 # Active Context
 
 ```json
 {
   "content": {
+    "content": {
+      "current_focus": "Starting Place & Tabletop Character Card Redesign complete & verified",
+      "last_session": {
+        "date": "2026-08-21",
+        "work": "Added maras_inn settlement node to YAML, Loader and Validator dynamic starting_place support, character gear/inventory/spells/prayers to PC.build, Slice, and RunLive, and redesigned HomeLive with full AD&D character card roster builder. 361 tests green."
+      }
+    },
     "current_focus": "Dungeon Overview Enrichment (Treasure, Traps & Secret Doors) complete & verified",
     "current_plan": "Plan 5 (protocol-live-runs) COMPLETE",
     "decisions": [
@@ -67,7 +74,7 @@ created: 2026-08-21T00:04:10Z
     "watch": "Party's choice for the Shadow-Crystal (keep/sell/study/destroy) is the Act 1 pacing lever"
   },
   "name": "default",
-  "updated_at": "2026-08-21T00:04:10Z",
-  "version": 15
+  "updated_at": "2026-08-21T02:22:13Z",
+  "version": 16
 }
 ```

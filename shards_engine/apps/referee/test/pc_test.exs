@@ -39,6 +39,26 @@ defmodule Referee.PCTest do
 
     assert pc.statblock.damage == %{dice: 2, sides: 6, plus: 1}
   end
+  test "build/1 captures class, armor, weapons, inventory, spells, prayers" do
+    pc =
+      PC.build(
+        Map.merge(@pc_map, %{
+          class: "Magic-User",
+          armor: "Robes",
+          weapons: "Staff (1d6), Dagger (1d4)",
+          inventory: "Spellbook, 3 torches, 10 gp",
+          spells: "Magic Missile, Sleep",
+          prayers: nil
+        })
+      )
+
+    assert pc.statblock.class == "Magic-User"
+    assert pc.statblock.armor == "Robes"
+    assert pc.statblock.weapons == "Staff (1d6), Dagger (1d4)"
+    assert pc.statblock.inventory == "Spellbook, 3 torches, 10 gp"
+    assert pc.statblock.spells == "Magic Missile, Sleep"
+    assert pc.statblock.prayers == nil
+  end
 
   test "join_events yields one :agent_added event that folds the PC in at the entry place" do
     w = %World{places: %{"entry_hall" => %EngineCore.Types.Place{id: "entry_hall", name: "Entry Hall", kind: :room, connections: []}}, agents: %{}}

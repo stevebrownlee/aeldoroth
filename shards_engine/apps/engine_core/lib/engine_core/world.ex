@@ -9,7 +9,8 @@ defmodule EngineCore.World do
             in_flight: [],
             envelopes: [],
             hazards: %{},
-            signal_seq: 0
+            signal_seq: 0,
+            starting_place: "entry_hall"
 
   @type t :: %__MODULE__{}
 

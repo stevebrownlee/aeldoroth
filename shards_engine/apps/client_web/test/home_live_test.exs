@@ -23,6 +23,17 @@ defmodule ClientWeb.HomeLiveTest do
       int: 12, hd: 1, hp: 8, ac: 6, thac0: 19, damage: "1d6"}
   ]
 
+  test "renders scenario card with starting place, inventory, and spell slots", %{conn: conn} do
+    {:ok, _view, html} = live(conn, "/")
+    assert html =~ "The Ruined Tower"
+    assert html =~ "Mara&#39;s Inn (Common Room), Thornhollow"
+    assert html =~ "Assemble Your Party"
+    assert html =~ "Initial Inventory &amp; Supplies"
+    assert html =~ "Spells Prepared (Magic-Users / Illusionists)"
+    assert html =~ "Prayers Prepared (Clerics)"
+    assert html =~ "Enter The Ruined Tower"
+  end
+
   test "creates a run and shows seat links", %{conn: conn} do
     slug = "home_#{:erlang.unique_integer([:positive])}"
     on_exit(fn -> ClientWeb.TestSupport.stop_run(slug) end)
@@ -39,7 +50,6 @@ defmodule ClientWeb.HomeLiveTest do
     assert %{status: :running} = Session.state(slug)
     assert Session.roster(slug) == @seats
   end
-
   test "lists active runs", %{conn: conn} do
     slug = "home_list_#{:erlang.unique_integer([:positive])}"
     on_exit(fn -> ClientWeb.TestSupport.stop_run(slug) end)
@@ -102,5 +112,34 @@ defmodule ClientWeb.HomeLiveTest do
     assert html =~ ~s|data-testid="seat-link-pc_bramble"|
     assert %{status: :running} = Session.state(slug)
     assert Session.roster(slug) == @seats
+  end
+
+  test "loads canonical 4-player party with full gear, spells, and prayers", %{conn: conn} do
+    slug = "home_canon_#{:erlang.unique_integer([:positive])}"
+    on_exit(fn -> ClientWeb.TestSupport.stop_run(slug) end)
+    {:ok, view, _html} = live(conn, "/")
+
+    html =
+      view
+      |> element("button", "Load Canonical Party")
+      |> render_click()
+
+    assert html =~ "Mirage"
+    assert html =~ "Sister Lyra"
+    assert html =~ "Magic Missile, Sleep, Shield"
+    assert html =~ "Cure Light Wounds, Bless, Purify Food and Drink"
+
+    submit_html =
+      view
+      |> form("#new_run", run: %{run_id: slug, seed: "42", yaml: @yaml})
+      |> render_submit()
+
+    assert submit_html =~ ~s|data-testid="seat-link-pc_thistle"|
+    assert submit_html =~ ~s|data-testid="seat-link-pc_bramble"|
+    assert submit_html =~ ~s|data-testid="seat-link-pc_mirage"|
+    assert submit_html =~ ~s|data-testid="seat-link-pc_lyra"|
+    assert %{status: :running} = Session.state(slug)
+    roster = Session.roster(slug)
+    assert length(roster) == 4
   end
 end
