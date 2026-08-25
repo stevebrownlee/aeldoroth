@@ -61,6 +61,31 @@ defmodule Referee.Run do
       %{acc | world: Fold.fold(acc.world, [event])}
     end)
   end
+  @doc """
+  Inject a new PC into an existing run dynamically (e.g. when a player connects
+  and completes character creation). Appends an `:agent_added` event to the ledger
+  and reduces the world state.
+  """
+  @spec add_pc(t(), map()) :: {:ok, map(), t()}
+  def add_pc(%__MODULE__{} = run, pc_map) do
+    normalized = normalize_pc_map(pc_map, run.world.starting_place || "entry_hall")
+    pc = PC.build(normalized)
+
+    run = push(run, :world, run.world.tick, %{kind: :agent_added, agent: pc})
+    [event | _] = run.events
+    world2 = Fold.fold(run.world, [event])
+    pcs2 = (run.pcs || []) ++ [normalized]
+
+    {:ok, pc, %{run | world: world2, pcs: pcs2}}
+  end
+
+  defp normalize_pc_map(pc_map, default_place) do
+    Enum.reduce(pc_map, %{}, fn {k, v}, acc ->
+      atom_k = if is_binary(k), do: String.to_atom(k), else: k
+      Map.put(acc, atom_k, v)
+    end)
+    |> Map.put_new(:place_id, default_place)
+  end
 
   @doc """
   One PC's declared NL intent through the full pipeline.

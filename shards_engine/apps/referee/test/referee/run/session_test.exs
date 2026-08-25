@@ -121,6 +121,27 @@ defmodule Referee.Run.SessionTest do
     end)
   end
 
+  test "add_pc dynamically registers PC into live session", ctx do
+    with_session(ctx.test, [pcs: []], fn id, _dir, _pid ->
+      assert Session.roster(id) == []
+
+      new_pc = %{
+        id: "pc_bramble",
+        name: "Bramble",
+        class: "Thief",
+        race: "Halfling",
+        level: 1,
+        hp: 8,
+        ac: 6,
+        thac0: 19,
+        damage: "1d6"
+      }
+
+      assert {:ok, "pc_bramble"} = Session.add_pc(id, new_pc)
+      assert [%{id: "pc_bramble", name: "Bramble"}] = Session.roster(id)
+    end)
+  end
+
   test "awaiting reflects live agent place_id and place_name after movement", ctx do
     with_session(ctx.test, fn id, _dir, _pid ->
       assert {:ok, %{reply: _}} = Session.declare(id, "pc_thistle", "go east")

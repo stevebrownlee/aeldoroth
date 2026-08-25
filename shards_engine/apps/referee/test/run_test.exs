@@ -35,6 +35,32 @@ defmodule Referee.RunTest do
 
     assert [%{payload: %{kind: :agent_added, agent: %{id: "pc_thistle"}}}] = rest
   end
+  test "add_pc dynamically injects a new PC with agent_added ledger event and updates world" do
+    {:ok, run} = new_run()
+    new_pc = %{
+      id: "pc_lyra",
+      name: "Sister Lyra",
+      class: "Cleric",
+      race: "Human",
+      level: 1,
+      hp: 8,
+      ac: 5,
+      thac0: 20,
+      damage: "1d6"
+    }
+
+    assert {:ok, pc, run2} = Run.add_pc(run, new_pc)
+    assert pc.id == "pc_lyra"
+    assert run2.world.agents["pc_lyra"]
+    assert run2.world.agents["pc_lyra"].name == "Sister Lyra"
+    assert Enum.any?(run2.pcs, &(&1.id == "pc_lyra" || &1[:id] == "pc_lyra"))
+
+    events = Run.events(run2)
+    assert Enum.any?(events, fn e ->
+      e.class == :world && e.payload[:kind] == :agent_added && e.payload[:agent].id == "pc_lyra"
+    end)
+  end
+
 
   test "declare runs interpret → validate → resolve → react → narrate and ledgers every step" do
     {:ok, run} =

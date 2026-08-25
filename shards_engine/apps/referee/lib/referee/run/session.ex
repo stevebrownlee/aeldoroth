@@ -86,6 +86,12 @@ defmodule Referee.Run.Session do
   @doc "Resolved preference stack for this run's ruleset."
   @spec prefs(String.t()) :: {:ok, map()} | {:error, :no_run}
   def prefs(run_id), do: call(run_id, :prefs)
+  @doc "Dynamically add a PC to the running session."
+  @spec add_pc(String.t(), map()) :: {:ok, String.t()} | {:error, term()}
+  def add_pc(run_id, pc_map) do
+    call(run_id, {:add_pc, pc_map})
+  end
+
 
   @doc "Stop the session process (engine per-run processes stay up; see `EngineCore.RunSup.stop_run/1`)."
   @spec stop(String.t()) :: :ok | {:error, :no_run}
@@ -222,6 +228,12 @@ defmodule Referee.Run.Session do
   end
 
   @impl true
+  def handle_call({:add_pc, pc_map}, _from, %{status: status} = st) when status in [:running, :paused] do
+    {:ok, pc, run2} = Run.add_pc(st.run, pc_map)
+    st2 = hold(st, run2) |> checkpoint()
+    {:reply, {:ok, pc.id}, st2}
+  end
+
   def handle_call({:declare, pc_id, text}, _from, %{status: :running} = st) do
     case Run.declare(st.run, pc_id, text) do
       {tag, reply, run2} when tag in [:ok, :stall] ->
