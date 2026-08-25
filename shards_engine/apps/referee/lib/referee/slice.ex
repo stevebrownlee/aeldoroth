@@ -12,7 +12,7 @@ defmodule Referee.Slice do
     * `:believed` — ids of believed agents at this place
     * `:believed_agents` — the same ids resolved to `%{id: ..., name: ...}`
     * `:salient` — seen beliefs, sorted by salience
-    * `:commitments`, `:capabilities`, `:summary`
+    * `:commitments`, `:capabilities`, `:dossier`, `:summary`
 
   Hidden items and agents in other places never appear — the slice is the only
   world data that reaches a prompt, and the sheet is the actor's own body,
@@ -57,6 +57,7 @@ defmodule Referee.Slice do
           salient: [String.t()],
           commitments: [map()],
           capabilities: [atom()],
+          dossier: map(),
           summary: String.t()
         }
   def for_actor(%World{} = world, agent_id) do
@@ -93,6 +94,7 @@ defmodule Referee.Slice do
       salient: salient,
       commitments: commitments(agent),
       capabilities: agent.capabilities,
+      dossier: Map.get(agent, :dossier) || %{},
       summary: summarize(place, believed, world, agent.id)
     }
   end

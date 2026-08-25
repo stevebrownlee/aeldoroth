@@ -55,6 +55,13 @@ defmodule Referee.SliceTest do
     }
   end
 
+  test "for_actor includes the actor's dossier map" do
+    w = put_in(world().agents["pc"].dossier, %{"occupation" => "adventurer", "goal" => "find the gem"})
+    s = Slice.for_actor(w, "pc")
+
+    assert s.dossier == %{"occupation" => "adventurer", "goal" => "find the gem"}
+  end
+
   test "for_actor returns identity, place with exits, and current-place beliefs only" do
     s = Slice.for_actor(world(), "pc")
 
