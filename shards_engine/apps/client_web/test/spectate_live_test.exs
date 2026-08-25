@@ -9,6 +9,9 @@ defmodule ClientWeb.SpectateLiveTest do
   alias ClientWeb.TestSupport
   alias LLMGateway.Adapters.Scripted
   alias Referee.Run.Session
+  alias EngineCore.Ledger.Event
+  alias EngineCore.Ledger.Writer
+  alias EngineCore.World.Server
 
   @yaml Path.expand("../../../../the-ruined-tower/ruined_tower.yaml", __DIR__)
 
@@ -292,6 +295,50 @@ defmodule ClientWeb.SpectateLiveTest do
 
     eventually(fn -> render(view) =~ "unauthorized" end)
     assert render(view) =~ "nope"
+  end
+
+  test "active NPC agents panel renders empty then updates on boundary wake", %{
+    conn: conn,
+    run_id: id
+  } do
+    {:ok, view, _html} = live(conn, "/runs/#{id}/gm")
+
+    eventually(fn -> render(view) =~ "Active NPC Agents" end)
+    empty_html = render(view)
+    assert empty_html =~ ~s(data-testid="active-npcs-empty")
+    refute empty_html =~ ~s(data-testid="npc-card")
+
+    seq = Writer.last_seq(id) + 1
+
+    bound_ids = Server.snapshot(id).boundaries["guard_room_zone"].bound_agent_ids
+
+    event = %Event{
+      seq: seq,
+      tick: seq,
+      class: :meta,
+      payload: %{
+        kind: :boundary_wake,
+        id: "guard_room_zone",
+        tick: seq,
+        reason: "presence_crossing by pc_thistle",
+        bound_agent_ids: bound_ids
+      }
+    }
+
+    :ok = Writer.append(id, [event])
+
+    eventually(fn -> render(view) =~ "Goblin Guard" end)
+    html = render(view)
+
+    refute html =~ ~s(data-testid="active-npcs-empty")
+    assert html =~ ~s(data-testid="npc-card")
+    assert html =~ ~s(<article class="npc-card tier-3" data-testid="npc-card")
+    assert html =~ "guard_room_zone"
+    assert html =~ "presence_crossing by pc_thistle"
+    assert html =~ "HP 4/4"
+    assert html =~ "AC 6"
+    assert html =~ "THAC0 20"
+    assert html =~ "Morale 7"
   end
 
   # Ambiguity staging (run_channel_test convention): one scripted move,

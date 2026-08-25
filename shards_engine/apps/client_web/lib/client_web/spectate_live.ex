@@ -36,6 +36,7 @@ defmodule ClientWeb.SpectateLive do
         boundaries: nil,
         dungeon: nil,
         awaiting: [],
+        active_agents: [],
         dossiers: nil,
         resumed: false,
         spend: nil,
@@ -144,6 +145,7 @@ defmodule ClientWeb.SpectateLive do
        dungeon: reply["dungeon"],
        spend: reply["spend"],
        awaiting: reply["awaiting"] || [],
+       active_agents: reply["active_agents"] || [],
        tail: tail,
        ooc_log: extract_ooc(tail)
      )}
@@ -174,7 +176,8 @@ defmodule ClientWeb.SpectateLive do
      assign(socket,
        tick: tick,
        boundaries: push["boundaries"] || socket.assigns.boundaries,
-       dungeon: push["dungeon"] || socket.assigns.dungeon
+       dungeon: push["dungeon"] || socket.assigns.dungeon,
+       active_agents: push["active_agents"] || socket.assigns.active_agents
      )}
   end
 
@@ -305,6 +308,69 @@ defmodule ClientWeb.SpectateLive do
                 </div>
               </li>
             </ul>
+          </section>
+
+          <section class="panel npc-panel" data-testid="active-npcs-panel">
+            <h2>Active NPC Agents</h2>
+            <p class="hint">NPCs whose boundary has woken or attention is engaged.</p>
+            <%= if @active_agents == [] do %>
+              <p class="empty" data-testid="active-npcs-empty">No active NPC agents.</p>
+            <% else %>
+              <div class="npc-grid">
+                <article :for={agent <- @active_agents} class={"npc-card tier-#{agent["tier"] || 1}"} data-testid="npc-card">
+                  <div class="npc-header">
+                    <h3><%= agent["name"] %></h3>
+                    <span class={"npc-tier tier-#{agent["tier"] || 1}"} data-testid="npc-tier">
+                      Tier <%= agent["tier"] || 1 %>
+                    </span>
+                  </div>
+                  <p class="npc-trigger" data-testid="npc-trigger">
+                    <span class="badge trigger"><%= boundary_state_label(agent) %></span>
+                    <%= agent["wake_reason"] || "presence crossing" %>
+                    <%= if tick = agent["wake_tick"] do %>
+                      <span class="dim">· tick <%= tick %></span>
+                    <% end %>
+                  </p>
+                  <p class="npc-place" data-testid="npc-place">
+                    <%= agent["place_name"] || agent["place_id"] || "?" %>
+                    <%= if boundary_id = agent["boundary_id"] do %>
+                      <span class="dim">· <%= boundary_id %></span>
+                    <% end %>
+                  </p>
+                  <div class="hpbar" data-testid="npc-hpbar">
+                    <div style={"width: #{hp_percent(agent)}%;"}></div>
+                  </div>
+                  <div class="npc-vitals" data-testid="npc-vitals">
+                    HP <%= hp_of(agent) %>/<%= max_hp_of(agent) %>
+                    <span class="stat">AC <%= ac_of(agent) %></span>
+                    <span class="stat">THAC0 <%= thac0_of(agent) %></span>
+                    <span class="stat">Morale <%= morale_of(agent) %></span>
+                  </div>
+                  <%= if has_dossier?(agent) do %>
+                    <% dossier = agent["dossier"] || agent[:dossier] %>
+                    <details class="npc-dossier-drawer" data-testid="npc-dossier">
+                      <summary>Roleplay Dossier</summary>
+                      <div class="dossier-box">
+                        <%= for key <- ["role", "personality", "goals", "knowledge", "rumors"],
+                                value = Map.get(dossier, key) || Map.get(dossier, String.to_atom(key)),
+                                value != nil and value != "" and value != [] do %>
+                          <div class="dossier-field">
+                            <h4><%= String.capitalize(key) %></h4>
+                            <%= if is_list(value) do %>
+                              <ul class="dossier-list">
+                                <li :for={item <- value}><%= item %></li>
+                              </ul>
+                            <% else %>
+                              <p><%= value %></p>
+                            <% end %>
+                          </div>
+                        <% end %>
+                      </div>
+                    </details>
+                  <% end %>
+                </article>
+              </div>
+            <% end %>
           </section>
 
           <section class="panel" data-testid="dungeon-overview">
@@ -563,7 +629,25 @@ defmodule ClientWeb.SpectateLive do
     Map.get(row, "thac0") || Map.get(row, :thac0) || "?"
   end
 
-  # Dungeon overview exit connections may arrive with string or atom keys.
+  defp morale_of(row) when is_map(row) do
+    Map.get(row, "morale") || Map.get(row, :morale) || "?"
+  end
+
+  defp boundary_state_label(%{"boundary_id" => id}) when is_binary(id), do: "AWAKE"
+  defp boundary_state_label(_agent), do: "ENGAGED"
+  defp has_dossier?(agent) when is_map(agent) do
+    case Map.get(agent, "dossier") || Map.get(agent, :dossier) do
+      d when is_map(d) ->
+        Enum.any?(["role", "personality", "goals", "knowledge", "rumors"], fn k ->
+          v = Map.get(d, k) || Map.get(d, String.to_atom(k))
+          v != nil and v != "" and v != []
+        end)
+
+      _ ->
+        false
+    end
+  end
+
   defp exit_label(conn) when is_map(conn) do
     Map.get(conn, "label") ||
       Map.get(conn, :label) ||

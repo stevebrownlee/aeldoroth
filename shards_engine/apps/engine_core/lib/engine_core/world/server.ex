@@ -37,15 +37,100 @@ defmodule EngineCore.World.Server do
   @doc "Boundary states as `%{id => %{state, last_trigger_tick}}`."
   @spec boundaries(String.t()) :: %{String.t() => map()}
   def boundaries(run_id) do
-    Map.new(snapshot(run_id).boundaries, fn {id, b} ->
-      {id, %{state: b.state, last_trigger_tick: b.last_trigger_tick}}
+    try do
+      Map.new(snapshot(run_id).boundaries, fn {id, b} ->
+        {id, %{state: b.state, last_trigger_tick: b.last_trigger_tick}}
+      end)
+    catch
+      :exit, _ -> %{}
+    end
+  end
+
+  @doc "Active non-PC agents for referee and spectate panels."
+  @spec active_agents(String.t()) :: [map()]
+  def active_agents(run_id) do
+    try do
+      world = snapshot(run_id)
+    place_name_by_id = Map.new(world.places, fn {_id, p} -> {p.id, p.name} end)
+
+    awake_boundaries =
+      world.boundaries
+      |> Map.values()
+      |> Enum.filter(&(&1.state == :awake))
+
+    by_agent_id =
+      Enum.reduce(awake_boundaries, %{}, fn b, acc ->
+        Enum.reduce(b.bound_agent_ids || [], acc, fn aid, acc2 ->
+          Map.put_new(acc2, aid, b)
+        end)
+      end)
+
+    by_place_id =
+      Enum.reduce(awake_boundaries, %{}, fn b, acc ->
+        if b.scope_place_id, do: Map.put_new(acc, b.scope_place_id, b), else: acc
+      end)
+
+    by_group =
+      Enum.reduce(awake_boundaries, %{}, fn b, acc ->
+        if b.scope_group, do: Map.put_new(acc, b.scope_group, b), else: acc
+      end)
+
+    world.agents
+    |> Map.values()
+    |> Enum.reject(&Map.get(&1, :pc, false))
+    |> Enum.filter(fn a ->
+      a.attention != :dormant or
+        Map.has_key?(by_agent_id, a.id) or
+        Map.has_key?(by_place_id, a.place_id) or
+        Map.has_key?(by_group, a.group)
     end)
+    |> Enum.map(fn a ->
+      b = by_agent_id[a.id] || by_place_id[a.place_id] || by_group[a.group]
+      body = a.body || %{}
+      statblock = a.statblock || %{}
+
+      %{
+        id: a.id,
+        name: a.name,
+        tier: a.tier || 1,
+        group: a.group,
+        place_id: a.place_id,
+        place_name: Map.get(place_name_by_id, a.place_id, a.place_id),
+        boundary_id: b && b.id,
+        wake_tick: b && b.last_trigger_tick,
+        wake_reason: (b && b.last_trigger_reason) || "presence crossing",
+        hp: body.hp || 1,
+        hp_max: statblock.hp_max || 1,
+        ac: statblock.ac || 10,
+        thac0: statblock.thac0 || 20,
+        morale: statblock.morale || 7,
+        conditions: body.conditions || [],
+        commitments:
+          Enum.map(a.commitments || [], fn c ->
+            %{
+              id: c.id,
+              debtor: c.debtor,
+              creditor: c.creditor,
+              deed: c.deed,
+              due: c.due,
+              priority: c.priority,
+              status: c.status
+            }
+          end),
+        last_intent: nil,
+        dossier: a.dossier || %{}
+      }
+    end)
+    catch
+      :exit, _ -> []
+    end
   end
 
   @doc "Full dungeon overview for referee console: all places, connections, resident agents, items, and hazards."
   @spec dungeon_overview(String.t()) :: map()
   def dungeon_overview(run_id) do
-    world = snapshot(run_id)
+    try do
+      world = snapshot(run_id)
     edge_by_pair = Map.new(world.edges, fn e -> {{e.from, e.to}, e} end)
 
     places =
@@ -117,7 +202,10 @@ defmodule EngineCore.World.Server do
         }
       end)
 
-    %{places: places}
+      %{places: places}
+    catch
+      :exit, _ -> %{places: []}
+    end
   end
 
   @doc """

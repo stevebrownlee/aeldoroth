@@ -275,6 +275,31 @@
       }
       .btn-full-sheet:hover { background: #344256; }
 
+      .npc-panel .empty { color: #6f7885; font-style: italic; }
+      .npc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 0.8rem; margin-top: 0.5rem; }
+      .npc-card { border: 1px solid #2a2e36; border-radius: 6px; padding: 0.7rem 0.9rem; background: #181b21; border-left: 4px solid #6f7885; }
+      .npc-card.tier-1 { border-left-color: #8fb7e8; }
+      .npc-card.tier-2 { border-left-color: #e8c96a; }
+      .npc-card.tier-3 { border-left-color: #e8d9a8; }
+      .npc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem; }
+      .npc-header h3 { margin: 0; font-size: 1rem; color: #e6e8ec; font-weight: normal; }
+      .npc-tier { display: inline-block; border: 1px solid #3b424e; border-radius: 4px; padding: 0.05rem 0.4rem; font-size: 0.75rem; font-weight: bold; color: #9aa3af; background: #262b33; }
+      .npc-tier.tier-1 { border-color: #3c5a7a; color: #8fb7e8; background: #1c2233; }
+      .npc-tier.tier-2 { border-color: #7a6a3a; color: #e8c96a; background: #3a2e1c; }
+      .npc-tier.tier-3 { border-color: #6a5a3a; color: #e8d9a8; background: #3a3320; }
+      .npc-trigger { margin: 0.2rem 0; font-size: 0.85rem; }
+      .npc-trigger .trigger { background: #3a2e1c; color: #f0d49a; border: 1px solid #7a6a3a; }
+      .npc-place { margin: 0.2rem 0 0.5rem; font-size: 0.8rem; color: #9aa3af; }
+      .npc-card .hpbar { margin: 0.3rem 0 0.5rem; }
+      .npc-vitals { color: #9aa3af; font-size: 0.8rem; }
+      .npc-dossier-drawer { margin-top: 0.6rem; border-top: 1px solid #232730; padding-top: 0.4rem; }
+      .npc-dossier-drawer summary { cursor: pointer; color: #9aa3af; font-size: 0.85rem; }
+      .npc-dossier-drawer .dossier-box { background: #14161a; border: 1px solid #2a2e36; border-radius: 4px; padding: 0.5rem 0.7rem; margin-top: 0.4rem; }
+      .dossier-field { margin-bottom: 0.5rem; }
+      .dossier-field:last-child { margin-bottom: 0; }
+      .dossier-field h4 { margin: 0 0 0.2rem; font-size: 0.75rem; color: #8fb7e8; text-transform: uppercase; letter-spacing: 0.05em; font-weight: normal; }
+      .dossier-field p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; color: #cfd3da; font-size: 0.85rem; }
+
       @media (max-width: 900px) {
         .layout-seat, .layout-gm, .diagnostics-grid { grid-template-columns: 1fr; }
         .roster-row { grid-template-columns: repeat(4, 1fr); }

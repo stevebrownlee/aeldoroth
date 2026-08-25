@@ -83,6 +83,75 @@ defmodule EngineCore.WorldServerTest do
     assert %World{} = Server.snapshot(id)
   end
 
+  test "active_agents returns empty list when no boundaries are awake", %{id: id, world: world} do
+    {:ok, _} = RunSup.ensure_run(id, world)
+    assert Server.active_agents(id) == []
+  end
+
+  test "active_agents returns enriched agents when boundary is awake", %{id: id, world: world} do
+    {:ok, _} = RunSup.ensure_run(id, world)
+
+    reason = "presence_crossing by pc_thistle"
+
+    ev = %Ledger.Event{
+      seq: 1,
+      tick: 7,
+      class: :meta,
+      payload: %{
+        kind: :boundary_wake,
+        id: "guard_room_zone",
+        tick: 7,
+        reason: reason,
+        bound_agent_ids: Map.fetch!(world.boundaries, "guard_room_zone").bound_agent_ids
+      }
+    }
+
+    :ok = Writer.append(id, [ev])
+
+    wait_until(fn ->
+      assert Server.boundaries(id)["guard_room_zone"].state == :awake
+    end)
+
+    agents = Server.active_agents(id)
+    assert length(agents) == 4
+
+    for a <- agents do
+      assert a.boundary_id == "guard_room_zone"
+      assert a.wake_tick == 7
+      assert a.wake_reason == reason
+      assert a.group == "goblin"
+      assert a.place_id == "guard_room"
+      assert is_binary(a.place_name)
+      assert a.tier == 3
+      assert map_size(a.dossier) == 0
+
+      for key <- [
+            :id,
+            :name,
+            :tier,
+            :group,
+            :place_id,
+            :place_name,
+            :boundary_id,
+            :wake_tick,
+            :wake_reason,
+            :hp,
+            :hp_max,
+            :ac,
+            :thac0,
+            :morale,
+            :conditions,
+            :commitments,
+            :dossier
+          ] do
+        assert Map.has_key?(a, key), "missing #{key}"
+      end
+    end
+
+    ids = Enum.map(agents, & &1.id) |> Enum.sort()
+    assert ids == ["goblin_guard_1", "goblin_guard_2", "goblin_guard_3", "goblin_guard_4"]
+  end
+
   defp wait_until(fun) when is_function(fun, 0) do
     try do
       fun.() || (Process.sleep(10) && wait_until(fun))

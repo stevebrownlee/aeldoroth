@@ -93,6 +93,7 @@ defmodule EngineCore.Types do
       :triggers,
       state: :dormant,
       last_trigger_tick: nil,
+      last_trigger_reason: nil,
       wake_on_intensity: 4,
       sleep_after: 40
     ]

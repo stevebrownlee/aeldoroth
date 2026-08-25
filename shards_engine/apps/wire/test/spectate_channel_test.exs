@@ -10,7 +10,9 @@ defmodule Wire.SpectateChannelTest do
   @endpoint Wire.Endpoint
 
   alias EngineCore.RunSup
+  alias EngineCore.Ledger
   alias EngineCore.Ledger.Writer
+  alias EngineCore.World.Server
   alias LLMGateway.Adapters.Scripted
   alias Referee.Run.Session
 
@@ -38,13 +40,14 @@ defmodule Wire.SpectateChannelTest do
     {:ok, _pid} = start_run(id)
     {:ok, socket} = connect(Wire.Socket, %{"run_id" => id})
 
-    assert {:ok, %{tick: tick, boundaries: boundaries, spend: spend, tail: tail, awaiting: awaiting}, _chan} =
-             join(socket, "spectate:#{id}", %{})
+    assert {:ok, %{tick: tick, boundaries: boundaries, spend: spend, tail: tail, awaiting: awaiting, active_agents: active_agents}, _chan} =
+             join(socket, "spectate:#{id}", %{}) 
 
     assert is_integer(tick)
     assert is_map(boundaries) and map_size(boundaries) > 0
     assert is_map(spend) and Map.has_key?(spend, :total)
     assert length(tail) <= 50
+    assert active_agents == []
 
     assert length(awaiting) == 2
     assert Enum.all?(awaiting, &(&1.seated == false))
@@ -55,7 +58,7 @@ defmodule Wire.SpectateChannelTest do
 
     # Real sockets serialize to JSON (the crash this pins: agent_added's
     # Agent struct and the prefs md5 digest are not JSON-safe terms).
-    assert {:ok, _} = Jason.encode(%{tick: tick, boundaries: boundaries, spend: spend, tail: tail, awaiting: awaiting})
+    assert {:ok, _} = Jason.encode(%{tick: tick, boundaries: boundaries, spend: spend, tail: tail, awaiting: awaiting, active_agents: active_agents})
 
     # Tail entries are JSON-shaped projections: string keys, plain maps.
     for ev <- tail do
@@ -145,17 +148,58 @@ defmodule Wire.SpectateChannelTest do
     assert_push "ooc", %{"author" => "pc_thistle", "text" => "player table talk"}
   end
 
-  test "state_sync pushes tick and boundaries after world tails", %{run_id: id} do
+  test "state_sync pushes tick, boundaries, and active_agents after world tails", %{run_id: id} do
     {:ok, _pid} = start_run(id)
     {:ok, socket} = connect(Wire.Socket, %{"run_id" => id})
     assert {:ok, _, _chan} = join(socket, "spectate:#{id}", %{})
 
     assert {:ok, %{reply: _}} = Session.declare(id, "pc_thistle", "I head east")
 
-    assert_push "state_sync", %{tick: tick, boundaries: boundaries}
+    assert_push "state_sync", %{tick: tick, boundaries: boundaries, active_agents: active_agents}
     assert is_integer(tick)
     assert is_map(boundaries)
+    assert is_list(active_agents)
     assert {:ok, _} = Jason.encode(boundaries)
+    assert {:ok, _} = Jason.encode(active_agents)
+  end
+
+  test "state_sync pushes active_agents after boundary wake", %{run_id: id} do
+    {:ok, _pid} = start_run(id)
+    {:ok, socket} = connect(Wire.Socket, %{"run_id" => id})
+    assert {:ok, _, _chan} = join(socket, "spectate:#{id}", %{})
+
+    world = Server.snapshot(id)
+
+    boundary =
+      world.boundaries
+      |> Map.values()
+      |> Enum.find(fn b -> b.state == :dormant and b.bound_agent_ids != [] end)
+
+    assert boundary, "expected at least one dormant boundary with bound agents"
+
+    seq = Writer.last_seq(id) + 1
+    tick = world.tick
+
+    event = %Ledger.Event{
+      seq: seq,
+      tick: tick,
+      class: :meta,
+      payload: %{
+        kind: :boundary_wake,
+        id: boundary.id,
+        tick: tick,
+        reason: "test wake",
+        bound_agent_ids: boundary.bound_agent_ids
+      }
+    }
+
+    assert :ok = Writer.append(id, [event])
+
+    assert_push "state_sync", %{tick: ^tick, active_agents: active_agents}
+    awakened_ids = MapSet.new(boundary.bound_agent_ids)
+    found_ids = MapSet.new(active_agents, & &1["id"])
+    assert MapSet.subset?(awakened_ids, found_ids)
+    assert {:ok, _} = Jason.encode(active_agents)
   end
 
   test "awaiting push fires after a joined PC seat declares", %{run_id: id} do

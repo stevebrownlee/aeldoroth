@@ -1,14 +1,14 @@
 ---
 identifier: active_context
 title: Active Context
-created: 2026-08-21T22:34:22Z
+created: 2026-08-25T19:48:56Z
 ---
 # Active Context
 
 ```json
 {
   "content": {
-    "current_focus": "AD&D 1E 2nd-Level Spell Catalogs & Visual Browser Verification complete & verified",
+    "current_focus": "GM Console Active NPC Agents Section complete & verified across 396 green tests",
     "current_plan": "Plan 5 (protocol-live-runs) COMPLETE",
     "decisions": [
       47,
@@ -38,9 +38,9 @@ created: 2026-08-21T22:34:22Z
       "caller-linked sessions"
     ],
     "last_session": {
-      "date": "2026-08-21",
+      "date": "2026-08-25",
       "open": "Spec open questions for user: verb palette set, cap tuning, believed monster HP on GM board, roster scope",
-      "work": "Added 2nd-level spell lists for all 4 casting classes gated on Level 3+; refactored character card vitals into two clean responsive rows (Identity and Combat Stats); verified interactively with agent-browser. 365 tests green."
+      "work": "Implemented Active NPC Agents section on GM console (SpectateLive) showing awakened NPC/monster agents, waking boundary reasons, HP/AC/THAC0/morale vitals, BDI commitments, and roleplay dossiers. All 396 tests green."
     },
     "next": "post-v1: client_web LiveView client (spec §11), then v2 campaign memory (decision 34) / platform seams (decision 35)",
     "next_session": "After spec approval: writing-plans for Phase A (player surface + lobby)",
@@ -72,7 +72,7 @@ created: 2026-08-21T22:34:22Z
     "watch": "Party's choice for the Shadow-Crystal (keep/sell/study/destroy) is the Act 1 pacing lever"
   },
   "name": "default",
-  "updated_at": "2026-08-21T22:34:22Z",
-  "version": 20
+  "updated_at": "2026-08-25T19:48:56Z",
+  "version": 21
 }
 ```

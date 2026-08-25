@@ -101,6 +101,32 @@ defmodule EngineCore.FoldTest do
     assert hd(rejected.envelopes).status == :rejected
   end
 
+  test "boundary_wake stores reason and tick", %{w: w} do
+    b = struct!(Types.Boundary,
+      id: "b1",
+      scope_place_id: "entry_hall",
+      bound_agent_ids: ["g1"],
+      triggers: ["presence_crossing"]
+    )
+    w = %{w | boundaries: %{"b1" => b}}
+
+    w2 =
+      Fold.apply(w,
+        ev(1, 1, %{
+          kind: :boundary_wake,
+          id: "b1",
+          tick: 7,
+          reason: "presence_crossing by pc_thistle",
+          bound_agent_ids: ["g1"]
+        })
+      )
+
+    b2 = w2.boundaries["b1"]
+    assert b2.state == :awake
+    assert b2.last_trigger_tick == 7
+    assert b2.last_trigger_reason == "presence_crossing by pc_thistle"
+  end
+
   defp ev(seq, tick, payload),
     do: %Ledger.Event{seq: seq, tick: tick, class: :world, payload: payload}
 end

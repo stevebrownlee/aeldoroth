@@ -122,7 +122,7 @@ defmodule EngineCore.Fold do
           world
           | boundaries:
               Map.update!(world.boundaries, p.id, fn b ->
-                %{b | state: :awake, last_trigger_tick: p.tick}
+                %{b | state: :awake, last_trigger_tick: p.tick, last_trigger_reason: Map.get(p, :reason)}
               end)
         }
         |> wake_agents(p)

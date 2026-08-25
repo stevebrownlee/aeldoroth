@@ -29,6 +29,7 @@ defmodule Wire.SpectateChannel do
         tick: state.tick,
         boundaries: JSONSafe.to_json(Server.boundaries(run_id)),
         dungeon: JSONSafe.to_json(Server.dungeon_overview(run_id)),
+        active_agents: JSONSafe.to_json(Server.active_agents(run_id)),
         spend: Spend.report(Writer.events(run_id)),
         tail: Writer.events(run_id) |> Enum.take(-@tail_cap) |> JSONSafe.to_json(),
         awaiting: awaiting
@@ -95,7 +96,8 @@ defmodule Wire.SpectateChannel do
       push(socket, "state_sync", %{
         tick: tick_of(run_id),
         boundaries: JSONSafe.to_json(Server.boundaries(run_id)),
-        dungeon: JSONSafe.to_json(Server.dungeon_overview(run_id))
+        dungeon: JSONSafe.to_json(Server.dungeon_overview(run_id)),
+        active_agents: JSONSafe.to_json(Server.active_agents(run_id))
       })
   end
 
