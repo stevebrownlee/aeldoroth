@@ -341,6 +341,38 @@ defmodule ClientWeb.SpectateLiveTest do
     assert html =~ "Morale 7"
   end
 
+  test "active NPC agents panel displays Mara's Inn actors immediately when PCs start in maras_inn", %{conn: conn} do
+    id = "run_inn_#{:erlang.unique_integer([:positive])}"
+    pcs = [
+      %{
+        id: "pc_thistle",
+        name: "Thistle",
+        place_id: "maras_inn",
+        int: 13,
+        ac: 5,
+        hd: 1,
+        hp: 12,
+        thac0: 20,
+        damage: "1d8"
+      }
+    ]
+    {:ok, _pid} = Session.start_link(id, @yaml, 42, pcs)
+    on_exit(fn -> TestSupport.stop_run(id) end)
+
+    {:ok, view, _html} = live(conn, "/runs/#{id}/gm")
+
+    eventually(fn -> render(view) =~ "Mara" end)
+    html = render(view)
+
+    refute html =~ ~s(data-testid="active-npcs-empty")
+    assert html =~ "Mara"
+    assert html =~ "Mayor Grevik"
+    assert html =~ "Erik the Shepherd"
+    assert html =~ "Anna Mordale"
+    assert html =~ "maras_inn_zone"
+    assert html =~ "presence_crossing by pc_thistle"
+  end
+
   # Ambiguity staging (run_channel_test convention): one scripted move,
   # then garbage interpret scripts so every later declare falls through
   # to the deterministic grammar.

@@ -1,14 +1,14 @@
 ---
 identifier: active_context
 title: Active Context
-created: 2026-08-25T19:48:56Z
+created: 2026-08-25T20:39:49Z
 ---
 # Active Context
 
 ```json
 {
   "content": {
-    "current_focus": "GM Console Active NPC Agents Section complete & verified across 396 green tests",
+    "current_focus": "Starting Place Boundary Activation on PC Injection complete & verified across 399 green tests",
     "current_plan": "Plan 5 (protocol-live-runs) COMPLETE",
     "decisions": [
       47,
@@ -40,7 +40,7 @@ created: 2026-08-25T19:48:56Z
     "last_session": {
       "date": "2026-08-25",
       "open": "Spec open questions for user: verb palette set, cap tuning, believed monster HP on GM board, roster scope",
-      "work": "Implemented Active NPC Agents section on GM console (SpectateLive) showing awakened NPC/monster agents, waking boundary reasons, HP/AC/THAC0/morale vitals, BDI commitments, and roleplay dossiers. All 396 tests green."
+      "work": "Fixed starting place boundary activation so PC spawning via agent_added immediately wakes resident boundaries (such as maras_inn_zone) and activates NPCs on launch. All 399 tests passing."
     },
     "next": "post-v1: client_web LiveView client (spec §11), then v2 campaign memory (decision 34) / platform seams (decision 35)",
     "next_session": "After spec approval: writing-plans for Phase A (player surface + lobby)",
@@ -72,7 +72,7 @@ created: 2026-08-25T19:48:56Z
     "watch": "Party's choice for the Shadow-Crystal (keep/sell/study/destroy) is the Act 1 pacing lever"
   },
   "name": "default",
-  "updated_at": "2026-08-25T19:48:56Z",
-  "version": 21
+  "updated_at": "2026-08-25T20:39:49Z",
+  "version": 22
 }
 ```

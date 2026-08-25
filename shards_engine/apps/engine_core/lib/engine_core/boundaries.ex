@@ -129,6 +129,15 @@ defmodule EngineCore.Boundaries do
   end
 
   defp trigger_for(world, b, %Ledger.Event{
+         payload: %{kind: :agent_added, agent: agent}
+       }) do
+    if :presence_crossing in b.triggers and agent.id not in b.bound_agent_ids and
+         place_in_scope?(world, b, agent.place_id) do
+      "presence_crossing by #{agent.id}"
+    end
+  end
+
+  defp trigger_for(world, b, %Ledger.Event{
          payload: %{kind: :signal_arrived, place_id: p, intensity: i}
        }) do
     if :signal_arrived in b.triggers and i >= b.wake_on_intensity and

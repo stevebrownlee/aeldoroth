@@ -12,7 +12,7 @@ defmodule Referee.Run do
 
   alias Agents
   alias Agents.{Adopt, Salience}
-  alias EngineCore.{Commitments, Dice, Envelopes, Fold, Ledger, Loader, Scheduler, World}
+  alias EngineCore.{Boundaries, Commitments, Dice, Envelopes, Fold, Ledger, Loader, Scheduler, World}
   alias LLMGateway.{Audit, Ctx}
   alias Referee.{Interpret, Narrate, PC, Preferences, Resolve, Slice, Spend, Validate}
 
@@ -58,9 +58,17 @@ defmodule Referee.Run do
       pc = PC.build(Map.put_new(pc_map, :place_id, place_id))
       acc = push(acc, :world, acc.world.tick, %{kind: :agent_added, agent: pc})
       [event | _] = acc.events
-      %{acc | world: Fold.fold(acc.world, [event])}
+      world2 = Fold.fold(acc.world, [event])
+      {:ok, b_events, world3} = Boundaries.evaluate(world2, event)
+
+      acc2 = %{acc | world: world3}
+
+      Enum.reduce(b_events, acc2, fn b_ev, run_acc ->
+        push(run_acc, b_ev.class, b_ev.tick, b_ev.payload)
+      end)
     end)
   end
+
   @doc """
   Inject a new PC into an existing run dynamically (e.g. when a player connects
   and completes character creation). Appends an `:agent_added` event to the ledger
@@ -74,9 +82,16 @@ defmodule Referee.Run do
     run = push(run, :world, run.world.tick, %{kind: :agent_added, agent: pc})
     [event | _] = run.events
     world2 = Fold.fold(run.world, [event])
-    pcs2 = (run.pcs || []) ++ [normalized]
+    {:ok, b_events, world3} = Boundaries.evaluate(world2, event)
 
-    {:ok, pc, %{run | world: world2, pcs: pcs2}}
+    run2 =
+      Enum.reduce(b_events, %{run | world: world3}, fn b_ev, acc ->
+        push(acc, b_ev.class, b_ev.tick, b_ev.payload)
+      end)
+
+    pcs2 = (run2.pcs || []) ++ [normalized]
+
+    {:ok, pc, %{run2 | pcs: pcs2}}
   end
 
   defp normalize_pc_map(pc_map, default_place) do

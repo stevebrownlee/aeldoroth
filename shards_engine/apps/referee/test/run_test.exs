@@ -39,6 +39,20 @@ defmodule Referee.RunTest do
 
     assert [%{payload: %{kind: :agent_added, agent: %{id: "pc_thistle"}}}] = rest
   end
+
+  test "new wakes starting_place boundary when PCs are injected at maras_inn" do
+    pcs = [%{id: "pc_thistle", name: "Thistle", place_id: "maras_inn", int: 13, ac: 5, hd: 1, hp: 7, thac0: 20, damage: "1d8"}]
+    {:ok, run} = Run.new(@yaml, 42, pcs)
+
+    assert run.world.boundaries["maras_inn_zone"].state == :awake
+    assert run.world.agents["mara"].attention == :alert
+    assert run.world.agents["mayor_grevik"].attention == :alert
+    assert run.world.agents["erik_the_shepherd"].attention == :alert
+    assert run.world.agents["anna_mordale"].attention == :alert
+
+    events = Run.events(run)
+    assert Enum.any?(events, &(&1.payload[:kind] == :boundary_wake && &1.payload[:id] == "maras_inn_zone"))
+  end
   test "add_pc dynamically injects a new PC with agent_added ledger event and updates world" do
     {:ok, run} = new_run()
     new_pc = %{

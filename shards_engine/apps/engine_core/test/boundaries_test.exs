@@ -52,6 +52,25 @@ defmodule EngineCore.BoundariesTest do
     assert Fold.fold(w, events) == w2
   end
 
+  test "agent added in a boundary scope place wakes the boundary via presence_crossing" do
+    g1 = agent("g1", "guard_room", cadence: %{every: 10, next_due: nil})
+    w = world([guard_zone()], [g1])
+
+    agent_added_ev = %Ledger.Event{
+      seq: 1,
+      tick: 20,
+      class: :world,
+      payload: %{kind: :agent_added, agent: struct!(Types.Agent, id: "pc1", name: "PC 1", tier: 3, place_id: "guard_room")}
+    }
+
+    {:ok, events, w2} = Boundaries.evaluate(w, agent_added_ev)
+    [wake] = Enum.filter(events, &(&1.payload.kind == :boundary_wake))
+    assert wake.payload.id == "gz"
+    assert wake.payload.reason == "presence_crossing by pc1"
+    assert w2.boundaries["gz"].state == :awake
+    assert w2.agents["g1"].attention == :alert
+  end
+
   test "signal arrival below intensity does not wake; at or above it does" do
     w = world([guard_zone(wake_on_intensity: 4)], [agent("g1", "guard_room")])
 
