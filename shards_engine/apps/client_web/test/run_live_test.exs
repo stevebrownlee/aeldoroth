@@ -218,6 +218,100 @@ defmodule ClientWeb.RunLiveTest do
     eventually(fn -> render(view) =~ "You go north." end)
   end
 
+  test "character builder renders authentic 1E Player Character Record layout", %{conn: conn, run_id: id} do
+    {:ok, _view, html} = live(conn, "/runs/#{id}")
+
+    # Zone 1: Header & Identity
+    assert html =~ "Player Character Record"
+    assert html =~ "Patron Deity"
+    assert html =~ "Place of Origin"
+    assert html =~ "Move Base"
+
+    # Zone 2: Abilities Sub-Table Matrix
+    assert html =~ "Hit Adj"
+    assert html =~ "Open Doors"
+    assert html =~ "Bend Bars"
+    assert html =~ "% Know Spell"
+    assert html =~ "System Shock"
+
+    # Zone 3: Saving Throws (5 categories)
+    assert html =~ "Paralyzation"
+    assert html =~ "Petrification"
+    assert html =~ "Rod, Staff"
+    assert html =~ "Breath Weapon"
+    assert html =~ "Spells"
+
+    # Zone 4: Combat Vitals & AC
+    assert html =~ "Shieldless"
+    assert html =~ "Rear"
+    assert html =~ "Surprise"
+
+    # Zone 5: Weapons To-Hit Matrix Table
+    assert html =~ "WEAPON"
+    assert html =~ "MAG"
+    assert html =~ "DAM (S-M)"
+    assert html =~ "Pummeling"
+    assert html =~ "Grappling"
+  end
+
+  test "renders dynamic class-specific bottom section based on selected class", %{conn: conn, run_id: id} do
+    {:ok, view, _html} = live(conn, "/runs/#{id}")
+
+    # Fighter selected by default -> Warrior Record (Mount, # Attacks)
+    html = render(view)
+    assert html =~ "Warrior Record"
+    assert html =~ "MOUNT"
+
+    # Select Thief -> Rogue Record & Thieving Skills Table
+    thief_html =
+      view
+      |> form("#hero_builder", %{"hero" => %{"class" => "Thief", "race" => "Halfling", "level" => "1"}})
+      |> render_change()
+
+    assert thief_html =~ "Rogue Record"
+    assert thief_html =~ "PICK POCKETS"
+    assert thief_html =~ "OPEN LOCKS"
+    assert thief_html =~ "CLIMB WALLS"
+
+    # Select Cleric -> Cleric Record & Turning Undead Table
+    cleric_html =
+      view
+      |> form("#hero_builder", %{"hero" => %{"class" => "Cleric", "race" => "Human", "level" => "1"}})
+      |> render_change()
+
+    assert cleric_html =~ "Cleric / Druid Record"
+    assert cleric_html =~ "TURNING UNDEAD"
+    assert cleric_html =~ "Skel"
+    assert cleric_html =~ "Zomb"
+    assert cleric_html =~ "Ghoul"
+  end
+
+  test "in-game seat has View Full 1E Character Sheet button and modal toggle", %{conn: conn, run_id: id} do
+    {:ok, view, _html} = live(conn, "/runs/#{id}?pc=pc_thistle")
+    eventually(fn -> render(view) =~ "Entry Hall" end)
+
+    html = render(view)
+    assert html =~ "View Full 1E Character Sheet"
+
+    # Click to open modal
+    view
+    |> element("[data-testid=open-full-sheet]")
+    |> render_click()
+
+    modal_html = render(view)
+    assert modal_html =~ "Player Character Record"
+    assert modal_html =~ "Saving Throws (1E)"
+    assert modal_html =~ "Weapons &amp; To-Hit Armor Class Matrix"
+
+    # Click to close modal
+    view
+    |> element("[data-testid=close-sheet-modal]")
+    |> render_click()
+
+    closed_html = render(view)
+    refute closed_html =~ "sheet-modal-backdrop"
+  end
+
   defp eventually(fun, tries \\ 80) do
     if fun.() do
       :ok

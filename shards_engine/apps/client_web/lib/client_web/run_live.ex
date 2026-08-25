@@ -1,21 +1,20 @@
 defmodule ClientWeb.RunLive do
   @moduledoc """
-  Player seat over the wire protocol (UX spec §4):
-
-  * `/runs/:run_id` with no PC renders an authentic AD&D 1E single-hero
-    builder with 1-click archetypes. Submitting calls `Session.add_pc/2` and
-    navigates to the new seat.
-  * `/runs/:run_id/:pc_id` joins an existing PC to the live play surface
-    through the wire — scene panel, exits, chronicle, compose, and party rail.
+  Player seat over the wire protocol:
+  * `/runs/:run_id` with no PC renders the authentic AD&D 1E Player Character Record
+    sheet with 1-click archetypes and full 6-zone layout.
+  * `/runs/:run_id/:pc_id` renders the 3-panel live play surface with dedicated
+    OOC table chat, action declaration box, and interactive full-sheet modal.
   """
 
   use ClientWeb, :live_view
 
   alias ClientTUI.Conn
   alias Referee.PC
+  alias Referee.Rules.SheetTables
   alias Referee.Run.Session
 
-  @races ["Human", "Elf", "Half-Elf", "Dwarf", "Halfling", "Gnome"]
+  @races ["Human", "Elf", "Half-Elf", "Dwarf", "Halfling", "Gnome", "Half-Orc"]
 
   @classes [
     "Fighter",
@@ -30,153 +29,66 @@ defmodule ClientWeb.RunLive do
     "Monk"
   ]
 
+  @alignments [
+    "Lawful Good",
+    "Neutral Good",
+    "Chaotic Good",
+    "Lawful Neutral",
+    "True Neutral",
+    "Chaotic Neutral",
+    "Lawful Evil",
+    "Neutral Evil",
+    "Chaotic Evil"
+  ]
+
   @mu_spells_1 [
-    "Charm Person",
-    "Color Spray",
-    "Detect Magic",
-    "Enlarge",
-    "Erase",
-    "Feather Fall",
-    "Find Familiar",
-    "Friends",
-    "Hold Portal",
-    "Identify",
-    "Light",
-    "Magic Missile",
-    "Protection from Evil",
-    "Read Magic",
-    "Shield",
-    "Shocking Grasp",
-    "Sleep",
-    "Spider Climb",
-    "Tenser's Floating Disc",
-    "Unseen Servant",
-    "Ventriloquism",
-    "Write"
+    "Charm Person", "Color Spray", "Detect Magic", "Enlarge", "Erase", "Feather Fall",
+    "Find Familiar", "Friends", "Hold Portal", "Identify", "Light", "Magic Missile",
+    "Protection from Evil", "Read Magic", "Shield", "Shocking Grasp", "Sleep",
+    "Spider Climb", "Tenser's Floating Disc", "Unseen Servant", "Ventriloquism", "Write"
   ]
 
   @mu_spells_2 [
-    "Audible Glamer",
-    "Continual Light",
-    "Detect Evil",
-    "Detect Invisibility",
-    "ESP",
-    "Fools' Gold",
-    "Forget",
-    "Invisibility",
-    "Knock",
-    "Leomund's Trap",
-    "Levitate",
-    "Locate Object",
-    "Magic Mouth",
-    "Mirror Image",
-    "Phantasmal Force",
-    "Pyrotechnics",
-    "Ray of Enfeeblement",
-    "Rope Trick",
-    "Scare",
-    "Shatter",
-    "Stinking Cloud",
-    "Strength",
-    "Web",
-    "Wizard Lock"
+    "Audible Glamer", "Continual Light", "Detect Evil", "Detect Invisibility", "ESP",
+    "Fools' Gold", "Forget", "Invisibility", "Knock", "Leomund's Trap", "Levitate",
+    "Locate Object", "Magic Mouth", "Mirror Image", "Phantasmal Force", "Pyrotechnics",
+    "Ray of Enfeeblement", "Rope Trick", "Scare", "Shatter", "Stinking Cloud", "Strength",
+    "Web", "Wizard Lock"
   ]
 
   @illusionist_spells_1 [
-    "Audible Glamer",
-    "Change Self",
-    "Color Spray",
-    "Dancing Lights",
-    "Darkness",
-    "Detect Illusion",
-    "Detect Magic",
-    "Fog Cloud",
-    "Gaze Reflection",
-    "Hypnotism",
-    "Light",
-    "Phantasmal Force",
-    "Wall of Fog"
+    "Audible Glamer", "Change Self", "Color Spray", "Dancing Lights", "Darkness",
+    "Detect Illusion", "Detect Magic", "Fog Cloud", "Gaze Reflection", "Hypnotism",
+    "Light", "Phantasmal Force", "Wall of Fog"
   ]
 
   @illusionist_spells_2 [
-    "Blindness",
-    "Blur",
-    "Deafness",
-    "Detect Magic",
-    "False Alignment",
-    "Fool's Gold",
-    "Hypnotic Pattern",
-    "Improved Phantasmal Force",
-    "Invisibility",
-    "Magic Mouth",
-    "Mirror Image",
-    "Misdirection",
-    "Paralysis",
-    "Scare",
-    "Spectral Force",
-    "Summon Swarm",
-    "Vertigo"
+    "Blindness", "Blur", "Deafness", "Detect Magic", "False Alignment", "Fool's Gold",
+    "Hypnotic Pattern", "Improved Phantasmal Force", "Invisibility", "Magic Mouth",
+    "Mirror Image", "Misdirection", "Paralysis", "Scare", "Spectral Force", "Summon Swarm", "Vertigo"
   ]
 
   @cleric_prayers_1 [
-    "Bless",
-    "Combine",
-    "Command",
-    "Create Water",
-    "Cure Light Wounds",
-    "Detect Evil",
-    "Detect Magic",
-    "Light",
-    "Protection from Evil",
-    "Purify Food and Drink",
-    "Remove Fear",
-    "Resist Cold",
-    "Sanctuary"
+    "Bless", "Combine", "Command", "Create Water", "Cure Light Wounds", "Detect Evil",
+    "Detect Magic", "Light", "Protection from Evil", "Purify Food and Drink",
+    "Remove Fear", "Resist Cold", "Sanctuary"
   ]
 
   @cleric_prayers_2 [
-    "Augury",
-    "Chant",
-    "Detect Curse",
-    "Find Traps",
-    "Hold Person",
-    "Know Alignment",
-    "Resist Fire",
-    "Silence 15' Radius",
-    "Slow Poison",
-    "Snake Charm",
-    "Spiritual Hammer",
-    "Speak with Animals"
+    "Augury", "Chant", "Detect Curse", "Find Traps", "Hold Person", "Know Alignment",
+    "Resist Fire", "Silence 15' Radius", "Slow Poison", "Snake Charm", "Spiritual Hammer", "Speak with Animals"
   ]
 
   @druid_prayers_1 [
-    "Animal Friendship",
-    "Detect Magic",
-    "Detect Snares and Pits",
-    "Entangle",
-    "Faerie Fire",
-    "Invisibility to Animals",
-    "Locate Animals",
-    "Pass without Trace",
-    "Predict Weather",
-    "Purify Water",
-    "Shillelagh",
-    "Speak with Animals"
+    "Animal Friendship", "Detect Balance", "Detect Magic", "Detect Snares & Pits",
+    "Entangle", "Faerie Fire", "Invisibility to Animals", "Locate Animals",
+    "Pass without Trace", "Predict Weather", "Purify Water", "Shillelagh", "Speak with Animals"
   ]
 
   @druid_prayers_2 [
-    "Barkskin",
-    "Charm Person or Mammal",
-    "Create Water",
-    "Cure Light Wounds",
-    "Feign Death",
-    "Fire Trap",
-    "Heat Metal",
-    "Locate Plants",
-    "Obscurement",
-    "Produce Flame",
-    "Trip",
-    "Warp Wood"
+    "Barkskin", "Charm Person or Mammal", "Create Water", "Cure Light Wounds",
+    "Feign Death", "Fire Trap", "Heat Metal", "Locate Plants", "Obscurement",
+    "Produce Flame", "Reflecting Pool", "Slow Poison", "Trip", "Warp Wood"
   ]
 
   @archetypes %{
@@ -186,14 +98,25 @@ defmodule ClientWeb.RunLive do
       class: "Fighter",
       level: 1,
       xp: 0,
+      alignment: "Neutral Good",
+      patron_deity: "Saint Cuthbert",
+      religion: "Orthodox",
+      place_of_origin: "Mara's Inn, Thornhollow",
+      move_base: "12\"",
+      str: 17,
       int: 13,
+      wis: 11,
+      dex: 15,
+      con: 16,
+      cha: 12,
+      com: 10,
       hp: 12,
       ac: 5,
       thac0: 20,
       damage: "1d8",
       armor: "Chain mail & Shield",
       weapons: "Longsword & Dagger",
-      inventory: "Bedroll, tinderbox, waterskin, iron rations (5), torches (3), hemp rope (50 ft), flask of oil (2), mirror",
+      inventory: "Backpack, bedroll, tinderbox, waterskin, iron rations (5), torches (3), hemp rope (50 ft), flask of oil (2), mirror, 12 gp",
       spells: [],
       prayers: []
     },
@@ -203,14 +126,25 @@ defmodule ClientWeb.RunLive do
       class: "Thief",
       level: 1,
       xp: 0,
+      alignment: "Neutral",
+      patron_deity: "Brandobaris",
+      religion: "Halfling Pantheon",
+      place_of_origin: "Thornhollow Shire",
+      move_base: "9\"",
+      str: 11,
       int: 12,
+      wis: 10,
+      dex: 17,
+      con: 14,
+      cha: 13,
+      com: 11,
       hp: 8,
       ac: 6,
       thac0: 19,
       damage: "1d6",
       armor: "Leather armor",
       weapons: "Shortsword & Shortbow",
-      inventory: "Thieves' tools, bedroll, tinderbox, waterskin, iron rations (3), torches (2), rope (50 ft), chalk, silk gloves",
+      inventory: "Thieves' tools, lockpicks, bedroll, tinderbox, waterskin, iron rations (3), torches (2), rope (50 ft), chalk, silk gloves, 18 gp",
       spells: [],
       prayers: []
     },
@@ -220,14 +154,25 @@ defmodule ClientWeb.RunLive do
       class: "Illusionist",
       level: 1,
       xp: 0,
-      int: 16,
+      alignment: "Chaotic Good",
+      patron_deity: "Baravar Cloakshadow",
+      religion: "Gnomish Mysteries",
+      place_of_origin: "Underhearth enclave",
+      move_base: "9\"",
+      str: 8,
+      int: 17,
+      wis: 12,
+      dex: 16,
+      con: 13,
+      cha: 14,
+      com: 12,
       hp: 4,
       ac: 10,
       thac0: 20,
       damage: "1d4",
       armor: "Robes",
       weapons: "Staff & Darts",
-      inventory: "Spellbook, ink & quills, parchment (5), bedroll, tinderbox, waterskin, iron rations (3), torches (2)",
+      inventory: "Spellbook, ink & quills, parchment (5), bedroll, tinderbox, waterskin, iron rations (3), torches (2), component pouch, 8 gp",
       spells: ["Color Spray", "Phantasmal Force", "Read Magic"],
       prayers: []
     },
@@ -237,14 +182,25 @@ defmodule ClientWeb.RunLive do
       class: "Cleric",
       level: 1,
       xp: 0,
-      int: 14,
+      alignment: "Lawful Good",
+      patron_deity: "Saint Cuthbert",
+      religion: "Church of the Sacred Flame",
+      place_of_origin: "Thornhollow Abbey",
+      move_base: "12\"",
+      str: 14,
+      int: 11,
+      wis: 16,
+      dex: 12,
+      con: 15,
+      cha: 14,
+      com: 13,
       hp: 8,
       ac: 5,
       thac0: 20,
       damage: "1d6",
       armor: "Scale mail & Shield",
       weapons: "Warhammer & Mace",
-      inventory: "Holy symbol, bedroll, tinderbox, waterskin, iron rations (5), torches (3), rope (50 ft), bandages",
+      inventory: "Wooden holy symbol, holy water (2 vials), bedroll, tinderbox, waterskin, iron rations (5), torches (3), rope (50 ft), bandages, 15 gp",
       spells: [],
       prayers: ["Cure Light Wounds", "Bless", "Purify Food and Drink"]
     }
@@ -276,6 +232,7 @@ defmodule ClientWeb.RunLive do
         hero: default_hero(),
         races: @races,
         classes: @classes,
+        alignments: @alignments,
         archetypes: @archetypes,
         conn: nil,
         slice: nil,
@@ -287,7 +244,9 @@ defmodule ClientWeb.RunLive do
         hint_shown: false,
         ooc_messages: [],
         action_status: :pending,
-        last_declared_text: ""
+        last_declared_text: "",
+        show_sheet_modal: false,
+        error: nil
       )
       |> stream(:log, [])
 
@@ -315,7 +274,7 @@ defmodule ClientWeb.RunLive do
     hero =
       case Map.fetch(@archetypes, name) do
         {:ok, data} ->
-          data
+          update_hero(socket.assigns.hero, Map.new(data, fn {k, v} -> {to_string(k), v} end))
           |> Map.put(:chosen_spell, first(spell_catalog(data.class)))
           |> Map.put(:chosen_prayer, first(prayer_catalog(data.class)))
 
@@ -348,6 +307,14 @@ defmodule ClientWeb.RunLive do
     {:noreply, assign(socket, hero: hero)}
   end
 
+  def handle_event("open_sheet_modal", _params, socket) do
+    {:noreply, assign(socket, show_sheet_modal: true)}
+  end
+
+  def handle_event("close_sheet_modal", _params, socket) do
+    {:noreply, assign(socket, show_sheet_modal: false)}
+  end
+
   def handle_event("create_hero", %{"hero" => params}, socket) do
     hero = update_hero(socket.assigns.hero, params)
 
@@ -373,8 +340,8 @@ defmodule ClientWeb.RunLive do
           armor: hero.armor,
           weapons: hero.weapons,
           inventory: hero.inventory,
-          spells: hero.spells,
-          prayers: hero.prayers
+          spells: Enum.join(hero.spells, ", "),
+          prayers: Enum.join(hero.prayers, ", ")
         }
 
         case Session.add_pc(socket.assigns.run_id, pc_map) do
@@ -416,24 +383,20 @@ defmodule ClientWeb.RunLive do
     {:noreply, socket}
   end
 
-  # Verb palette / believed-agent chips scaffold into the compose box —
-  # grammar teaching (spec §4): Attack chip + name chip = "attack giant rat".
   def handle_event("scaffold", %{"text" => add}, socket) do
     {:noreply, update(socket, :compose, &(&1 <> add))}
   end
 
-  # Exit chips declare the bare direction label immediately.
   def handle_event("go", %{"dir" => dir}, %{assigns: %{conn: conn}} = socket)
       when is_pid(conn) and dir != "" do
     :ok = Conn.send_event(conn, "declare_intent", %{"text" => dir})
-    {:noreply, assign(socket, compose: "", hint_shown: true)}
+    {:noreply, assign(socket, compose: "", hint_shown: true, action_status: :ready, last_declared_text: dir)}
   end
 
   def handle_event(_other, _params, socket), do: {:noreply, socket}
 
   # Wire messages ------------------------------------------------------------
 
-  # Join reply: seat claimed, here is the truth-barrier slice.
   @impl true
   def handle_info({:chan_reply, _ref, :ok, %{"state" => slice} = reply}, socket) do
     {:noreply,
@@ -445,19 +408,14 @@ defmodule ClientWeb.RunLive do
      )}
   end
 
-  # Error replies (unknown event, paused, no_run, claim races).
   def handle_info({:chan_reply, _ref, :error, %{"reason" => reason}}, socket) do
     {:noreply, put_flash(socket, :error, "referee: #{reason}")}
   end
 
   def handle_info({:chan, _topic, "perception", %{"text" => text, "tick" => tick}}, socket) do
     new_tick = max(tick, socket.assigns.tick)
-
-    action_status =
-      if new_tick > socket.assigns.tick, do: :pending, else: socket.assigns.action_status
-
-    last_declared_text =
-      if new_tick > socket.assigns.tick, do: "", else: socket.assigns.last_declared_text
+    action_status = if new_tick > socket.assigns.tick, do: :pending, else: socket.assigns.action_status
+    last_declared_text = if new_tick > socket.assigns.tick, do: "", else: socket.assigns.last_declared_text
 
     {:noreply,
      socket
@@ -473,15 +431,11 @@ defmodule ClientWeb.RunLive do
       gm?: id == "GM"
     }
 
-    {:noreply, assign(socket, ooc_messages: socket.assigns.ooc_messages ++ [msg])}
+    {:noreply, update(socket, :ooc_messages, fn msgs -> msgs ++ [msg] end)}
   end
 
-  def handle_info({:chan, _topic, "prompt", %{"question" => question}}, socket) do
-    {:noreply, assign(socket, prompt: question)}
-  end
-
-  def handle_info({:chan, _topic, "dice", %{"event_payload" => payload}}, socket) do
-    {:noreply, stream_insert(socket, :log, log_row("dice", render_dice(payload)))}
+  def handle_info({:chan, _topic, "prompt", %{"question" => q}}, socket) do
+    {:noreply, assign(socket, prompt: q)}
   end
 
   def handle_info({:chan, _topic, "state_sync", %{"slice" => slice}}, socket) do
@@ -489,42 +443,32 @@ defmodule ClientWeb.RunLive do
   end
 
   def handle_info({:chan, _topic, "paused", _payload}, socket) do
-    {:noreply, socket |> system_row("The GM pauses the world.") |> assign(paused: true)}
+    {:noreply, assign(socket, paused: true)}
   end
 
   def handle_info({:chan, _topic, "resumed", _payload}, socket) do
-    {:noreply, socket |> system_row("The GM resumes play.") |> assign(paused: false)}
+    {:noreply, assign(socket, paused: false)}
   end
 
-  # Protocol growth never crashes a seat.
+  def handle_info({:chan, _topic, "dossier", %{"text" => text}}, socket) do
+    {:noreply, assign(socket, dossier: text)}
+  end
+
   def handle_info({:chan, _topic, _event, _payload}, socket), do: {:noreply, socket}
   def handle_info({:chan_reply, _ref, _status, _payload}, socket), do: {:noreply, socket}
 
-  # Seat auto-rejoin (UX spec §4): the claim is process-owned, so a dropped
-  # conn releases it — a fresh Conn re-claims the same PC. The ribbon keeps
-  # the disconnected state visible until the rejoin lands.
-  def handle_info({:DOWN, _ref, :process, _pid, _reason}, %{assigns: %{pc: pc}} = socket)
-      when is_binary(pc) do
-    Process.send_after(self(), :rejoin, 1_000)
-    {:noreply, socket |> system_row("Connection lost — rejoining the seat…") |> assign(conn: nil)}
-  end
-
   def handle_info({:DOWN, _ref, :process, _pid, reason}, socket) do
-    {:noreply,
-     socket
-     |> put_flash(:error, "wire connection lost: #{inspect(reason)}")
-     |> assign(conn: nil)}
+    Process.send_after(self(), :rejoin, 500)
+    {:noreply, assign(socket, conn: nil, error: "wire connection lost: #{inspect(reason)}")}
   end
 
   def handle_info(:rejoin, %{assigns: %{conn: nil, pc: pc, run_id: run_id}} = socket)
       when is_binary(pc) do
     if url = wire_url() do
       case Conn.start_link(url, run_id: run_id, character_id: pc, parent: self()) do
-        {:ok, pid} ->
-          {:noreply, monitor_conn(assign(socket, conn: pid)) |> system_row("Seat rejoined.")}
-
-        {:error, _reason} ->
-          Process.send_after(self(), :rejoin, 2_500)
+        {:ok, pid} -> {:noreply, monitor_conn(assign(socket, conn: pid, error: nil))}
+        _ ->
+          Process.send_after(self(), :rejoin, 1_000)
           {:noreply, socket}
       end
     else
@@ -533,7 +477,6 @@ defmodule ClientWeb.RunLive do
   end
 
   def handle_info(:rejoin, socket), do: {:noreply, socket}
-
   def handle_info(_msg, socket), do: {:noreply, socket}
 
   # Render ------------------------------------------------------------------
@@ -543,6 +486,7 @@ defmodule ClientWeb.RunLive do
     ~H"""
     <h1>Run <%= @run_id %></h1>
 
+    <%!-- 1. Character Builder (when @pc == nil) --%>
     <div :if={@pc == nil} class="hero-builder panel" data-testid="hero-builder">
       <h2>Create your hero</h2>
 
@@ -570,182 +514,47 @@ defmodule ClientWeb.RunLive do
         ><%= name %></button>
       </div>
 
-      <form id="hero_builder" phx-change="hero_change" phx-submit="create_hero" class="hero-sheet">
-        <div class="form-row">
-          <label>
-            Name
-            <input name="hero[name]" value={@hero.name} data-testid="hero-name" />
-          </label>
+      <form id="hero_builder" phx-change="hero_change" phx-submit="create_hero">
+        <%= render_1e_sheet(assigns, @hero, true) %>
 
-          <label>
-            Race
-            <select name="hero[race]">
-              <option :for={r <- @races} value={r} selected={@hero.race == r}><%= r %></option>
-            </select>
-          </label>
-
-          <label>
-            Class
-            <select name="hero[class]">
-              <option :for={c <- @classes} value={c} selected={@hero.class == c}><%= c %></option>
-            </select>
-          </label>
+        <div style="margin-top: 1rem;">
+          <button type="submit" class="btn-start-run" data-testid="enter-world">
+            Enter The Ruined Tower
+          </button>
         </div>
-
-        <div class="form-row vitals">
-          <label>
-            Level
-            <input type="number" name="hero[level]" value={@hero.level} min="1" />
-          </label>
-
-          <label>
-            XP
-            <input type="number" name="hero[xp]" value={@hero.xp} min="0" />
-          </label>
-
-          <label>
-            HP
-            <input type="number" name="hero[hp]" value={@hero.hp} min="1" />
-          </label>
-
-          <label>
-            AC
-            <input type="number" name="hero[ac]" value={@hero.ac} />
-          </label>
-
-          <label>
-            INT
-            <input type="number" name="hero[int]" value={@hero.int} min="3" max="18" />
-          </label>
-
-          <div class="thac0-badge" data-testid="hero-thac0">
-            <strong>THAC0</strong>
-            <span><%= @hero.thac0 %></span>
-          </div>
-        </div>
-
-        <div class="form-row">
-          <label>
-            Damage (NdM[+K])
-            <input name="hero[damage]" value={@hero.damage} />
-          </label>
-
-          <label>
-            Armor
-            <input name="hero[armor]" value={@hero.armor} />
-          </label>
-
-          <label>
-            Weapons
-            <input name="hero[weapons]" value={@hero.weapons} />
-          </label>
-        </div>
-
-        <div class="form-row">
-          <label>
-            Inventory & Gear
-            <textarea name="hero[inventory]" rows="3"><%= @hero.inventory %></textarea>
-          </label>
-        </div>
-
-        <div :if={spell_catalog(@hero.class) != []} class="char-section">
-          <h4>Arcane Spellbook</h4>
-          <div class="picker-row">
-            <select name="hero[chosen_spell]">
-              <option value="">-- choose spell --</option>
-              <option
-                :for={spell <- spell_catalog(@hero.class)}
-                value={spell}
-                selected={@hero.chosen_spell == spell}
-              ><%= spell %></option>
-            </select>
-            <button type="button" phx-click="add_spell" class="chip">Add Spell</button>
-          </div>
-          <ul class="chosen-list" :if={@hero.spells != []}>
-            <li :for={spell <- @hero.spells}>
-              <%= spell %>
-              <button
-                type="button"
-                phx-click="remove_spell"
-                phx-value-spell={spell}
-                class="chip-small"
-              >Remove</button>
-            </li>
-          </ul>
-        </div>
-
-        <div :if={prayer_catalog(@hero.class) != []} class="char-section">
-          <h4>Divine Prayers</h4>
-          <div class="picker-row">
-            <select name="hero[chosen_prayer]">
-              <option value="">-- choose prayer --</option>
-              <option
-                :for={prayer <- prayer_catalog(@hero.class)}
-                value={prayer}
-                selected={@hero.chosen_prayer == prayer}
-              ><%= prayer %></option>
-            </select>
-            <button type="button" phx-click="add_prayer" class="chip">Add Prayer</button>
-          </div>
-          <ul class="chosen-list" :if={@hero.prayers != []}>
-            <li :for={prayer <- @hero.prayers}>
-              <%= prayer %>
-              <button
-                type="button"
-                phx-click="remove_prayer"
-                phx-value-prayer={prayer}
-                class="chip-small"
-              >Remove</button>
-            </li>
-          </ul>
-        </div>
-
-        <button type="submit" class="btn-start-run" data-testid="enter-world">
-          Enter The Ruined Tower
-        </button>
       </form>
     </div>
 
-    <div :if={@slice} class="seat" data-testid="seat">
-      <div class="ribbon" data-testid="status-ribbon">
-        <%= status(@conn, @paused, @prompt, @tick) %>
+    <%!-- 2. Live Play Surface (when @pc != nil) --%>
+    <div :if={@pc != nil}>
+      <p :if={@error} class="flash-error"><%= @error %></p>
+
+      <div class="status-ribbon">
+        <span class={"dot-" <> if(@conn, do: "ok", else: "bad")}>●</span>
+        <span><%= if @conn, do: "connected", else: "reconnecting…" %></span>
+        <span>·</span>
+        <span>tick <%= @tick %></span>
+        <span>·</span>
+        <span><%= if @paused, do: "paused", else: "your move" %></span>
       </div>
 
-      <h2><%= @slice["agent"]["name"] %></h2>
+      <h2><%= (@slice && @slice["agent"] && @slice["agent"]["name"]) || @pc %></h2>
 
-      <div class="prompt" :if={@prompt} data-testid="prompt">
-        <strong>Referee asks:</strong> <%= @prompt %>
-      </div>
-
-      <div class="tabletop">
+      <div class="layout-seat tabletop">
         <%!-- Panel 1: Sensory Scene & Story Chronicle --%>
         <section class="panel scene-panel" data-testid="scene-panel">
           <div class="scene-card">
-            <h3><%= @slice["place"]["name"] %></h3>
-            <p><%= @slice["summary"] %></p>
-
-            <p :if={others(@slice) != []} class="here">
-              <strong>Here:</strong>
-              <button
-                :for={who <- others(@slice)}
-                type="button"
-                class="chip"
-                phx-click="scaffold"
-                phx-value-text={who["name"] <> " "}
-              ><%= who["name"] %></button>
+            <h3><%= (@slice && @slice["place"] && @slice["place"]["name"]) || "Awaiting location" %></h3>
+            <p :if={@slice && @slice["place"] && @slice["place"]["description"]}>
+              <%= @slice["place"]["description"] %>
             </p>
 
-            <p :if={party(@slice) != []} class="here">
-              <strong>Party:</strong>
-              <span :for={p <- party(@slice)} class="chip-static"><%= p["name"] %></span>
-            </p>
+            <div :if={@slice && believed_agents(@slice) != []} class="believed-agents">
+              <strong>Present:</strong>
+              <span :for={name <- believed_agents(@slice)} class="chip chip-agent"><%= name %></span>
+            </div>
 
-            <p :if={@slice["place"]["items"] != []} class="here">
-              <strong>Items:</strong>
-              <span :for={it <- @slice["place"]["items"]} class="chip-static"><%= it["name"] %></span>
-            </p>
-
-            <p class="exits">
+            <p :if={@slice && @slice["place"]} class="exits">
               <strong>Exits:</strong>
               <button
                 :for={e <- @slice["place"]["exits_labeled"] || []}
@@ -852,76 +661,744 @@ defmodule ClientWeb.RunLive do
                 <div><dt>Damage</dt><dd><%= sh["damage"] || "—" %></dd></div>
               </dl>
 
-              <p :if={sh["conditions"] != []} class="conditions">
-                <span :for={c <- sh["conditions"]} class="chip-static"><%= c %></span>
-              </p>
-
-              <div :if={sh["armor"] || sh["weapons"]} class="char-section">
-                <div class="char-section-title">Equipment</div>
-                <ul class="sheet-gear-list">
-                  <li :if={sh["armor"]}><span class="gear-label">Armor:</span> <%= sh["armor"] %></li>
-                  <li :if={sh["weapons"]}><span class="gear-label">Weapons:</span> <%= sh["weapons"] %></li>
-                </ul>
-              </div>
-
-              <div :if={sh["spells"]} class="char-section">
-                <div class="char-section-title" style="color: #d0a8e8;">✨ Prepared Spells</div>
-                <ul class="sheet-list">
-                  <li :for={spell <- list_or_text(sh["spells"])}><%= spell %></li>
-                </ul>
-              </div>
-
-              <div :if={sh["prayers"]} class="char-section">
-                <div class="char-section-title" style="color: #a8c8e8;">🙏 Prepared Prayers</div>
-                <ul class="sheet-list">
-                  <li :for={prayer <- list_or_text(sh["prayers"])}><%= prayer %></li>
-                </ul>
-              </div>
+              <button type="button" class="btn-full-sheet" phx-click="open_sheet_modal" data-testid="open-full-sheet">
+                📜 View Full 1E Character Sheet
+              </button>
             <% end %>
           </div>
 
           <section class="dossier panel" :if={@dossier}>
             <h3>Dossier</h3>
-            <pre><%= @dossier %></pre>
+            <p><%= @dossier %></p>
           </section>
         </section>
+      </div>
+
+      <%= if @show_sheet_modal do %>
+        <div class="sheet-modal-backdrop" data-testid="sheet-modal">
+          <div class="sheet-modal-content">
+            <div class="sheet-modal-header">
+              <h3>ADVANCED D&D ™ Player Character Record</h3>
+              <button type="button" class="sheet-modal-close" phx-click="close_sheet_modal" data-testid="close-sheet-modal">✕ Close</button>
+            </div>
+            <%= render_1e_sheet(assigns, sheet_from_slice(@hero, @slice), false) %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+    """
+  end
+
+  # Authentic 1E Character Sheet Component (Zones 1-6) -----------------------
+
+  defp render_1e_sheet(assigns, h, editable?) do
+    assigns = assign(assigns, h: h, editable?: editable?)
+
+    ~H"""
+    <div class="sheet-1e-container">
+      <input type="hidden" name="hero[spells]" value={Enum.join(@h.spells, ", ")} />
+      <input type="hidden" name="hero[prayers]" value={Enum.join(@h.prayers, ", ")} />
+
+      <%!-- Zone 1: Header --%>
+      <div class="sheet-1e-header">
+        <div>
+          <strong>PLAYER NAME:</strong>
+          <%= if @editable? do %>
+            <input name="hero[player_name]" value={@h.player_name} placeholder="Player Name" style="display:inline-block; width:140px; padding:0.2rem 0.4rem;" />
+          <% else %>
+            <span><%= @h.player_name %></span>
+          <% end %>
+        </div>
+        <div class="sheet-1e-title">ADVANCED D&D ™ Player Character Record</div>
+        <div>
+          <strong>CAMPAIGN:</strong>
+          <%= if @editable? do %>
+            <input name="hero[campaign_name]" value={@h.campaign_name} style="display:inline-block; width:130px; padding:0.2rem 0.4rem;" />
+            <strong>#</strong>
+            <input name="hero[campaign_num]" value={@h.campaign_num} style="display:inline-block; width:40px; padding:0.2rem 0.4rem;" />
+          <% else %>
+            <span><%= @h.campaign_name %> #<%= @h.campaign_num %></span>
+          <% end %>
+        </div>
+      </div>
+
+      <%!-- Zone 1: Character Identity & Movement --%>
+      <div class="sheet-grid-2col">
+        <div class="sheet-box">
+          <div class="sheet-box-title">Character Identity</div>
+          <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 0.4rem; margin-bottom: 0.4rem;">
+            <div>
+              <label>Character Name</label>
+              <%= if @editable? do %>
+                <input name="hero[name]" value={@h.name} placeholder="Character Name" data-testid="hero-name" style="font-weight:bold; font-size:1rem;" />
+              <% else %>
+                <strong style="font-size:1.1rem; color:#e8d9a8;"><%= @h.name %></strong>
+              <% end %>
+            </div>
+            <div>
+              <label>Level / XP</label>
+              <%= if @editable? do %>
+                <div style="display: flex; gap: 0.3rem;">
+                  <input type="number" name="hero[level]" value={@h.level} min="1" style="width: 50px;" />
+                  <input type="number" name="hero[xp]" value={@h.xp} min="0" placeholder="XP" />
+                </div>
+              <% else %>
+                <span>Level <%= @h.level %> (XP: <%= @h.xp %>)</span>
+              <% end %>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.4rem; margin-bottom: 0.4rem;">
+            <div>
+              <label>Class</label>
+              <%= if @editable? do %>
+                <select name="hero[class]">
+                  <option :for={c <- @classes} value={c} selected={@h.class == c}><%= c %></option>
+                </select>
+              <% else %>
+                <span><%= @h.class %></span>
+              <% end %>
+            </div>
+            <div>
+              <label>Race</label>
+              <%= if @editable? do %>
+                <select name="hero[race]">
+                  <option :for={r <- @races} value={r} selected={@h.race == r}><%= r %></option>
+                </select>
+              <% else %>
+                <span><%= @h.race %></span>
+              <% end %>
+            </div>
+            <div>
+              <label>Alignment</label>
+              <%= if @editable? do %>
+                <select name="hero[alignment]">
+                  <option :for={al <- @alignments} value={al} selected={@h.alignment == al}><%= al %></option>
+                </select>
+              <% else %>
+                <span><%= @h.alignment %></span>
+              <% end %>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; margin-bottom: 0.4rem;">
+            <div>
+              <label>Patron Deity</label>
+              <%= if @editable? do %>
+                <input name="hero[patron_deity]" value={@h.patron_deity} />
+              <% else %>
+                <span><%= @h.patron_deity %></span>
+              <% end %>
+            </div>
+            <div>
+              <label>Religion</label>
+              <%= if @editable? do %>
+                <input name="hero[religion]" value={@h.religion} />
+              <% else %>
+                <span><%= @h.religion %></span>
+              <% end %>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 0.4rem;">
+            <div>
+              <label>Place of Origin</label>
+              <%= if @editable? do %>
+                <input name="hero[place_of_origin]" value={@h.place_of_origin} />
+              <% else %>
+                <span><%= @h.place_of_origin %></span>
+              <% end %>
+            </div>
+            <div>
+              <label>Move Base</label>
+              <%= if @editable? do %>
+                <input name="hero[move_base]" value={@h.move_base} />
+              <% else %>
+                <span><%= @h.move_base %></span>
+              <% end %>
+            </div>
+          </div>
+        </div>
+
+        <%!-- Zone 3: Saving Throws & Defenses --%>
+        <div class="sheet-box">
+          <div class="sheet-box-title">Saving Throws (1E) &amp; Resistances</div>
+          <table class="sheet-table-1e" style="margin-bottom: 0.6rem;">
+            <thead>
+              <tr>
+                <th>Saving Throw Category</th>
+                <th style="text-align: center; width: 60px;">Score</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Paralyzation / Poison / Death Magic</td>
+                <td class="num"><span class="sheet-bubble"><%= @h.save_poison %></span></td>
+              </tr>
+              <tr>
+                <td>Petrification / Polymorph</td>
+                <td class="num"><span class="sheet-bubble"><%= @h.save_petrification %></span></td>
+              </tr>
+              <tr>
+                <td>Rod, Staff, or Wand</td>
+                <td class="num"><span class="sheet-bubble"><%= @h.save_wand %></span></td>
+              </tr>
+              <tr>
+                <td>Breath Weapon</td>
+                <td class="num"><span class="sheet-bubble"><%= @h.save_breath %></span></td>
+              </tr>
+              <tr>
+                <td>Spells</td>
+                <td class="num"><span class="sheet-bubble"><%= @h.save_spell %></span></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div style="font-size: 0.78rem;">
+            <div><strong>Adjustments:</strong> <%= @h.save_adjustments %></div>
+            <div><strong>Resistances:</strong> <%= @h.resistances %></div>
+            <div><strong>Detection/Vision:</strong> <%= @h.detection %></div>
+            <div><strong>Languages:</strong> <%= @h.languages %></div>
+          </div>
+        </div>
+      </div>
+
+      <%!-- Zone 2: Abilities Sub-Table Matrix --%>
+      <div class="sheet-box" style="margin-bottom: 0.8rem;">
+        <div class="sheet-box-title">Abilities &amp; Sub-Attributes Matrix</div>
+        <table class="sheet-table-1e">
+          <thead>
+            <tr>
+              <th style="width: 30px;">Abil</th>
+              <th style="width: 50px; text-align: center;">Score</th>
+              <th>Sub-Attributes &amp; Modifiers</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>S</strong></td>
+              <td class="num">
+                <%= if @editable? do %>
+                  <input type="number" name="hero[str]" value={@h.str} min="3" max="18" style="width:45px; text-align:center; padding:0.1rem;" />
+                <% else %>
+                  <%= @h.str %><%= if @h.str_percent, do: "/#{@h.str_percent}" %>
+                <% end %>
+              </td>
+              <td>
+                <span class="stat">Hit Adj: <b><%= @h.hit_adj %></b></span>
+                <span class="stat">Dam Adj: <b><%= @h.dam_adj %></b></span>
+                <span class="stat">Open Doors: <b><%= @h.open_doors %></b></span>
+                <span class="stat">Bend Bars: <b><%= @h.bend_bars %></b></span>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>I</strong></td>
+              <td class="num">
+                <%= if @editable? do %>
+                  <input type="number" name="hero[int]" value={@h.int} min="3" max="18" style="width:45px; text-align:center; padding:0.1rem;" />
+                <% else %>
+                  <%= @h.int %>
+                <% end %>
+              </td>
+              <td>
+                <span class="stat">Add Lang: <b><%= @h.add_lang %></b></span>
+                <span class="stat">% Know Spell: <b><%= @h.know_spell %></b></span>
+                <span class="stat">Min Spells: <b><%= @h.min_spells %></b></span>
+                <span class="stat">Max Spells: <b><%= @h.max_spells %></b></span>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>W</strong></td>
+              <td class="num">
+                <%= if @editable? do %>
+                  <input type="number" name="hero[wis]" value={@h.wis} min="3" max="18" style="width:45px; text-align:center; padding:0.1rem;" />
+                <% else %>
+                  <%= @h.wis %>
+                <% end %>
+              </td>
+              <td>
+                <span class="stat">Magical Atk Adj: <b><%= @h.mag_atk_adj %></b></span>
+                <span class="stat">Spell Bonus: <b><%= @h.spell_bonus %></b></span>
+                <span class="stat">% Spell Failure: <b><%= @h.spell_failure %></b></span>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>D</strong></td>
+              <td class="num">
+                <%= if @editable? do %>
+                  <input type="number" name="hero[dex]" value={@h.dex} min="3" max="18" style="width:45px; text-align:center; padding:0.1rem;" />
+                <% else %>
+                  <%= @h.dex %>
+                <% end %>
+              </td>
+              <td>
+                <span class="stat">Reaction Adj: <b><%= @h.react_adj %></b></span>
+                <span class="stat">Missile Adj: <b><%= @h.missile_adj %></b></span>
+                <span class="stat">Defense Adj: <b><%= @h.def_adj %></b></span>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>C</strong></td>
+              <td class="num">
+                <%= if @editable? do %>
+                  <input type="number" name="hero[con]" value={@h.con} min="3" max="18" style="width:45px; text-align:center; padding:0.1rem;" />
+                <% else %>
+                  <%= @h.con %>
+                <% end %>
+              </td>
+              <td>
+                <span class="stat">HP Adj: <b><%= @h.hp_adj %></b></span>
+                <span class="stat">System Shock: <b><%= @h.system_shock %></b></span>
+                <span class="stat">Resurrect Survival: <b><%= @h.resurrect_survival %></b></span>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>CH</strong></td>
+              <td class="num">
+                <%= if @editable? do %>
+                  <input type="number" name="hero[cha]" value={@h.cha} min="3" max="18" style="width:45px; text-align:center; padding:0.1rem;" />
+                <% else %>
+                  <%= @h.cha %>
+                <% end %>
+              </td>
+              <td>
+                <span class="stat">Max Henchmen: <b><%= @h.max_henchmen %></b></span>
+                <span class="stat">Loyalty Base: <b><%= @h.loyalty_base %></b></span>
+                <span class="stat">Reaction Adj: <b><%= @h.react_cha_adj %></b></span>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>CM</strong></td>
+              <td class="num">
+                <%= if @editable? do %>
+                  <input type="number" name="hero[com]" value={@h.com} min="3" max="18" style="width:45px; text-align:center; padding:0.1rem;" />
+                <% else %>
+                  <%= @h.com %>
+                <% end %>
+              </td>
+              <td>
+                <span class="stat">Reaction Response: <b><%= @h.com_response %></b></span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <%!-- Zone 4: Combat Vitals & Armor Class --%>
+      <div class="sheet-grid-2col">
+        <div class="sheet-box">
+          <div class="sheet-box-title">Armor Class (AC)</div>
+          <div style="display: flex; gap: 0.8rem; align-items: center;">
+            <div class="sheet-shield">
+              <div style="font-size: 0.7rem; color: #8fb7e8;">ARMOR CLASS</div>
+              <%= if @editable? do %>
+                <input type="number" name="hero[ac]" value={@h.ac} style="width: 50px; text-align: center; font-weight: bold; font-size: 1.1rem;" />
+              <% else %>
+                <div class="ac-val"><%= @h.ac %></div>
+              <% end %>
+            </div>
+            <div style="font-size: 0.8rem; flex: 1;">
+              <div>
+                <strong>Armor Worn:</strong>
+                <%= if @editable? do %>
+                  <input name="hero[armor]" value={@h.armor} placeholder="e.g. Chain mail &amp; Shield" />
+                <% else %>
+                  <span><%= @h.armor %></span>
+                <% end %>
+              </div>
+              <div style="margin-top: 0.3rem;">
+                <span class="stat">Base: <b><%= @h.ac_base %></b></span>
+                <span class="stat">Dex: <b><%= @h.dex_ac_adj %></b></span>
+                <span class="stat">Shieldless: <b><%= @h.shieldless_ac %></b></span>
+                <span class="stat">Rear: <b><%= @h.rear_ac %></b></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sheet-box">
+          <div class="sheet-box-title">Hit Points &amp; Combat Vitals</div>
+          <div style="display: flex; gap: 0.8rem; align-items: center;">
+            <div class="sheet-shield" style="border-color: #e88f8f; background: #2e1c1c;">
+              <div style="font-size: 0.7rem; color: #e88f8f;">HIT POINTS</div>
+              <%= if @editable? do %>
+                <input type="number" name="hero[hp]" value={@h.hp} min="1" style="width: 50px; text-align: center; font-weight: bold; font-size: 1.1rem; color: #e88f8f;" />
+              <% else %>
+                <div class="ac-val" style="color: #e88f8f;"><%= @h.hp %></div>
+              <% end %>
+            </div>
+            <div style="font-size: 0.8rem; flex: 1;">
+              <div>
+                <span class="stat">Max HP: <b><%= @h.hp_max %></b></span>
+                <span class="stat">Hit Die: <b><%= @h.hit_die %></b></span>
+                <span class="stat">Const Adj: <b><%= @h.hp_adj %></b></span>
+              </div>
+              <div style="margin-top: 0.3rem;">
+                <span class="stat">Surprise: <b><%= @h.surprise_mod %></b></span>
+                <span class="stat">Rear Atk: <b><%= @h.rear_attack_adj %></b></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <%!-- Zone 5: Weapons & To-Hit Matrix (AC 10..2) --%>
+      <div class="sheet-box" style="margin-bottom: 0.8rem;">
+        <div class="sheet-box-title">Weapons &amp; To-Hit Armor Class Matrix (DMG p. 74)</div>
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 0.5rem; margin-bottom: 0.5rem;">
+          <div>
+            <label>Weapons Carried</label>
+            <%= if @editable? do %>
+              <input name="hero[weapons]" value={@h.weapons} placeholder="e.g. Longsword (1d8), Dagger (1d4)" />
+            <% else %>
+              <span><%= @h.weapons %></span>
+            <% end %>
+          </div>
+          <div>
+            <label>Primary Damage (NdM[+K])</label>
+            <%= if @editable? do %>
+              <input name="hero[damage]" value={@h.damage} placeholder="1d8" />
+            <% else %>
+              <span><%= @h.damage %></span>
+            <% end %>
+          </div>
+        </div>
+        <table class="sheet-matrix-1e" style="margin-bottom: 0.6rem;">
+          <thead>
+            <tr>
+              <th style="text-align: left;">WEAPON</th>
+              <th>MAG</th>
+              <th>RANGE / SPEED</th>
+              <th :for={ac <- 10..2//-1}>AC <%= ac %></th>
+              <th>DAM (S-M)</th>
+              <th>DAM (L)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="text-align: left; font-weight: bold;"><%= @h.weapon_in_hand %></td>
+              <td>+0</td>
+              <td><%= if @h.class == "Fighter", do: "4' / Spd 5", else: "3' / Spd 3" %></td>
+              <td :for={ac <- 10..2//-1} style="font-weight: bold; color: #e8d9a8;"><%= @h.to_hit_matrix[ac] %></td>
+              <td><%= @h.damage %></td>
+              <td>1d12</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="font-size: 0.78rem; display: flex; gap: 0.8rem; flex-wrap: wrap;">
+          <div><strong>Weaponless Combat:</strong></div>
+          <span class="stat">Pummeling: Atk <b><%= @h.pummeling_atk %></b> / Dam <b><%= @h.pummeling_dam %></b></span>
+          <span class="stat">Grappling: Atk <b><%= @h.grappling_atk %></b> / Dam <b><%= @h.grappling_dam %></b></span>
+          <span class="stat">Overbearing: Atk <b><%= @h.overbearing_atk %></b> / Dam <b><%= @h.overbearing_dam %></b></span>
+        </div>
+      </div>
+
+      <%!-- Zone 6: Dynamic Class-Specific Bottom Zones --%>
+      <%= case @h.class do %>
+        <% c when c in ["Cleric", "Druid"] -> %>
+          <div class="sheet-box">
+            <div class="sheet-box-title">Cleric / Druid Record &amp; Turning Undead</div>
+            <div style="display: flex; gap: 0.6rem; margin-bottom: 0.5rem; font-size: 0.8rem;">
+              <span class="stat">Status: <b><%= @h.church_status %></b></span>
+              <span class="stat">Parish: <b><%= @h.parish %></b></span>
+              <span class="stat">Holy Symbol: <b><%= @h.holy_symbol %></b></span>
+            </div>
+
+            <div style="margin-bottom: 0.5rem;">
+              <div style="font-size: 0.75rem; color: #a8c8e8; margin-bottom: 0.2rem;">TURNING UNDEAD TABLE (1E DMG p. 65):</div>
+              <table class="sheet-matrix-1e">
+                <thead>
+                  <tr>
+                    <th>Skel</th><th>Zomb</th><th>Ghoul</th><th>Shadow</th><th>Wight</th><th>Ghast</th><th>Wraith</th><th>Mummy</th><th>Spec</th><th>Vamp</th><th>Ghost</th><th>Lich</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><%= @h.turning_table.skeleton %></td>
+                    <td><%= @h.turning_table.zombie %></td>
+                    <td><%= @h.turning_table.ghoul %></td>
+                    <td><%= @h.turning_table.shadow %></td>
+                    <td><%= @h.turning_table.wight %></td>
+                    <td><%= @h.turning_table.ghast %></td>
+                    <td><%= @h.turning_table.wraith %></td>
+                    <td><%= @h.turning_table.mummy %></td>
+                    <td><%= @h.turning_table.spectre %></td>
+                    <td><%= @h.turning_table.vampire %></td>
+                    <td><%= @h.turning_table.ghost %></td>
+                    <td><%= @h.turning_table.lich %></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div :if={prayer_catalog(@h.class) != []}>
+              <div style="font-size: 0.75rem; color: #a8c8e8; margin-bottom: 0.2rem;">DIVINE PRAYERS PREPARED:</div>
+              <div :if={@editable?} class="picker-row" style="margin-bottom: 0.4rem;">
+                <select name="hero[chosen_prayer]">
+                  <option value="">-- choose prayer --</option>
+                  <option :for={pr <- prayer_catalog(@h.class)} value={pr} selected={@h.chosen_prayer == pr}><%= pr %></option>
+                </select>
+                <button type="button" phx-click="add_prayer" class="chip">Add Prayer</button>
+              </div>
+              <ul class="chosen-list" :if={@h.prayers != []}>
+                <li :for={pr <- @h.prayers}>
+                  🙏 <%= pr %>
+                  <button :if={@editable?} type="button" phx-click="remove_prayer" phx-value-prayer={pr} class="chip-small">Remove</button>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+        <% c when c in ["Thief", "Assassin", "Monk"] -> %>
+          <div class="sheet-box">
+            <div class="sheet-box-title">Rogue Record &amp; Thieving Skills (1E PHB p. 28)</div>
+            <div style="display: flex; gap: 0.6rem; margin-bottom: 0.5rem; font-size: 0.8rem;">
+              <span class="stat">Guild: <b><%= @h.guild_order %></b></span>
+              <span class="stat">Rank: <b><%= @h.guild_rank %></b></span>
+              <span class="stat">Superior: <b><%= @h.superior %></b></span>
+              <span class="stat">Contacts: <b><%= @h.contacts %></b></span>
+            </div>
+
+            <div>
+              <table class="sheet-matrix-1e">
+                <thead>
+                  <tr>
+                    <th>PICK POCKETS</th><th>OPEN LOCKS</th><th>FIND TRAPS</th><th>MOVE SILENT</th><th>HIDE SHADOWS</th><th>HEAR NOISE</th><th>CLIMB WALLS</th><th>READ LANG</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="num"><%= @h.thieving_skills.pick_pockets %></td>
+                    <td class="num"><%= @h.thieving_skills.open_locks %></td>
+                    <td class="num"><%= @h.thieving_skills.find_traps %></td>
+                    <td class="num"><%= @h.thieving_skills.move_silently %></td>
+                    <td class="num"><%= @h.thieving_skills.hide_in_shadows %></td>
+                    <td class="num"><%= @h.thieving_skills.hear_noise %></td>
+                    <td class="num"><%= @h.thieving_skills.climb_walls %></td>
+                    <td class="num"><%= @h.thieving_skills.read_languages %></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        <% c when c in ["Magic-User", "Illusionist"] -> %>
+          <div class="sheet-box">
+            <div class="sheet-box-title">Arcane Spellbook &amp; Memorization Record</div>
+            <div style="display: flex; gap: 0.6rem; margin-bottom: 0.5rem; font-size: 0.8rem;">
+              <span class="stat">Master: <b><%= @h.master %></b></span>
+              <span class="stat">School: <b><%= @h.school %></b></span>
+              <span class="stat">Familiar: <b><%= @h.familiar %></b></span>
+            </div>
+
+            <div :if={spell_catalog(@h.class) != []}>
+              <div :if={@editable?} class="picker-row" style="margin-bottom: 0.4rem;">
+                <select name="hero[chosen_spell]">
+                  <option value="">-- choose spell --</option>
+                  <option :for={sp <- spell_catalog(@h.class)} value={sp} selected={@h.chosen_spell == sp}><%= sp %></option>
+                </select>
+                <button type="button" phx-click="add_spell" class="chip">Add Spell</button>
+              </div>
+              <ul class="chosen-list" :if={@h.spells != []}>
+                <li :for={sp <- @h.spells}>
+                  ✨ <%= sp %>
+                  <button :if={@editable?} type="button" phx-click="remove_spell" phx-value-spell={sp} class="chip-small">Remove</button>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+        <% _ -> %>
+          <div class="sheet-box">
+            <div class="sheet-box-title">Warrior Record &amp; Mount / Companions</div>
+            <div style="display: flex; gap: 0.6rem; margin-bottom: 0.5rem; font-size: 0.8rem;">
+              <span class="stat"># Attacks: <b><%= @h.num_attacks %></b></span>
+              <span class="stat">Morale Mod: <b><%= @h.morale_modifier %></b></span>
+              <span class="stat">Patron: <b><%= @h.patron %></b></span>
+              <span class="stat">Special: <b><%= @h.special_abilities %></b></span>
+            </div>
+            <div style="font-size: 0.8rem;">
+              <strong>MOUNT:</strong> <%= @h.mount_name %> (<%= @h.mount_type %>) — HD <%= @h.mount_hd %>, AC <%= @h.mount_ac %>, HP <%= @h.mount_hp %>, Damage <%= @h.mount_damage %>
+            </div>
+          </div>
+      <% end %>
+
+      <%!-- Equipment & Inventory Textarea (for custom notes) --%>
+      <div style="margin-top: 0.8rem;">
+        <label>Initial Inventory &amp; Backpack Supplies</label>
+        <%= if @editable? do %>
+          <textarea name="hero[inventory]" rows="2"><%= @h.inventory %></textarea>
+        <% else %>
+          <p style="font-size:0.85rem; color:#b9c2cf;"><%= @h.inventory %></p>
+        <% end %>
       </div>
     </div>
     """
   end
 
-  ## Internals
+  # Helpers -----------------------------------------------------------------
 
   defp default_hero do
+    str = 16
+    int = 13
+    wis = 11
+    dex = 15
+    con = 15
+    cha = 12
+    com = 10
+    class = "Fighter"
+    level = 1
+    race = "Human"
+
+    s_sub = SheetTables.strength_substats(str)
+    i_sub = SheetTables.intelligence_substats(int)
+    w_sub = SheetTables.wisdom_substats(wis)
+    d_sub = SheetTables.dexterity_substats(dex)
+    c_sub = SheetTables.constitution_substats(con, class)
+    ch_sub = SheetTables.charisma_substats(cha)
+    cm_sub = SheetTables.comeliness_substats(com)
+    saves = SheetTables.saving_throws(class, level)
+    to_hit = SheetTables.to_hit_matrix(class, level)
+    thief_skills = SheetTables.thieving_skills(class, level, race, dex)
+    turning = SheetTables.turning_table(level)
+
     %{
+      player_name: "",
+      campaign_name: "The Shattered Kingdoms",
+      campaign_num: "1",
+      date_began: "2026-08-25",
       name: "",
-      race: "Human",
-      class: "Fighter",
-      level: 1,
+      race: race,
+      class: class,
+      level: level,
       xp: 0,
-      int: 10,
-      hp: 1,
-      ac: 10,
+      alignment: "Neutral Good",
+      patron_deity: "Saint Cuthbert",
+      religion: "Orthodox",
+      place_of_origin: "Mara's Inn, Thornhollow",
+      move_base: "12\"",
+      movement_notes: "",
+      str: str,
+      str_percent: nil,
+      hit_adj: s_sub.hit_adj,
+      dam_adj: s_sub.dam_adj,
+      open_doors: s_sub.open_doors,
+      bend_bars: s_sub.bend_bars,
+      int: int,
+      add_lang: i_sub.add_lang,
+      know_spell: i_sub.know_spell,
+      min_spells: i_sub.min_spells,
+      max_spells: i_sub.max_spells,
+      wis: wis,
+      mag_atk_adj: w_sub.mag_atk_adj,
+      spell_bonus: w_sub.spell_bonus,
+      spell_failure: w_sub.spell_failure,
+      dex: dex,
+      react_adj: d_sub.react_adj,
+      missile_adj: d_sub.missile_adj,
+      def_adj: d_sub.def_adj,
+      con: con,
+      hp_adj: c_sub.hp_adj,
+      system_shock: c_sub.system_shock,
+      resurrect_survival: c_sub.resurrect_survival,
+      cha: cha,
+      max_henchmen: ch_sub.max_henchmen,
+      loyalty_base: ch_sub.loyalty_base,
+      react_cha_adj: ch_sub.react_adj,
+      com: com,
+      com_response: cm_sub.response,
+      save_poison: saves.poison,
+      save_petrification: saves.petrification,
+      save_wand: saves.wand,
+      save_breath: saves.breath,
+      save_spell: saves.spell,
+      save_adjustments: "None",
+      resistances: "None",
+      detection: "Normal (60' infravision)",
+      languages: "Common, Alignment",
       thac0: 20,
+      ac: 4,
+      ac_base: 5,
+      armor: "Chain mail & Shield",
+      dex_ac_adj: "-1",
+      mag_ac_adj: "0",
+      shieldless_ac: 5,
+      rear_ac: 6,
+      armor_condition: "Good",
+      hp: 12,
+      hp_max: 12,
+      hit_die: "d10",
+      wounds: 0,
+      surprise_mod: "1-2 on d6",
+      dex_surprise_adj: "0",
+      rear_attack_adj: "-2",
+      weapons_proficiency: "Longsword, Dagger, Shortbow",
+      num_proficiencies: 3,
+      non_prof_penalty: "-2",
+      to_hit_adj_total: "+0",
+      damage_adj_total: "+1",
+      weapon_in_hand: "Longsword",
+      weapons: "Longsword (1d8), Dagger (1d4), Shortbow (1d6)",
       damage: "1d8",
-      armor: "",
-      weapons: "",
-      inventory: "",
+      to_hit_matrix: to_hit,
+      pummeling_atk: "+0",
+      pummeling_dam: "1d2",
+      pummeling_def: "0",
+      grappling_atk: "+0",
+      grappling_dam: "1d1",
+      grappling_def: "0",
+      overbearing_atk: "+0",
+      overbearing_dam: "None",
+      overbearing_def: "0",
+      inventory: "Backpack, 50ft rope, 3 torches, rations (7 days), waterskin, 12 gp",
       spells: [],
       prayers: [],
       chosen_spell: "",
-      chosen_prayer: ""
+      chosen_prayer: "",
+      church_status: "Acolyte",
+      church_influence: "Local",
+      tithes_percent: "10%",
+      parish: "Saint Cuthbert of Thornhollow",
+      holy_symbol: "Wooden Sun Amulet",
+      turning_table: turning,
+      num_attacks: "1/1",
+      morale_modifier: "+1",
+      patron: "Mayor Grevik of Thornhollow",
+      special_abilities: "Weapon Specialization",
+      mount_name: "Brutus",
+      mount_type: "Heavy Warhorse",
+      mount_hd: "3+3",
+      mount_ac: "7",
+      mount_hp: "18",
+      mount_damage: "1d8",
+      master: "Vaelith the Mirage-Weaver",
+      school: "Illusion / Phantasm",
+      familiar: "None",
+      magic_components: "Component pouch, ink, parchment",
+      guild_order: "Thornhollow Shadow Ring",
+      guild_rank: "Footpad",
+      superior: "Black Jack",
+      contacts: "Willem the Miller (Farmer)",
+      disguises_tools: "Lockpicks, Grappling Hook",
+      thieving_skills: thief_skills
     }
   end
 
   defp update_hero(hero, params) do
     parsed =
       Enum.reduce(params, hero, fn {key, value}, acc ->
-        atom = String.to_existing_atom(key)
+        atom =
+          try do
+            String.to_existing_atom(key)
+          rescue
+            ArgumentError -> String.to_atom(key)
+          end
 
         value =
           case atom do
-            a when a in [:level, :xp, :hp, :ac, :int] -> parse_int(value, Map.get(acc, atom))
+            a when a in [:level, :xp, :hp, :ac, :str, :int, :wis, :dex, :con, :cha, :com] ->
+              parse_int(value, Map.get(acc, atom))
+
             :spells -> list_of_strings(value)
             :prayers -> list_of_strings(value)
             _ -> value
@@ -930,8 +1407,79 @@ defmodule ClientWeb.RunLive do
         Map.put(acc, atom, value)
       end)
 
+    # Recompute derived 1E stats
+    s_sub = SheetTables.strength_substats(parsed[:str] || 10, parsed[:str_percent])
+    i_sub = SheetTables.intelligence_substats(parsed[:int] || 10)
+    w_sub = SheetTables.wisdom_substats(parsed[:wis] || 10)
+    d_sub = SheetTables.dexterity_substats(parsed[:dex] || 10)
+    c_sub = SheetTables.constitution_substats(parsed[:con] || 10, parsed.class)
+    ch_sub = SheetTables.charisma_substats(parsed[:cha] || 10)
+    cm_sub = SheetTables.comeliness_substats(parsed[:com] || 10)
+    saves = SheetTables.saving_throws(parsed.class, parsed.level)
+    to_hit = SheetTables.to_hit_matrix(parsed.class, parsed.level)
+    thief_skills = SheetTables.thieving_skills(parsed.class, parsed.level, parsed.race, parsed[:dex] || 10)
+    turning = SheetTables.turning_table(parsed.level)
     thac0 = PC.calculate_thac0(parsed.class, parsed.level)
-    %{parsed | thac0: thac0}
+
+    parsed
+    |> Map.merge(%{
+      thac0: thac0,
+      hit_adj: s_sub.hit_adj,
+      dam_adj: s_sub.dam_adj,
+      open_doors: s_sub.open_doors,
+      bend_bars: s_sub.bend_bars,
+      add_lang: i_sub.add_lang,
+      know_spell: i_sub.know_spell,
+      min_spells: i_sub.min_spells,
+      max_spells: i_sub.max_spells,
+      mag_atk_adj: w_sub.mag_atk_adj,
+      spell_bonus: w_sub.spell_bonus,
+      spell_failure: w_sub.spell_failure,
+      react_adj: d_sub.react_adj,
+      missile_adj: d_sub.missile_adj,
+      def_adj: d_sub.def_adj,
+      hp_adj: c_sub.hp_adj,
+      system_shock: c_sub.system_shock,
+      resurrect_survival: c_sub.resurrect_survival,
+      max_henchmen: ch_sub.max_henchmen,
+      loyalty_base: ch_sub.loyalty_base,
+      react_cha_adj: ch_sub.react_adj,
+      com_response: cm_sub.response,
+      save_poison: saves.poison,
+      save_petrification: saves.petrification,
+      save_wand: saves.wand,
+      save_breath: saves.breath,
+      save_spell: saves.spell,
+      to_hit_matrix: to_hit,
+      turning_table: turning,
+      thieving_skills: thief_skills
+    })
+  end
+
+  defp sheet_from_slice(hero, slice) do
+    if slice && slice["sheet"] do
+      sh = slice["sheet"]
+      %{
+        hero
+        | name: (slice["agent"] && slice["agent"]["name"]) || hero.name,
+          race: sh["race"] || hero.race,
+          class: sh["class"] || hero.class,
+          level: sh["level"] || hero.level,
+          xp: sh["xp"] || hero.xp,
+          hp: sh["hp"] || hero.hp,
+          hp_max: sh["hp_max"] || hero.hp_max,
+          ac: sh["ac"] || hero.ac,
+          thac0: sh["thac0"] || hero.thac0,
+          damage: sh["damage"] || hero.damage,
+          armor: sh["armor"] || hero.armor,
+          weapons: sh["weapons"] || hero.weapons,
+          inventory: sh["inventory"] || hero.inventory,
+          spells: list_or_text(sh["spells"] || hero.spells),
+          prayers: list_or_text(sh["prayers"] || hero.prayers)
+      }
+    else
+      hero
+    end
   end
 
   defp parse_int(value, fallback) when is_binary(value) do
@@ -979,7 +1527,6 @@ defmodule ClientWeb.RunLive do
 
   defp add_spell(hero) do
     spell = String.trim(hero.chosen_spell)
-
     if spell != "" and spell not in hero.spells do
       %{hero | spells: hero.spells ++ [spell]}
     else
@@ -989,7 +1536,6 @@ defmodule ClientWeb.RunLive do
 
   defp add_prayer(hero) do
     prayer = String.trim(hero.chosen_prayer)
-
     if prayer != "" and prayer not in hero.prayers do
       %{hero | prayers: hero.prayers ++ [prayer]}
     else
@@ -997,103 +1543,74 @@ defmodule ClientWeb.RunLive do
     end
   end
 
+  defp spell_catalog(class) when class in ["Magic-User", "Illusionist"] do
+    case class do
+      "Magic-User" -> @mu_spells_1 ++ @mu_spells_2
+      "Illusionist" -> @illusionist_spells_1 ++ @illusionist_spells_2
+    end
+  end
+
+  defp spell_catalog(_), do: []
+
+  defp prayer_catalog(class) when class in ["Cleric", "Druid"] do
+    case class do
+      "Cleric" -> @cleric_prayers_1 ++ @cleric_prayers_2
+      "Druid" -> @druid_prayers_1 ++ @druid_prayers_2
+    end
+  end
+
+  defp prayer_catalog(_), do: []
+
   defp first([h | _]), do: h
   defp first(_), do: ""
 
-  defp spell_catalog(class) do
-    case normalize_class(class) do
-      "magic-user" -> @mu_spells_1 ++ @mu_spells_2
-      "illusionist" -> @illusionist_spells_1 ++ @illusionist_spells_2
-      _ -> []
-    end
-  end
-
-  defp prayer_catalog(class) do
-    case normalize_class(class) do
-      "cleric" -> @cleric_prayers_1 ++ @cleric_prayers_2
-      "druid" -> @druid_prayers_1 ++ @druid_prayers_2
-      _ -> []
-    end
-  end
-
-  defp normalize_class(class) when is_binary(class) do
-    class |> String.downcase() |> String.trim()
-  end
-
-  defp normalize_class(_), do: ""
-
   defp slug_for_testid(name) do
-    name |> String.downcase() |> String.replace(~r/[^a-z0-9]+/, "-") |> String.trim("-")
-  end
-
-  defp wire_url, do: Application.get_env(:client_web, :wire_url)
-
-  defp monitor_conn(%{assigns: %{conn: conn}} = socket) when is_pid(conn) do
-    Process.monitor(conn)
-    socket
-  end
-
-  defp log_row(kind, text),
-    do: %{id: "row-#{kind}-#{System.unique_integer([:positive])}", kind: kind, text: text}
-
-  defp system_row(socket, text), do: stream_insert(socket, :log, log_row("system", text))
-
-  # Other player-owned agents among the believed (truth-barrier-safe party
-  # rail, UX spec §4): names only, own seat excluded.
-  defp party(slice) do
-    me = slice["agent"]["id"]
-
-    slice["believed_agents"]
-    |> Enum.filter(&(&1["pc"] == true and &1["id"] != me))
-  end
-
-  # Everything believed here except the seated player themselves — the
-  # mover perceives their own arrival, but "Here:" reads as who else is here.
-  defp others(slice) do
-    me = slice["agent"]["id"]
-    Enum.reject(slice["believed_agents"], &(&1["id"] == me))
+    name
+    |> String.downcase()
+    |> String.replace(~r/[^a-z0-9]+/, "-")
+    |> String.trim("-")
   end
 
   defp verb_palette, do: @verb_palette
 
-  defp first_run_hint,
-    do: ~s(Describe what you do — specifics beat dice. Try: "search the crate" or "north".)
+  defp first_run_hint do
+    "Describe what you do — specifics beat dice. Try: \"search the crate\" or \"north\"."
+  end
 
-  defp status(nil, _paused?, _prompt?, _tick), do: "disconnected — reconnecting…"
-  defp status(_conn, true, _prompt?, _tick), do: "paused by GM"
-  defp status(_conn, _paused?, prompt, _tick) when is_binary(prompt), do: "answer needed"
-  defp status(_conn, _paused?, _prompt?, tick), do: "connected · tick #{tick} · your move"
+  defp log_row(kind, text) do
+    %{
+      id: "log-#{System.unique_integer([:positive])}",
+      kind: kind,
+      text: text
+    }
+  end
 
-  defp list_or_text(value) when is_list(value), do: value
-  defp list_or_text(value) when is_binary(value) do
-    value
-    |> String.split(",")
-    |> Enum.map(&String.trim/1)
-    |> Enum.reject(&(&1 == ""))
+  defp believed_agents(slice) do
+    (slice["believed_agents"] || slice["believed"] || [])
+    |> Enum.map(fn
+      %{"name" => name} -> name
+      %{name: name} -> name
+      name when is_binary(name) -> name
+      _ -> nil
+    end)
+    |> Enum.reject(&is_nil/1)
+  end
+  defp hp_percent(_), do: 0
+
+  defp list_or_text(list) when is_list(list), do: list
+  defp list_or_text(text) when is_binary(text) do
+    text |> String.split(",") |> Enum.map(&String.trim/1) |> Enum.reject(&(&1 == ""))
   end
   defp list_or_text(_), do: []
 
-  defp hp_percent(%{"hp" => hp, "hp_max" => hp_max})
-       when is_number(hp) and is_number(hp_max) and hp_max > 0,
-       do: hp |> max(0) |> Kernel.min(hp_max) |> Kernel.*(100) |> Kernel.div(hp_max) |> min(100)
-
-  defp hp_percent(_), do: 100
-
-  # Dice tray rendering (UX spec §4): never inspect/1 at the player.
-  defp render_dice(%{"purpose" => purpose} = p) when is_map(p) do
-    base =
-      case p do
-        %{"sides" => sides, "roll" => roll} -> "🎲 #{purpose}: d#{sides} → #{roll}"
-        _ -> "🎲 #{purpose}"
-      end
-
-    case p do
-      %{"hit" => true} -> "#{base} — hit"
-      %{"hit" => false} -> "#{base} — miss"
-      %{"amount" => amount} -> "#{base} — #{amount} damage"
-      _ -> base
-    end
+  defp wire_url do
+    System.get_env("WIRE_URL") || Application.get_env(:client_web, :wire_url) || "ws://127.0.0.1:4000"
   end
 
-  defp render_dice(_), do: "🎲 the referee rolls…"
+  defp monitor_conn(socket) do
+    if is_pid(socket.assigns.conn) do
+      Process.monitor(socket.assigns.conn)
+    end
+    socket
+  end
 end
