@@ -58,9 +58,7 @@ defmodule Agents.Prompt do
       |> maybe_dossier_line("Role", dossier_field(dossier, :role))
       |> maybe_dossier_line("Personality", dossier_field(dossier, :personality))
       |> maybe_dossier_line("Goals", dossier_field(dossier, :goals))
-      |> maybe_dossier_line("Knowledge / Rumors",
-           dossier_field(dossier, :knowledge) || dossier_field(dossier, :rumors))
-
+      |> maybe_dossier_line("Knowledge / Rumors", combined_knowledge_rumors(dossier))
     if Enum.empty?(lines), do: nil, else: Enum.join(lines, "\n")
   end
 
@@ -76,6 +74,20 @@ defmodule Agents.Prompt do
   end
   defp maybe_dossier_line(lines, label, value) do
     lines ++ ["#{label}: #{value}"]
+  end
+  defp combined_knowledge_rumors(dossier) do
+    k = dossier_field(dossier, :knowledge)
+    r = dossier_field(dossier, :rumors)
+
+    cond do
+      is_list(k) and is_list(r) and (k != [] or r != []) -> k ++ r
+      is_list(k) and k != [] -> k
+      is_list(r) and r != [] -> r
+      is_binary(k) and k != "" and is_binary(r) and r != "" -> "#{k}; #{r}"
+      is_binary(k) and k != "" -> k
+      is_binary(r) and r != "" -> r
+      true -> nil
+    end
   end
 
   @doc """

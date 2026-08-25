@@ -95,4 +95,22 @@ defmodule Agents.DeliberateTest do
     assert d.request.user =~ "Goals: protect the treasure; drive off intruders"
     assert d.request.user =~ "Knowledge / Rumors: pc_thistle is a thief; the back exit leads east"
   end
+
+  test "prompt formats string-keyed dossier with empty knowledge falling back to rumors" do
+    dossier = %{
+      "role" => "Innkeeper",
+      "personality" => "Warm",
+      "goals" => ["Serve ale"],
+      "knowledge" => [],
+      "rumors" => ["Vaelith's ghost haunts the tower"]
+    }
+    entry = ~s({"verb":"wait","reason":"biding"})
+    {:ok, d} = Agents.deliberate("grisk_the_snatcher",
+      %{slice: slice("grisk_the_snatcher", %{dossier: dossier}), ctx: ctx([entry])})
+
+    assert d.request.user =~ "Role: Innkeeper"
+    assert d.request.user =~ "Personality: Warm"
+    assert d.request.user =~ "Goals: Serve ale"
+    assert d.request.user =~ "Knowledge / Rumors: Vaelith's ghost haunts the tower"
+  end
 end

@@ -25,6 +25,7 @@ defmodule EngineCore.Validator do
 
     errors =
       monster_errors(yaml) ++
+        duplicate_actor_errors(yaml) ++
         text_errors(yaml) ++
         room_errors(yaml) ++
         starting_place_errors(yaml, rooms_set) ++
@@ -46,21 +47,10 @@ defmodule EngineCore.Validator do
     |> Enum.flat_map(fn key ->
       case yaml[key] do
         enemies when is_map(enemies) ->
-          Enum.flat_map(Map.values(enemies), fn m ->
-            if is_map(m) do
-              id = m["id"] || "?"
+          validate_actor_list(Map.values(enemies))
 
-              Enum.flat_map(@monster_req, fn k ->
-                if Map.has_key?(m, k) do
-                  []
-                else
-                  ["monster #{id}: missing #{k}"]
-                end
-              end)
-            else
-              []
-            end
-          end)
+        enemies when is_list(enemies) ->
+          validate_actor_list(enemies)
 
         _ ->
           []
@@ -77,6 +67,50 @@ defmodule EngineCore.Validator do
       errors ->
         errors
     end
+  end
+
+  defp validate_actor_list(list) when is_list(list) do
+    Enum.flat_map(list, fn m ->
+      if is_map(m) do
+        id = m["id"] || "?"
+
+        Enum.flat_map(@monster_req, fn k ->
+          if Map.has_key?(m, k) do
+            []
+          else
+            ["monster #{id}: missing #{k}"]
+          end
+        end)
+      else
+        []
+      end
+    end)
+  end
+
+  defp duplicate_actor_errors(yaml) when is_map(yaml) do
+    ids =
+      @actor_keys
+      |> Enum.flat_map(fn key ->
+        case yaml[key] do
+          enemies when is_map(enemies) ->
+            Enum.map(Map.values(enemies), fn m -> if is_map(m), do: m["id"], else: nil end)
+
+          enemies when is_list(enemies) ->
+            Enum.map(enemies, fn m -> if is_map(m), do: m["id"], else: nil end)
+
+          _ ->
+            []
+        end
+      end)
+      |> Enum.filter(&is_binary/1)
+
+    duplicates =
+      ids
+      |> Enum.frequencies()
+      |> Enum.filter(fn {_id, count} -> count > 1 end)
+      |> Enum.map(fn {id, _count} -> "duplicate agent id: #{id}" end)
+
+    duplicates
   end
 
   defp text_errors(yaml) do

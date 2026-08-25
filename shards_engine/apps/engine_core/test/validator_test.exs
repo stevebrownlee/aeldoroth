@@ -128,4 +128,53 @@ defmodule EngineCore.ValidatorTest do
 
     assert "commitment c1: unknown debtor ghost" in errs4
   end
+
+  test "validates required attributes on list-form initial_actors and catches missing fields" do
+    raw = %{
+      "rooms" => %{"r1" => %{"id" => "r1"}},
+      "starting_place" => "r1",
+      "initial_actors" => [
+        %{"id" => "a1", "name" => "Actor 1"} # missing hit_dice, hit_points, armor_class, thac0, morale, current_room_id
+      ]
+    }
+
+    assert {:error, errs} = EngineCore.Validator.check(raw)
+    assert "monster a1: missing hit_dice" in errs
+    assert "monster a1: missing hit_points" in errs
+    assert "monster a1: missing current_room_id" in errs
+  end
+
+  test "detects duplicate agent IDs declared across actor keys" do
+    raw = %{
+      "rooms" => %{"r1" => %{"id" => "r1"}},
+      "starting_place" => "r1",
+      "initial_actors" => %{
+        "mara" => %{
+          "id" => "mara",
+          "name" => "Mara",
+          "hit_dice" => 1,
+          "hit_points" => 6,
+          "armor_class" => 10,
+          "thac0" => 20,
+          "morale" => 8,
+          "current_room_id" => "r1"
+        }
+      },
+      "initial_enemies" => %{
+        "mara" => %{
+          "id" => "mara",
+          "name" => "Mara Evil Twin",
+          "hit_dice" => 1,
+          "hit_points" => 6,
+          "armor_class" => 10,
+          "thac0" => 20,
+          "morale" => 8,
+          "current_room_id" => "r1"
+        }
+      }
+    }
+
+    assert {:error, errs} = EngineCore.Validator.check(raw)
+    assert "duplicate agent id: mara" in errs
+  end
 end
