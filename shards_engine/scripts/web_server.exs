@@ -9,7 +9,7 @@ port = String.to_integer(System.get_env("PORT", "4000"))
 
 # Endpoint config is read at application start, so: merge server config into
 # app env, then restart the client_web app alone (PubSub + Endpoint).
-cfg = Keyword.merge(Application.get_env(:client_web, endpoint) || [], server: true, http: [port: port])
+cfg = Keyword.merge(Application.get_env(:client_web, endpoint) || [], server: true, check_origin: false, http: [port: port])
 Application.put_env(:client_web, endpoint, cfg)
 
 # WebSockex client for player seats needs the app tree running.
