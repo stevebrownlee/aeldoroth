@@ -57,6 +57,51 @@ defmodule ClientWeb.SpectateLiveTest do
     assert html =~ "calls:"
   end
 
+  test "renders player invite ribbon", %{conn: conn, run_id: id} do
+    {:ok, view, _html} = live(conn, "/runs/#{id}/gm")
+
+    eventually(fn -> render(view) =~ "Table Active" end)
+    html = render(view)
+
+    assert html =~ "Table Active"
+    assert html =~ "Invite Players"
+    assert html =~ ~s(<section class="invite-ribbon")
+    assert html =~ ~s(data-testid="invite-code")
+    assert html =~ ~s(/runs/#{id}</code>)
+    assert html =~ ~s(data-testid="copy-code-button")
+    assert html =~ ~s(data-testid="copy-link-button")
+  end
+
+  test "party vitals deck displays dynamically added PCs", %{conn: conn, run_id: id} do
+    {:ok, view, _html} = live(conn, "/runs/#{id}/gm")
+
+    eventually(fn -> render(view) =~ "THINKING" end)
+    assert render(view) =~ "Thistle"
+    assert render(view) =~ "Bramble"
+
+    new_pc = %{
+      id: "pc_fern",
+      name: "Fern",
+      place_id: "entry_hall",
+      int: 14,
+      ac: 4,
+      hd: 1,
+      hp: 9,
+      thac0: 19,
+      damage: "1d8"
+    }
+
+    assert {:ok, "pc_fern"} = Session.add_pc(id, new_pc)
+
+    eventually(fn -> render(view) =~ "Fern" end)
+    html = render(view)
+    assert html =~ "Fern"
+    assert html =~ "HP 9/9"
+    assert html =~ "AC 4"
+    assert html =~ "THAC0 19"
+    assert html =~ ~s(data-testid="hpbar")
+  end
+
   test "flow board shows a seated player's declared intent as text", %{conn: conn, run_id: id} do
     # A declare before the console joins: last_intent is a map on the wire
     # (%{"text", "tick"}) — the board must render its text, never the map

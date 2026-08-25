@@ -200,6 +200,21 @@
       .boundary.state-active { background: #3a2e1c; color: #f0d49a; border: 1px solid #7a6a3a; }
       .boundary.state-inactive { background: #262b33; color: #9aa3af; border: 1px solid #3b424e; }
       .error { color: #e88f8f; }
+
+      .invite-ribbon {
+        display: flex; align-items: center; gap: 0.6rem;
+        border: 1px solid #3c5a7a; background: #16222e; border-radius: 6px;
+        padding: 0.5rem 0.8rem; margin: 0.5rem 0 0.8rem; flex-wrap: wrap;
+      }
+      .invite-ribbon .invite-icon { font-size: 1.1rem; }
+      .invite-ribbon .invite-label { color: #a8c8e8; font-size: 0.9rem; }
+      .invite-ribbon .invite-link-code {
+        background: #14161a; color: #e6e8ec; border: 1px solid #2a2e36;
+        border-radius: 4px; padding: 0.2rem 0.5rem; font-size: 0.95rem;
+      }
+      .invite-ribbon .copy-button { background: #1c2233; color: #8fb7e8; border-color: #3c5a7a; }
+      .invite-ribbon .copy-button:hover { background: #22304a; }
+
       @media (max-width: 900px) {
         .layout-seat, .layout-gm, .diagnostics-grid { grid-template-columns: 1fr; }
         .roster-row { grid-template-columns: repeat(4, 1fr); }
@@ -212,6 +227,22 @@
       // row into view; a player who scrolled up is not yanked (only the
       // stream container itself scrolls, and only forward).
       window.addEventListener("DOMContentLoaded", () => {
+        window.addEventListener("client_web:copy", (event) => {
+          const text = event.detail?.text;
+          if (!text) return;
+          if ("clipboard" in navigator) {
+            navigator.clipboard.writeText(text);
+          } else {
+            const textarea = document.createElement("textarea");
+            textarea.value = text;
+            textarea.style.position = "fixed";
+            textarea.style.left = "-9999px";
+            document.body.appendChild(textarea);
+            textarea.select();
+            try { document.execCommand("copy"); } finally { textarea.remove(); }
+          }
+        });
+
         const liveSocket = new LiveView.LiveSocket("/live", Phoenix.Socket, {
           params: { _csrf_token: document.querySelector("meta[name='csrf-token']")?.content },
           hooks: {

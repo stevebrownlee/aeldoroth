@@ -1,6 +1,6 @@
 defmodule ClientWeb.RunLiveTest do
   @moduledoc """
-  RunLive surface (plan 7 Task 4): seat picker, wire seat join, declare/ooc
+  RunLive surface (plan 7 Task 4): hero builder, seat join, declare/ooc
   flows, paused refusal. The play surface talks ONLY to the wire — a real
   Bandit endpoint plus a real ClientTUI.Conn per seat.
 
@@ -46,11 +46,58 @@ defmodule ClientWeb.RunLiveTest do
     %{run_id: id}
   end
 
-  test "picker lists PCs when no seat chosen", %{conn: conn, run_id: id} do
+  test "builder renders with 1-click archetypes and existing party chips", %{conn: conn, run_id: id} do
     {:ok, _view, html} = live(conn, "/runs/#{id}")
 
+    assert html =~ "Create your hero"
+    assert html =~ "1-Click Archetypes"
+    assert html =~ "Current Party in Thornhollow"
     assert html =~ "Thistle"
     assert html =~ "Bramble"
+    assert html =~ "Enter The Ruined Tower"
+  end
+
+  test "clicking an archetype populates the 1E hero sheet", %{conn: conn, run_id: id} do
+    {:ok, view, _html} = live(conn, "/runs/#{id}")
+
+    html =
+      view
+      |> element("button", "Mirage")
+      |> render_click()
+
+    assert html =~ "Illusionist"
+    assert html =~ "Color Spray"
+    assert html =~ "Phantasmal Force"
+    assert html =~ "Read Magic"
+    assert html =~ "Robes"
+    assert html =~ "Staff"
+    assert html =~ "Darts"
+  end
+
+  test "submitting the builder creates a PC and redirects to the seat", %{conn: conn, run_id: id} do
+    {:ok, view, _html} = live(conn, "/runs/#{id}")
+
+    view
+    |> form("#hero_builder", %{
+      "hero" => %{
+        "name" => "Valerius",
+        "race" => "Human",
+        "class" => "Fighter",
+        "level" => "1",
+        "xp" => "0",
+        "int" => "14",
+        "hp" => "10",
+        "ac" => "4",
+        "damage" => "1d8",
+        "armor" => "Chain mail & Shield",
+        "weapons" => "Longsword & Dagger",
+        "inventory" => "Bedroll, waterskin, rations"
+      }
+    })
+    |> render_submit()
+
+    assert_redirect(view, "/runs/#{id}/pc_valerius")
+    assert Enum.any?(Session.roster(id), &(&1.id == "pc_valerius"))
   end
 
   test "joining a seat renders the slice", %{conn: conn, run_id: id} do

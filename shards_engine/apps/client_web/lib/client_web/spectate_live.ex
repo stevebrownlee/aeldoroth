@@ -18,6 +18,8 @@ defmodule ClientWeb.SpectateLive do
   alias ClientTUI.Conn
   alias Referee.Run.Session
 
+  alias Phoenix.LiveView.JS
+
   @until_input_cap 20
 
   @impl true
@@ -25,6 +27,8 @@ defmodule ClientWeb.SpectateLive do
     socket =
       assign(socket,
         run_id: run_id,
+        invite_code: "/runs/#{run_id}",
+        invite_url: invite_url(run_id),
         conn: nil,
         error: nil,
         tick: nil,
@@ -200,6 +204,26 @@ defmodule ClientWeb.SpectateLive do
     <h1>GM console — run <%= @run_id %></h1>
 
     <p :if={@error} class="error">spectate: <%= @error %></p>
+
+    <section class="invite-ribbon" data-testid="invite-ribbon">
+      <span class="invite-icon">🎲</span>
+      <span class="invite-label">Table Active — Invite Players:</span>
+      <code class="invite-link-code" data-testid="invite-code"><%= @invite_code %></code>
+      <button
+        class="copy-button"
+        data-testid="copy-code-button"
+        phx-click={JS.dispatch("client_web:copy", to: "body", detail: %{text: @invite_code})}
+      >
+        Copy Code
+      </button>
+      <button
+        class="copy-button"
+        data-testid="copy-link-button"
+        phx-click={JS.dispatch("client_web:copy", to: "body", detail: %{text: @invite_url})}
+      >
+        Copy Join Link
+      </button>
+    </section>
 
     <%= if @tick do %>
       <header class="status-ribbon">
@@ -392,6 +416,17 @@ defmodule ClientWeb.SpectateLive do
   ## Internals
 
   defp wire_url, do: Application.get_env(:client_web, :wire_url)
+
+  defp invite_url(run_id) do
+    base =
+      case wire_url() do
+        "wss://" <> rest -> "https://" <> rest
+        "ws://" <> rest -> "http://" <> rest
+        _ -> ClientWeb.Endpoint.url()
+      end
+
+    base <> "/runs/" <> run_id
+  end
 
   defp monitor_conn(socket, pid) do
     Process.monitor(pid)

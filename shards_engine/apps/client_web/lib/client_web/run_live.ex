@@ -1,17 +1,254 @@
 defmodule ClientWeb.RunLive do
   @moduledoc """
-  Player seat over the wire protocol (UX spec §4): seat lobby when no PC is
-  chosen, then a play surface built from the truth-barrier slice — scene
-  panel (believed agents as chips, direction-labeled exits as one-click
-  moves), typed chronicle with auto-scroll, character + party rail, status
-  ribbon, verb palette, prompt-answer mode, and seat auto-rejoin. Every
-  play interaction is wire traffic; this module never touches the engine.
+  Player seat over the wire protocol (UX spec §4):
+
+  * `/runs/:run_id` with no PC renders an authentic AD&D 1E single-hero
+    builder with 1-click archetypes. Submitting calls `Session.add_pc/2` and
+    navigates to the new seat.
+  * `/runs/:run_id/:pc_id` joins an existing PC to the live play surface
+    through the wire — scene panel, exits, chronicle, compose, and party rail.
   """
 
   use ClientWeb, :live_view
 
   alias ClientTUI.Conn
+  alias Referee.PC
   alias Referee.Run.Session
+
+  @races ["Human", "Elf", "Half-Elf", "Dwarf", "Halfling", "Gnome"]
+
+  @classes [
+    "Fighter",
+    "Paladin",
+    "Ranger",
+    "Magic-User",
+    "Illusionist",
+    "Cleric",
+    "Druid",
+    "Thief",
+    "Assassin",
+    "Monk"
+  ]
+
+  @mu_spells_1 [
+    "Charm Person",
+    "Color Spray",
+    "Detect Magic",
+    "Enlarge",
+    "Erase",
+    "Feather Fall",
+    "Find Familiar",
+    "Friends",
+    "Hold Portal",
+    "Identify",
+    "Light",
+    "Magic Missile",
+    "Protection from Evil",
+    "Read Magic",
+    "Shield",
+    "Shocking Grasp",
+    "Sleep",
+    "Spider Climb",
+    "Tenser's Floating Disc",
+    "Unseen Servant",
+    "Ventriloquism",
+    "Write"
+  ]
+
+  @mu_spells_2 [
+    "Audible Glamer",
+    "Continual Light",
+    "Detect Evil",
+    "Detect Invisibility",
+    "ESP",
+    "Fools' Gold",
+    "Forget",
+    "Invisibility",
+    "Knock",
+    "Leomund's Trap",
+    "Levitate",
+    "Locate Object",
+    "Magic Mouth",
+    "Mirror Image",
+    "Phantasmal Force",
+    "Pyrotechnics",
+    "Ray of Enfeeblement",
+    "Rope Trick",
+    "Scare",
+    "Shatter",
+    "Stinking Cloud",
+    "Strength",
+    "Web",
+    "Wizard Lock"
+  ]
+
+  @illusionist_spells_1 [
+    "Audible Glamer",
+    "Change Self",
+    "Color Spray",
+    "Dancing Lights",
+    "Darkness",
+    "Detect Illusion",
+    "Detect Magic",
+    "Fog Cloud",
+    "Gaze Reflection",
+    "Hypnotism",
+    "Light",
+    "Phantasmal Force",
+    "Wall of Fog"
+  ]
+
+  @illusionist_spells_2 [
+    "Blindness",
+    "Blur",
+    "Deafness",
+    "Detect Magic",
+    "False Alignment",
+    "Fool's Gold",
+    "Hypnotic Pattern",
+    "Improved Phantasmal Force",
+    "Invisibility",
+    "Magic Mouth",
+    "Mirror Image",
+    "Misdirection",
+    "Paralysis",
+    "Scare",
+    "Spectral Force",
+    "Summon Swarm",
+    "Vertigo"
+  ]
+
+  @cleric_prayers_1 [
+    "Bless",
+    "Combine",
+    "Command",
+    "Create Water",
+    "Cure Light Wounds",
+    "Detect Evil",
+    "Detect Magic",
+    "Light",
+    "Protection from Evil",
+    "Purify Food and Drink",
+    "Remove Fear",
+    "Resist Cold",
+    "Sanctuary"
+  ]
+
+  @cleric_prayers_2 [
+    "Augury",
+    "Chant",
+    "Detect Curse",
+    "Find Traps",
+    "Hold Person",
+    "Know Alignment",
+    "Resist Fire",
+    "Silence 15' Radius",
+    "Slow Poison",
+    "Snake Charm",
+    "Spiritual Hammer",
+    "Speak with Animals"
+  ]
+
+  @druid_prayers_1 [
+    "Animal Friendship",
+    "Detect Magic",
+    "Detect Snares and Pits",
+    "Entangle",
+    "Faerie Fire",
+    "Invisibility to Animals",
+    "Locate Animals",
+    "Pass without Trace",
+    "Predict Weather",
+    "Purify Water",
+    "Shillelagh",
+    "Speak with Animals"
+  ]
+
+  @druid_prayers_2 [
+    "Barkskin",
+    "Charm Person or Mammal",
+    "Create Water",
+    "Cure Light Wounds",
+    "Feign Death",
+    "Fire Trap",
+    "Heat Metal",
+    "Locate Plants",
+    "Obscurement",
+    "Produce Flame",
+    "Trip",
+    "Warp Wood"
+  ]
+
+  @archetypes %{
+    "Thistle" => %{
+      name: "Thistle",
+      race: "Human",
+      class: "Fighter",
+      level: 1,
+      xp: 0,
+      int: 13,
+      hp: 12,
+      ac: 5,
+      thac0: 20,
+      damage: "1d8",
+      armor: "Chain mail & Shield",
+      weapons: "Longsword & Dagger",
+      inventory: "Bedroll, tinderbox, waterskin, iron rations (5), torches (3), hemp rope (50 ft), flask of oil (2), mirror",
+      spells: [],
+      prayers: []
+    },
+    "Bramble" => %{
+      name: "Bramble",
+      race: "Halfling",
+      class: "Thief",
+      level: 1,
+      xp: 0,
+      int: 12,
+      hp: 8,
+      ac: 6,
+      thac0: 19,
+      damage: "1d6",
+      armor: "Leather armor",
+      weapons: "Shortsword & Shortbow",
+      inventory: "Thieves' tools, bedroll, tinderbox, waterskin, iron rations (3), torches (2), rope (50 ft), chalk, silk gloves",
+      spells: [],
+      prayers: []
+    },
+    "Mirage" => %{
+      name: "Mirage",
+      race: "Gnome",
+      class: "Illusionist",
+      level: 1,
+      xp: 0,
+      int: 16,
+      hp: 4,
+      ac: 10,
+      thac0: 20,
+      damage: "1d4",
+      armor: "Robes",
+      weapons: "Staff & Darts",
+      inventory: "Spellbook, ink & quills, parchment (5), bedroll, tinderbox, waterskin, iron rations (3), torches (2)",
+      spells: ["Color Spray", "Phantasmal Force", "Read Magic"],
+      prayers: []
+    },
+    "Sister Lyra" => %{
+      name: "Sister Lyra",
+      race: "Human",
+      class: "Cleric",
+      level: 1,
+      xp: 0,
+      int: 14,
+      hp: 8,
+      ac: 5,
+      thac0: 20,
+      damage: "1d6",
+      armor: "Scale mail & Shield",
+      weapons: "Warhammer & Mace",
+      inventory: "Holy symbol, bedroll, tinderbox, waterskin, iron rations (5), torches (3), rope (50 ft), bandages",
+      spells: [],
+      prayers: ["Cure Light Wounds", "Bless", "Purify Food and Drink"]
+    }
+  }
 
   @verb_palette [
     {"Look", "look "},
@@ -25,6 +262,8 @@ defmodule ClientWeb.RunLive do
     {"Wait", "wait"}
   ]
 
+  # Lifecycle ---------------------------------------------------------------
+
   @impl true
   def mount(%{"run_id" => run_id} = params, _session, socket) do
     pc = params["pc_id"] || params["pc"]
@@ -34,6 +273,10 @@ defmodule ClientWeb.RunLive do
         run_id: run_id,
         pc: pc,
         roster: nil,
+        hero: default_hero(),
+        races: @races,
+        classes: @classes,
+        archetypes: @archetypes,
         conn: nil,
         slice: nil,
         dossier: nil,
@@ -62,9 +305,93 @@ defmodule ClientWeb.RunLive do
     end
   end
 
-  # Forms -------------------------------------------------------------------
+  # Builder events ----------------------------------------------------------
 
   @impl true
+  def handle_event("set_archetype", %{"name" => name}, socket) do
+    hero =
+      case Map.fetch(@archetypes, name) do
+        {:ok, data} ->
+          data
+          |> Map.put(:chosen_spell, first(spell_catalog(data.class)))
+          |> Map.put(:chosen_prayer, first(prayer_catalog(data.class)))
+
+        :error ->
+          socket.assigns.hero
+      end
+
+    {:noreply, assign(socket, hero: hero)}
+  end
+
+  def handle_event("hero_change", %{"hero" => params}, socket) do
+    {:noreply, assign(socket, hero: update_hero(socket.assigns.hero, params))}
+  end
+
+  def handle_event("add_spell", _params, socket) do
+    {:noreply, assign(socket, hero: add_spell(socket.assigns.hero))}
+  end
+
+  def handle_event("remove_spell", %{"spell" => spell}, socket) do
+    hero = update_in(socket.assigns.hero.spells, &List.delete(&1, spell))
+    {:noreply, assign(socket, hero: hero)}
+  end
+
+  def handle_event("add_prayer", _params, socket) do
+    {:noreply, assign(socket, hero: add_prayer(socket.assigns.hero))}
+  end
+
+  def handle_event("remove_prayer", %{"prayer" => prayer}, socket) do
+    hero = update_in(socket.assigns.hero.prayers, &List.delete(&1, prayer))
+    {:noreply, assign(socket, hero: hero)}
+  end
+
+  def handle_event("create_hero", %{"hero" => params}, socket) do
+    hero = update_hero(socket.assigns.hero, params)
+
+    case validate_hero(hero) do
+      {:error, msg} ->
+        {:noreply, put_flash(socket, :error, msg)}
+
+      :ok ->
+        pc_id = slug_id(hero.name)
+
+        pc_map = %{
+          id: pc_id,
+          name: hero.name,
+          race: hero.race,
+          class: hero.class,
+          level: hero.level,
+          xp: hero.xp,
+          int: hero.int,
+          hp: hero.hp,
+          ac: hero.ac,
+          thac0: hero.thac0,
+          damage: hero.damage,
+          armor: hero.armor,
+          weapons: hero.weapons,
+          inventory: hero.inventory,
+          spells: hero.spells,
+          prayers: hero.prayers
+        }
+
+        case Session.add_pc(socket.assigns.run_id, pc_map) do
+          {:ok, ^pc_id} ->
+            {:noreply,
+             push_navigate(socket, to: "/runs/#{socket.assigns.run_id}/#{pc_id}")}
+
+          {:ok, other_id} ->
+            {:noreply,
+             push_navigate(socket, to: "/runs/#{socket.assigns.run_id}/#{other_id}")}
+
+          {:error, reason} ->
+            {:noreply,
+             put_flash(socket, :error, "could not enter the world: #{inspect(reason)}")}
+        end
+    end
+  end
+
+  # Play surface events ----------------------------------------------------
+
   def handle_event("declare", %{"text" => text}, %{assigns: %{conn: conn}} = socket)
       when is_pid(conn) and text != "" do
     event = if socket.assigns.prompt, do: "answer", else: "declare_intent"
@@ -93,7 +420,7 @@ defmodule ClientWeb.RunLive do
 
   def handle_event(_other, _params, socket), do: {:noreply, socket}
 
-  # Wire messages -----------------------------------------------------------
+  # Wire messages ------------------------------------------------------------
 
   # Join reply: seat claimed, here is the truth-barrier slice.
   @impl true
@@ -191,19 +518,167 @@ defmodule ClientWeb.RunLive do
     ~H"""
     <h1>Run <%= @run_id %></h1>
 
-    <div :if={@roster} class="picker panel" data-testid="seat-picker">
-      <h2>Choose a seat</h2>
-      <p class="hint">
-        You declare in prose, the referee resolves, dice are open. One seat per player.
-      </p>
-      <ul class="seat-list">
-        <li :for={pc <- @roster} class="seat-card">
-          <.link href={"/runs/#{@run_id}/#{pc.id}"} class="seat-claim" data-testid={"claim-#{pc.id}"}>
-            <strong><%= pc.name %></strong>
-            <span class="hint"><%= pc.id %></span>
-          </.link>
-        </li>
-      </ul>
+    <div :if={@pc == nil} class="hero-builder panel" data-testid="hero-builder">
+      <h2>Create your hero</h2>
+
+      <div :if={@roster != nil && @roster != []} class="party-banner panel" data-testid="party-banner">
+        <h3>Current Party in Thornhollow</h3>
+        <div class="chip-row">
+          <.link
+            :for={pc <- @roster}
+            navigate={"/runs/#{@run_id}/#{pc.id}"}
+            class="chip"
+            data-testid={"existing-pc-#{pc.id}"}
+          ><%= pc.name %></.link>
+        </div>
+      </div>
+
+      <div class="archetypes panel">
+        <h3>1-Click Archetypes</h3>
+        <button
+          :for={name <- Map.keys(@archetypes)}
+          type="button"
+          phx-click="set_archetype"
+          phx-value-name={name}
+          class="btn-archetype"
+          data-testid={"archetype-#{slug_for_testid(name)}"}
+        ><%= name %></button>
+      </div>
+
+      <form id="hero_builder" phx-change="hero_change" phx-submit="create_hero" class="hero-sheet">
+        <div class="form-row">
+          <label>
+            Name
+            <input name="hero[name]" value={@hero.name} data-testid="hero-name" />
+          </label>
+
+          <label>
+            Race
+            <select name="hero[race]">
+              <option :for={r <- @races} value={r} selected={@hero.race == r}><%= r %></option>
+            </select>
+          </label>
+
+          <label>
+            Class
+            <select name="hero[class]">
+              <option :for={c <- @classes} value={c} selected={@hero.class == c}><%= c %></option>
+            </select>
+          </label>
+        </div>
+
+        <div class="form-row vitals">
+          <label>
+            Level
+            <input type="number" name="hero[level]" value={@hero.level} min="1" />
+          </label>
+
+          <label>
+            XP
+            <input type="number" name="hero[xp]" value={@hero.xp} min="0" />
+          </label>
+
+          <label>
+            HP
+            <input type="number" name="hero[hp]" value={@hero.hp} min="1" />
+          </label>
+
+          <label>
+            AC
+            <input type="number" name="hero[ac]" value={@hero.ac} />
+          </label>
+
+          <label>
+            INT
+            <input type="number" name="hero[int]" value={@hero.int} min="3" max="18" />
+          </label>
+
+          <div class="thac0-badge" data-testid="hero-thac0">
+            <strong>THAC0</strong>
+            <span><%= @hero.thac0 %></span>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label>
+            Damage (NdM[+K])
+            <input name="hero[damage]" value={@hero.damage} />
+          </label>
+
+          <label>
+            Armor
+            <input name="hero[armor]" value={@hero.armor} />
+          </label>
+
+          <label>
+            Weapons
+            <input name="hero[weapons]" value={@hero.weapons} />
+          </label>
+        </div>
+
+        <div class="form-row">
+          <label>
+            Inventory & Gear
+            <textarea name="hero[inventory]" rows="3"><%= @hero.inventory %></textarea>
+          </label>
+        </div>
+
+        <div :if={spell_catalog(@hero.class) != []} class="char-section">
+          <h4>Arcane Spellbook</h4>
+          <div class="picker-row">
+            <select name="hero[chosen_spell]">
+              <option value="">-- choose spell --</option>
+              <option
+                :for={spell <- spell_catalog(@hero.class)}
+                value={spell}
+                selected={@hero.chosen_spell == spell}
+              ><%= spell %></option>
+            </select>
+            <button type="button" phx-click="add_spell" class="chip">Add Spell</button>
+          </div>
+          <ul class="chosen-list" :if={@hero.spells != []}>
+            <li :for={spell <- @hero.spells}>
+              <%= spell %>
+              <button
+                type="button"
+                phx-click="remove_spell"
+                phx-value-spell={spell}
+                class="chip-small"
+              >Remove</button>
+            </li>
+          </ul>
+        </div>
+
+        <div :if={prayer_catalog(@hero.class) != []} class="char-section">
+          <h4>Divine Prayers</h4>
+          <div class="picker-row">
+            <select name="hero[chosen_prayer]">
+              <option value="">-- choose prayer --</option>
+              <option
+                :for={prayer <- prayer_catalog(@hero.class)}
+                value={prayer}
+                selected={@hero.chosen_prayer == prayer}
+              ><%= prayer %></option>
+            </select>
+            <button type="button" phx-click="add_prayer" class="chip">Add Prayer</button>
+          </div>
+          <ul class="chosen-list" :if={@hero.prayers != []}>
+            <li :for={prayer <- @hero.prayers}>
+              <%= prayer %>
+              <button
+                type="button"
+                phx-click="remove_prayer"
+                phx-value-prayer={prayer}
+                class="chip-small"
+              >Remove</button>
+            </li>
+          </ul>
+        </div>
+
+        <button type="submit" class="btn-start-run" data-testid="enter-world">
+          Enter The Ruined Tower
+        </button>
+      </form>
     </div>
 
     <div :if={@slice} class="seat" data-testid="seat">
@@ -359,6 +834,140 @@ defmodule ClientWeb.RunLive do
   end
 
   ## Internals
+
+  defp default_hero do
+    %{
+      name: "",
+      race: "Human",
+      class: "Fighter",
+      level: 1,
+      xp: 0,
+      int: 10,
+      hp: 1,
+      ac: 10,
+      thac0: 20,
+      damage: "1d8",
+      armor: "",
+      weapons: "",
+      inventory: "",
+      spells: [],
+      prayers: [],
+      chosen_spell: "",
+      chosen_prayer: ""
+    }
+  end
+
+  defp update_hero(hero, params) do
+    parsed =
+      Enum.reduce(params, hero, fn {key, value}, acc ->
+        atom = String.to_existing_atom(key)
+
+        value =
+          case atom do
+            a when a in [:level, :xp, :hp, :ac, :int] -> parse_int(value, Map.get(acc, atom))
+            :spells -> list_of_strings(value)
+            :prayers -> list_of_strings(value)
+            _ -> value
+          end
+
+        Map.put(acc, atom, value)
+      end)
+
+    thac0 = PC.calculate_thac0(parsed.class, parsed.level)
+    %{parsed | thac0: thac0}
+  end
+
+  defp parse_int(value, fallback) when is_binary(value) do
+    case Integer.parse(String.trim(value)) do
+      {n, ""} -> n
+      _ -> fallback
+    end
+  end
+
+  defp parse_int(value, _fallback) when is_integer(value), do: value
+  defp parse_int(_, fallback), do: fallback
+
+  defp list_of_strings(values) when is_list(values) do
+    values |> Enum.map(&to_string/1) |> Enum.reject(&(&1 == "")) |> Enum.uniq()
+  end
+
+  defp list_of_strings(value) when is_binary(value) do
+    value
+    |> String.split(",")
+    |> Enum.map(&String.trim/1)
+    |> Enum.reject(&(&1 == ""))
+    |> Enum.uniq()
+  end
+
+  defp list_of_strings(_), do: []
+
+  defp validate_hero(hero) do
+    if String.trim(hero.name) == "" do
+      {:error, "Name is required"}
+    else
+      :ok
+    end
+  end
+
+  defp slug_id(name) do
+    base =
+      name
+      |> String.trim()
+      |> String.downcase()
+      |> String.replace(~r/[^a-z0-9]+/, "_")
+      |> String.trim("_")
+
+    if base == "", do: "pc_hero", else: "pc_" <> base
+  end
+
+  defp add_spell(hero) do
+    spell = String.trim(hero.chosen_spell)
+
+    if spell != "" and spell not in hero.spells do
+      %{hero | spells: hero.spells ++ [spell]}
+    else
+      hero
+    end
+  end
+
+  defp add_prayer(hero) do
+    prayer = String.trim(hero.chosen_prayer)
+
+    if prayer != "" and prayer not in hero.prayers do
+      %{hero | prayers: hero.prayers ++ [prayer]}
+    else
+      hero
+    end
+  end
+
+  defp first([h | _]), do: h
+  defp first(_), do: ""
+
+  defp spell_catalog(class) do
+    case normalize_class(class) do
+      "magic-user" -> @mu_spells_1 ++ @mu_spells_2
+      "illusionist" -> @illusionist_spells_1 ++ @illusionist_spells_2
+      _ -> []
+    end
+  end
+
+  defp prayer_catalog(class) do
+    case normalize_class(class) do
+      "cleric" -> @cleric_prayers_1 ++ @cleric_prayers_2
+      "druid" -> @druid_prayers_1 ++ @druid_prayers_2
+      _ -> []
+    end
+  end
+
+  defp normalize_class(class) when is_binary(class) do
+    class |> String.downcase() |> String.trim()
+  end
+
+  defp normalize_class(_), do: ""
+
+  defp slug_for_testid(name) do
+    name |> String.downcase() |> String.replace(~r/[^a-z0-9]+/, "-") |> String.trim("-")
+  end
 
   defp wire_url, do: Application.get_env(:client_web, :wire_url)
 
