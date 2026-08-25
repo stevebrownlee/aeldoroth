@@ -1,14 +1,14 @@
 ---
 identifier: active_context
 title: Active Context
-created: 2026-08-25T21:28:00Z
+created: 2026-08-25T21:38:07Z
 ---
 # Active Context
 
 ```json
 {
   "content": {
-    "current_focus": "Anthropic Claude 3.5 Haiku configured for live BDI deliberation and referee pipeline",
+    "current_focus": "Fixed :httpc charlist headers and SSL ca cert handling in Anthropic and OpenAICompat adapters",
     "current_plan": "Plan 5 (protocol-live-runs) COMPLETE",
     "decisions": [
       47,
@@ -40,7 +40,7 @@ created: 2026-08-25T21:28:00Z
     "last_session": {
       "date": "2026-08-25",
       "open": "Spec open questions for user: verb palette set, cap tuning, believed monster HP on GM board, roster scope",
-      "work": "Configured runtime.exs to automatically map ANTHROPIC_API_KEY to Claude 3.5 Haiku across deliberate, adopt, interpret, narrate, and summarize gateway classes. Enhanced Anthropic adapter JSON parsing for markdown fences. All 400 tests green."
+      "work": "Fixed charlist headers and body formatting for Erlang :httpc client and wrapped SSL cacerts detection in rescue. All 400 tests passing."
     },
     "next": "post-v1: client_web LiveView client (spec §11), then v2 campaign memory (decision 34) / platform seams (decision 35)",
     "next_session": "After spec approval: writing-plans for Phase A (player surface + lobby)",
@@ -72,7 +72,7 @@ created: 2026-08-25T21:28:00Z
     "watch": "Party's choice for the Shadow-Crystal (keep/sell/study/destroy) is the Act 1 pacing lever"
   },
   "name": "default",
-  "updated_at": "2026-08-25T21:28:00Z",
-  "version": 23
+  "updated_at": "2026-08-25T21:38:07Z",
+  "version": 24
 }
 ```

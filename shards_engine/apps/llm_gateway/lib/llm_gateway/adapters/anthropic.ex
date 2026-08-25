@@ -51,7 +51,19 @@ defmodule LLMGateway.Adapters.Anthropic do
   def complete(%Request{} = req, cfg) do
     {url, headers, body} = build_request(req, cfg)
 
-    case :httpc.request(:post, {~c"#{url}", headers, ~c"application/json", Json.encode!(body)}, [ssl: []], timeout: 30_000) do
+    charlist_headers =
+      Enum.map(headers, fn {k, v} -> {String.to_charlist(to_string(k)), String.to_charlist(to_string(v))} end)
+
+    ssl_opts = ssl_opts()
+
+    json_body = Json.encode!(body)
+
+    case :httpc.request(
+           :post,
+           {~c"#{url}", charlist_headers, ~c"application/json", String.to_charlist(json_body)},
+           [ssl: ssl_opts],
+           timeout: 30_000
+         ) do
       {:ok, {{_, status, _}, _, resp_body}} ->
         parse_response(status, IO.iodata_to_binary(resp_body))
 
@@ -87,4 +99,20 @@ defmodule LLMGateway.Adapters.Anthropic do
   defp resolve_key(key) when is_binary(key), do: key
   defp resolve_key(key_ref) when is_atom(key_ref),
     do: Application.get_env(:llm_gateway, :keys, %{})[key_ref] || ""
+
+  defp ssl_opts do
+    try do
+      case :public_key.cacerts_get() do
+        cacerts when is_list(cacerts) and cacerts != [] ->
+          [verify: :verify_peer, cacerts: cacerts]
+
+        _ ->
+          [verify: :verify_none]
+      end
+    rescue
+      _ -> [verify: :verify_none]
+    catch
+      _, _ -> [verify: :verify_none]
+    end
+  end
 end
