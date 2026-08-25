@@ -708,6 +708,95 @@ initial_enemies:
     morale: 12
     is_alive: true
 
+initial_actors:
+  mara:
+    id: "mara"
+    name: "Mara"
+    type: "human_innkeeper"
+    current_room_id: "maras_inn"
+    tier: 3
+    hit_dice: "1d8"
+    hit_points: 6
+    armor_class: 10
+    thac0: 20
+    morale: 8
+    is_alive: true
+    dossier:
+      role: "innkeeper"
+      personality: "warm, motherly, and watchful"
+      goals:
+        - "keep her guests safe and well-fed"
+        - "learn useful news to protect Thornhollow"
+      rumors:
+        - "Vaelith's ghost might still haunt the ruins, angry at being disturbed."
+        - "Strange green lights have flickered from the tower for two weeks."
+
+  mayor_grevik:
+    id: "mayor_grevik"
+    name: "Mayor Grevik"
+    type: "human_leader"
+    current_room_id: "maras_inn"
+    tier: 3
+    hit_dice: "1d8"
+    hit_points: 5
+    armor_class: 10
+    thac0: 20
+    morale: 7
+    is_alive: true
+    dossier:
+      role: "village leader"
+      personality: "weathered, kind-eyed, and deeply worried"
+      goals:
+        - "stop the livestock raids threatening Thornhollow"
+        - "find someone brave enough to investigate the ruined tower"
+      knowledge:
+        - "The raids began two weeks ago and grow worse each night."
+        - "He can offer a 100 gp bounty to end the threat."
+
+  erik_the_shepherd:
+    id: "erik_the_shepherd"
+    name: "Erik the Shepherd"
+    type: "human_farmer"
+    current_room_id: "maras_inn"
+    tier: 3
+    hit_dice: "1d8"
+    hit_points: 7
+    armor_class: 10
+    thac0: 20
+    morale: 6
+    is_alive: true
+    dossier:
+      role: "shepherd"
+      personality: "gruff, plain-spoken, and frightened beneath his bluster"
+      goals:
+        - "recover his stolen sheep"
+        - "drive the goblins away from Thornhollow"
+      knowledge:
+        - "Green-skinned creatures carried off three sheep two nights ago."
+        - "They headed toward the ruined tower on the hill."
+
+  anna_mordale:
+    id: "anna_mordale"
+    name: "Anna Mordale"
+    type: "human_villager"
+    current_room_id: "maras_inn"
+    tier: 3
+    hit_dice: "1d8"
+    hit_points: 4
+    armor_class: 10
+    thac0: 20
+    morale: 5
+    is_alive: true
+    dossier:
+      role: "Willem's wife"
+      personality: "frantic, grieving, and quietly determined"
+      goals:
+        - "rescue her husband Willem from the tower"
+        - "pay anyone who returns him safely"
+      knowledge:
+        - "Willem went to investigate the tower three days ago and never returned."
+        - "She can offer a 20 gp reward for his safe return."
+
 coinage:
   description: "Coin values expressed in copper pieces (AD&D 1E). Treasure value in gp = sum(count x value_in_cp) / 100. House rule: 1 gp of treasure value = 1 XP. Electrum (ep) is unused in this adventure."
   value_in_cp:
@@ -1046,6 +1135,11 @@ boundaries:
   - id: "skeleton_sentinel"
     place: "ritual_chamber"
     triggers: ["presence_crossing"]
+  - id: "maras_inn_zone"
+    place: "maras_inn"
+    triggers: ["presence_crossing", "signal_arrived"]
+    wake_on_intensity: 4
+    sleep_after: 60
 
 initial_commitments:
   - id: "guard_watch_rotation"
@@ -1065,3 +1159,27 @@ initial_commitments:
     deed: "relocate_treasure_if_alarmed"
     due: 120
     priority: 8
+  - id: "grevik_quest_offer"
+    debtor: "mayor_grevik"
+    deed: "explain livestock raids and offer 100 gp bounty to investigate ruined tower"
+    due: 1
+    every: 25
+    priority: 8
+  - id: "anna_rescue_plea"
+    debtor: "anna_mordale"
+    deed: "plead for Willem's rescue and offer 20 gp reward"
+    due: 2
+    every: 30
+    priority: 7
+  - id: "erik_raid_warning"
+    debtor: "erik_the_shepherd"
+    deed: "recount goblin attack on sheep and describe green flickering lights"
+    due: 3
+    every: 35
+    priority: 6
+  - id: "mara_hospitality_and_rumors"
+    debtor: "mara"
+    deed: "welcome guests, offer hot stew and ale, and share rumors of Vaelith's ghost"
+    due: 5
+    every: 45
+    priority: 4

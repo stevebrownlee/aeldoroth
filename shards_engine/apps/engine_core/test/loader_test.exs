@@ -135,7 +135,8 @@ defmodule EngineCore.LoaderTest do
                "chiefs_room_zone",
                "library_zone",
                "wolf_pack",
-               "skeleton_sentinel"
+               "skeleton_sentinel",
+               "maras_inn_zone"
              ])
 
     gz = w.boundaries["guard_room_zone"]
