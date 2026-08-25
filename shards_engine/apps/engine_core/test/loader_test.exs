@@ -50,6 +50,47 @@ defmodule EngineCore.LoaderTest do
     end
   end
 
+  test "merges initial_actors and initial_enemies, parses tier, capabilities, and dossier" do
+    raw = %{
+      "places" => %{
+        "maras_inn" => %{"id" => "maras_inn", "name" => "Mara's Inn"}
+      },
+      "starting_place" => "maras_inn",
+      "initial_actors" => %{
+        "bartender" => %{
+          "id" => "bartender",
+          "name" => "Bartender",
+          "tier" => 3,
+          "current_room_id" => "maras_inn",
+          "dossier" => %{"occupation" => "innkeeper"}
+        }
+      },
+      "initial_enemies" => %{
+        "goblin" => %{
+          "id" => "goblin",
+          "name" => "Goblin",
+          "cognition_tier" => 2,
+          "current_room_id" => "maras_inn",
+          "hit_dice" => "1d8",
+          "hit_points" => 4,
+          "armor_class" => 7,
+          "thac0" => 19,
+          "morale" => 6
+        }
+      }
+    }
+
+    w = EngineCore.Loader.build(raw)
+
+    assert map_size(w.agents) == 2
+    assert w.agents["bartender"].tier == 3
+    assert :parley in w.agents["bartender"].capabilities
+    assert w.agents["bartender"].dossier == %{"occupation" => "innkeeper"}
+    assert w.agents["goblin"].tier == 2
+    assert :parley not in w.agents["goblin"].capabilities
+    assert :move in w.agents["goblin"].capabilities
+  end
+
   test "sets sealed: true on edge when exit is locked" do
     {:ok, w} = EngineCore.Loader.load(@yaml)
 

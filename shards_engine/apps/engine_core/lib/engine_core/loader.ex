@@ -71,8 +71,9 @@ defmodule EngineCore.Loader do
             label: dir
           }
 
-    monsters = extract_elements(yaml, ["initial_enemies", "monsters"])
-    agents = Map.new(monsters, fn m -> {m["id"], agent_from(m)} end)
+    agents =
+      extract_elements(yaml, ["initial_actors", "initial_npcs", "initial_enemies", "monsters"])
+      |> Map.new(fn m -> {m["id"], agent_from(m)} end)
 
     treasures = extract_elements(yaml, ["initial_treasure", "treasures"])
     items = Map.new(treasures, fn t -> {t["id"], item_from(t)} end)
@@ -111,13 +112,12 @@ defmodule EngineCore.Loader do
   defp extract_elements(yaml, keys) do
     keys
     |> Enum.map(&Map.get(yaml, &1))
-    |> Enum.find(& &1)
-    |> case do
-      nil -> []
+    |> Enum.reject(&is_nil/1)
+    |> Enum.flat_map(fn
       map when is_map(map) -> Map.values(map)
       list when is_list(list) -> list
       _ -> []
-    end
+    end)
   end
 
   defp extract_connections(r) do
@@ -154,7 +154,7 @@ defmodule EngineCore.Loader do
   end
 
   defp agent_from(m) do
-    tier = tier_of(m["id"])
+    tier = parse_tier(m)
     hp = m["hit_points"] || m["hp"] || 1
 
     %Types.Agent{
@@ -174,9 +174,15 @@ defmodule EngineCore.Loader do
       body: %{hp: hp, conditions: []},
       capabilities: caps(tier),
       group: m["type"],
-      cadence: cadence_for(tier)
+      cadence: cadence_for(tier),
+      dossier: m["dossier"] || %{}
     }
   end
+
+  defp parse_tier(%{"tier" => tier}) when is_integer(tier), do: tier
+  defp parse_tier(%{"cognition_tier" => tier}) when is_integer(tier), do: tier
+  defp parse_tier(%{"id" => id}), do: tier_of(id)
+  defp parse_tier(_), do: 1
 
   defp cadence_for(0), do: %{every: 2, next_due: nil}
   defp cadence_for(3), do: %{every: 10, next_due: nil}

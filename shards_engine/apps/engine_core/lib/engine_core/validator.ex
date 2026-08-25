@@ -39,25 +39,45 @@ defmodule EngineCore.Validator do
 
   def check(_), do: {:error, ["invalid YAML document: expected a map"]}
 
-  defp monster_errors(%{"initial_enemies" => enemies}) when is_map(enemies) do
-    Enum.flat_map(Map.values(enemies), fn m ->
-      if is_map(m) do
-        id = m["id"] || "?"
+  @actor_keys ["initial_actors", "initial_npcs", "initial_enemies", "monsters"]
 
-        Enum.flat_map(@monster_req, fn k ->
-          if Map.has_key?(m, k) do
-            []
-          else
-            ["monster #{id}: missing #{k}"]
-          end
-        end)
-      else
-        []
+  defp monster_errors(yaml) when is_map(yaml) do
+    @actor_keys
+    |> Enum.flat_map(fn key ->
+      case yaml[key] do
+        enemies when is_map(enemies) ->
+          Enum.flat_map(Map.values(enemies), fn m ->
+            if is_map(m) do
+              id = m["id"] || "?"
+
+              Enum.flat_map(@monster_req, fn k ->
+                if Map.has_key?(m, k) do
+                  []
+                else
+                  ["monster #{id}: missing #{k}"]
+                end
+              end)
+            else
+              []
+            end
+          end)
+
+        _ ->
+          []
       end
     end)
-  end
+    |> case do
+      [] ->
+        if Enum.any?(@actor_keys, &Map.has_key?(yaml, &1)) do
+          []
+        else
+          ["initial_enemies: key absent"]
+        end
 
-  defp monster_errors(_), do: ["initial_enemies: key absent"]
+      errors ->
+        errors
+    end
+  end
 
   defp text_errors(yaml) do
     yaml
@@ -161,27 +181,24 @@ defmodule EngineCore.Validator do
   defp as_list(l) when is_list(l), do: l
   defp as_list(_), do: []
   defp agent_ids(yaml) do
-    enemies = yaml["initial_enemies"] || yaml["monsters"]
+    @actor_keys
+    |> Enum.flat_map(fn key ->
+      case yaml[key] do
+        enemies when is_map(enemies) ->
+          Enum.flat_map(enemies, fn {k, m} ->
+            id = if is_map(m), do: m["id"], else: nil
+            [k, id]
+          end)
 
-    cond do
-      is_map(enemies) ->
-        enemies
-        |> Enum.flat_map(fn {k, m} ->
-          id = if is_map(m), do: m["id"], else: nil
-          [k, id]
-        end)
-        |> Enum.filter(&is_binary/1)
-        |> MapSet.new()
+        enemies when is_list(enemies) ->
+          Enum.map(enemies, fn m -> if is_map(m), do: m["id"], else: nil end)
 
-      is_list(enemies) ->
-        enemies
-        |> Enum.map(fn m -> if is_map(m), do: m["id"], else: nil end)
-        |> Enum.filter(&is_binary/1)
-        |> MapSet.new()
-
-      true ->
-        MapSet.new()
-    end
+        _ ->
+          []
+      end
+    end)
+    |> Enum.filter(&is_binary/1)
+    |> MapSet.new()
   end
 
   defp boundary_errors(%{"boundaries" => bs}, room_ids) when is_list(bs) do

@@ -7,6 +7,28 @@ defmodule EngineCore.ValidatorTest do
     assert :ok = EngineCore.Validator.check_file(@yaml)
   end
 
+  test "accepts valid initial_actors maps" do
+    base = %{
+      "rooms" => %{
+        "r1" => %{"id" => "r1", "name" => "R1"}
+      },
+      "initial_actors" => %{
+        "a1" => %{
+          "id" => "a1",
+          "name" => "Hero",
+          "hit_dice" => "1d8",
+          "hit_points" => 8,
+          "armor_class" => 10,
+          "thac0" => 20,
+          "morale" => 7,
+          "current_room_id" => "r1"
+        }
+      }
+    }
+
+    assert :ok = EngineCore.Validator.check(base)
+  end
+
   test "detects orphan-fragment text" do
     bad = %{
       "initial_enemies" => %{
