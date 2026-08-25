@@ -103,7 +103,7 @@ defmodule WireTest do
     ref = push(chan, "gm_chat", %{"text" => "Welcome to the table"})
     assert_reply(ref, :ok, %{})
 
-    assert_push("ooc", %{agent_id: "GM", text: "Welcome to the table"})
+    assert_push("ooc", %{"author" => "GM", "text" => "Welcome to the table"})
   end
 
   defp start_run(id) do

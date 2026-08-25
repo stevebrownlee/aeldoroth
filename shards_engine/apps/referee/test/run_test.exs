@@ -14,10 +14,14 @@ defmodule Referee.RunTest do
     Jason.encode!(Map.merge(%{"verb" => verb, "target_id" => nil, "assumptions" => []}, extra))
   end
 
-  defp new_run(interpret \\ [], narrate \\ []) do
-    scripts = %{interpret: interpret, narrate: narrate, salt: System.unique_integer()}
-    Run.new(@yaml, 42, @pcs, routing: %{interpret: %{adapter: Scripted, scripts: scripts},
-                                        narrate: %{adapter: Scripted, scripts: scripts}})
+  defp new_run(interpret \\ [], narrate \\ [], deliberate \\ []) do
+    scripts = %{interpret: interpret, narrate: narrate, deliberate: deliberate, salt: System.unique_integer()}
+    routing =
+      for class <- [:interpret, :narrate, :deliberate], into: %{} do
+        {class, %{adapter: Scripted, scripts: scripts}}
+      end
+
+    Run.new(@yaml, 42, @pcs, routing: routing)
   end
 
   test "new loads the tower, resolves prefs from the module layer, injects PCs in order" do
@@ -106,7 +110,6 @@ defmodule Referee.RunTest do
     assert is_binary(text) and text =~ "north"
     assert run2.world.agents["pc_thistle"].place_id == "library"
   end
-
   test "advance runs world time and reports per-PC received-signal narrations" do
     # one shout to seed a signal at entry_hall
     {:ok, run} = new_run([interpret_json("shout", %{"params" => %{"message" => "HELLO"}})], [])
@@ -230,5 +233,73 @@ defmodule Referee.RunTest do
     {:ok, _, run4} = Run.advance(run3)
     quiet = Run.events(run4) |> Enum.filter(&(&1.seq > seq0 and &1.class == :narration))
     assert quiet == []
+  end
+
+  test "advance rolls 1E initiative and ledgers the initiative dice event" do
+    {:ok, run} = new_run()
+    {:ok, _texts, run2} = Run.advance(run)
+
+    initiatives =
+      Run.events(run2)
+      |> Enum.filter(&(&1.class == :dice and &1.payload[:purpose] == :initiative))
+
+    assert length(initiatives) == 1
+    [ev] = initiatives
+    assert ev.payload.party_roll in 1..6
+    assert ev.payload.enemy_roll in 1..6
+    assert ev.payload.sides == 6
+    assert ev.payload.winner in [:party, :enemy, :simultaneous]
+  end
+
+  test "advance attack rolls include thac0 and target AC" do
+    deliberate = [
+      %{
+        agent_id: "goblin_guard_1",
+        content:
+          ~s({"verb":"shout","target_id":null,"params":{"message":"Intruders!"},"reason":"raise the alarm"})
+      }
+    ]
+
+    {:ok, run} =
+      new_run(
+        [
+          interpret_json("move", %{"params" => %{"direction" => "east"}}),
+          interpret_json("strike", %{"target_id" => "goblin_guard_1"})
+        ],
+        [],
+        deliberate
+      )
+
+    assert {:ok, _text, run2} = Run.declare(run, "pc_thistle", "I head east")
+    # advance into the guard room; the guard will detect and belief will form
+    run3 = advance_until_believed(run2, "guard_room", "goblin_guard_1")
+    # strike the guard
+    assert {:ok, _text, run4} = Run.declare(run3, "pc_thistle", "I strike the guard")
+    # attack resolution happens on the next advance
+    assert {:ok, _texts, run5} = Run.advance(run4)
+
+    attacks =
+      Run.events(run5)
+      |> Enum.filter(&(&1.class == :dice and &1.payload[:purpose] == :attack and &1.payload[:agent_id] == "pc_thistle"))
+
+    assert length(attacks) == 1
+    [ev] = attacks
+    assert ev.payload.roll in 1..20
+    assert ev.payload.sides == 20
+    assert is_integer(ev.payload.thac0)
+    assert is_integer(ev.payload.target_ac)
+    assert ev.payload.hit == (ev.payload.roll >= ev.payload.thac0 - ev.payload.target_ac)
+  end
+
+  defp advance_until_believed(run, place, about, n \\ 20) do
+    pc = run.world.agents["pc_thistle"]
+
+    if get_in(pc.beliefs, [place, about]) != nil do
+      run
+    else
+      n > 0 || flunk("belief in #{about} never formed")
+      {:ok, _texts, run2} = Run.advance(run)
+      advance_until_believed(run2, place, about, n - 1)
+    end
   end
 end

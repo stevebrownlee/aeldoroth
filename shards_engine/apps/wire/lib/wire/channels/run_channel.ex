@@ -114,12 +114,16 @@ defmodule Wire.RunChannel do
 
   # OOC is table talk — every seat hears it, no per-PC filter (PROTOCOL.md).
   defp push_one(
-         %Ledger.Event{class: :ooc, payload: %{agent_id: id, text: text}},
+         %Ledger.Event{class: :ooc, payload: payload},
          _pc,
          _open?,
          socket
-       ),
-       do: push(socket, "ooc", %{agent_id: id, text: text})
+       )
+       when is_map(payload) do
+    author = payload[:agent_id] || payload["agent_id"] || "Table"
+    text = payload[:text] || payload["text"]
+    push(socket, "ooc", %{"author" => author, "text" => text})
+  end
 
   # Session pause/resume is global state — every seat hears it (W2).
   defp push_one(%Ledger.Event{class: :meta, payload: %{kind: :paused}}, _pc, _open?, socket),

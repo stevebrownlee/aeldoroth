@@ -80,6 +80,8 @@ defmodule Wire.RunChannelTest do
     assert_reply ref, :ok, %{reply: reply}
     assert is_binary(reply)
 
+    {:ok, _} = Session.advance(id)
+
     assert_push "perception", %{text: text, tick: tick}
     assert is_binary(text) and text != ""
     assert is_integer(tick)
@@ -124,10 +126,13 @@ defmodule Wire.RunChannelTest do
     # Bramble acts: his narration is pushed exactly once (his channel);
     # a broken filter would also push it to Thistle's channel.
     {:ok, %{reply: _}} = Session.declare(id, "pc_bramble", "I head east")
+    {:ok, _} = Session.advance(id)
     assert_push "perception", %{text: b_text}
     assert is_binary(b_text)
+    assert_push "perception", %{text: _}
     refute_push "perception", %{}
   end
+
   # PROTOCOL.md documents the ooc push for every seat (spec §11): table talk
   # is not per-PC isolated.
   test "ooc pushes to every seat on the run", %{run_id: id} do
@@ -140,9 +145,8 @@ defmodule Wire.RunChannelTest do
     assert_reply ref, :ok, %{ack: true}
 
     # Both channels receive the same push (two messages in this mailbox).
-    # Atom keys here — the JSON encoding happens below this layer.
-    assert_push "ooc", %{agent_id: "pc_thistle", text: "table talk"}
-    assert_push "ooc", %{agent_id: "pc_thistle", text: "table talk"}
+    assert_push "ooc", %{"author" => "pc_thistle", "text" => "table talk"}
+    assert_push "ooc", %{"author" => "pc_thistle", "text" => "table talk"}
   end
 
   test "ooc is ledgered and acked", %{run_id: id} do
@@ -154,6 +158,22 @@ defmodule Wire.RunChannelTest do
 
     assert [%Ledger.Event{class: :ooc, payload: %{kind: :ooc, agent_id: "pc_thistle"}} | _] =
              Writer.events(id) |> Enum.reverse() |> Enum.filter(&(&1.class == :ooc))
+  end
+
+  test "Session.ooc pushes to every subscribed seat", %{run_id: id} do
+    {:ok, _pid, socket} = start_run(id)
+    {:ok, _, _chan} = join(socket, "run:#{id}", %{})
+
+    :ok = Session.ooc(id, "pc_thistle", "direct ooc")
+    assert_push "ooc", %{"author" => "pc_thistle", "text" => "direct ooc"}
+  end
+
+  test "Session.gm_chat pushes to every subscribed seat", %{run_id: id} do
+    {:ok, _pid, socket} = start_run(id)
+    {:ok, _, _chan} = join(socket, "run:#{id}", %{})
+
+    :ok = Session.gm_chat(id, "gm broadcast")
+    assert_push "ooc", %{"author" => "GM", "text" => "gm broadcast"}
   end
 
   test "sheet replies with the current slice", %{run_id: id} do
@@ -176,25 +196,22 @@ defmodule Wire.RunChannelTest do
             ~s({"verb":"move","target_id":null,"params":{"direction":"east"}}),
             ~s({"verb":"strike","target_id":"goblin_guard_1","params":{}})
           ],
-          deliberate: [guard_shout("goblin_guard_1")]
+          deliberate: [guard_shout("goblin_guard_1"), guard_shout("goblin_guard_1"), guard_shout("goblin_guard_1")]
         }
       )
-
     {:ok, _, chan} = join(socket, "run:#{id}", %{})
     ref = push(chan, "declare_intent", %{"text" => "I head east"})
     assert_reply ref, :ok
-
-    advance_until_believed(id, "goblin_guard_1")
+    {:ok, _} = Session.advance(id)
+    {:ok, _} = Session.advance(id)
 
     ref2 = push(chan, "declare_intent", %{"text" => "I strike the guard"})
     assert_reply ref2, :ok
-
+    {:ok, _} = Session.advance(id)
     assert_push "dice", %{event_payload: payload}
     assert payload.agent_id == "pc_thistle"
-    assert payload.purpose == :to_hit
+    assert payload.purpose == :attack
   end
-
-  ## Helpers
 
   defp start_run(id, over \\ []) do
     scripts =

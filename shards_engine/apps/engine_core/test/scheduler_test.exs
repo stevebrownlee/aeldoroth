@@ -110,7 +110,7 @@ defmodule EngineCore.SchedulerTest do
       end)
 
     {:ok, events, _w2, _} = Scheduler.advance(%{w | tick: 0}, Dice.new(4))
-    assert Enum.any?(events, &(Map.get(&1.payload, :kind) in [:to_hit, :damage]))
+    assert Enum.any?(events, &(Map.get(&1.payload, :kind) in [:attack, :damage]))
   end
 
   test "react turns moves and damage into side-effect signals and boundary wakes" do
@@ -227,7 +227,7 @@ defmodule EngineCore.SchedulerTest do
     w1 = Fold.fold(w, moves)
     {:ok, events, w2, _} = Scheduler.react(w1, Dice.new(17), moves)
 
-    assert Enum.any?(events, &(&1.class == :dice and &1.payload.purpose == :to_hit))
+    assert Enum.any?(events, &(&1.class == :dice and &1.payload.purpose == :attack))
 
     assert Enum.any?(events, fn ev ->
              Map.get(ev.payload, :kind) == :damage and ev.payload.target_id == "pc1"
@@ -274,7 +274,7 @@ defmodule EngineCore.SchedulerTest do
                ev.payload.agent_id == "shadow_touched_skeleton"
            end)
 
-    assert Enum.any?(events, &(&1.class == :dice and &1.payload.purpose == :to_hit))
+    assert Enum.any?(events, &(&1.class == :dice and &1.payload.purpose == :attack))
     assert w3.agents["shadow_touched_skeleton"].cadence.next_due == 3
     assert Fold.fold(w2, events) == w3
   end
@@ -295,7 +295,7 @@ defmodule EngineCore.SchedulerTest do
                ev.payload.agent_id == "shadow_touched_skeleton"
            end)
 
-    refute Enum.any?(events, &(&1.class == :dice and &1.payload.purpose == :to_hit))
+    refute Enum.any?(events, &(&1.class == :dice and &1.payload.purpose == :attack))
     assert w2.agents["shadow_touched_skeleton"].cadence.next_due == 3
     assert Fold.fold(w, events) == w2
   end

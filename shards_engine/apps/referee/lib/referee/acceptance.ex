@@ -54,7 +54,7 @@ defmodule Referee.Acceptance do
 
       envelope_sent → signal_received → envelope_delivered → adopt audit
       → adoption dice → envelope_adopted|rejected → commitment_created
-      → proposed deliberation by the adopter → to_hit dice → damage
+      → proposed deliberation by the adopter → attack dice → damage
 
   Every present link must strictly increase in `seq`. `{:error,
   {:missing, kind, after_seq}}` names the first absent link so failures are
@@ -103,8 +103,8 @@ defmodule Referee.Acceptance do
            maybe_commitment(events, s6, envelope_id, sent.to),
          {:proposed, %{seq: s8} = dec} <-
            find_after(events, s7, :proposed, &(&1.class == :deliberation and &1.payload[:agent_id] == sent.to and &1.payload[:decision] == :proposed)),
-         {:to_hit, %{seq: s9, payload: roll_payload}} <-
-           find_after(events, s8, :to_hit, &(&1.class == :dice and &1.payload[:purpose] == :to_hit and &1.payload[:agent_id] == sent.to)) do
+         {:attack, %{seq: s9, payload: roll_payload}} <-
+           find_after(events, s8, :attack, &(&1.class == :dice and &1.payload[:purpose] == :attack and &1.payload[:agent_id] == sent.to)) do
       damage =
         Enum.find(events, fn ev ->
           Map.get(ev, :seq, 0) > s9 and ev.class == :world and ev.payload[:kind] == :damage and ev.payload[:target_id] != sent.to
@@ -115,7 +115,7 @@ defmodule Referee.Acceptance do
           [
             link(:commitment_created, s7, "commitment adopted:#{envelope_id} for #{sent.to}"),
             link(:proposed, s8, "#{sent.to} proposed #{inspect(dec.payload[:verb])}"),
-            link(:to_hit, s9, "#{sent.to} attacked (to_hit roll #{roll_payload[:roll]})")
+            link(:attack, s9, "#{sent.to} attacked (attack roll #{roll_payload[:roll]})")
           ]
 
       links =

@@ -235,14 +235,40 @@ defmodule Referee.Run.Session do
   end
 
   def handle_call({:declare, pc_id, text}, _from, %{status: :running} = st) do
-    case Run.declare(st.run, pc_id, text) do
-      {tag, reply, run2} when tag in [:ok, :stall] ->
-        st = %{
-          st
-          | last_intents: Map.put(st.last_intents, pc_id, %{text: text, tick: st.run.world.tick})
+    case Referee.Interpret.nl_to_action(st.run.ctx, st.run.world, pc_id, text) do
+      {:clarify, question, ctx2, audit} ->
+        st_ctx = %{st | run: %{st.run | ctx: ctx2}}
+        st_audited = append_audit(st_ctx, audit)
+        st_pushed = push(st_audited, :clarify, st.run.world.tick, %{
+          kind: :clarify,
+          agent_id: pc_id,
+          question: question
+        })
+        st_final = %{
+          st_pushed
+          | last_intents: Map.put(st_pushed.last_intents, pc_id, %{text: text, tick: st.run.world.tick})
         }
+        {:reply, {:ok, %{reply: question}}, hold(st_final, st_final.run)}
 
-        {:reply, {:ok, %{reply: reply}}, hold(st, run2)}
+      {:ok, action, assumptions, ctx2, audit} ->
+        st_ctx = %{st | run: %{st.run | ctx: ctx2}}
+        st_audited = append_audit(st_ctx, audit)
+        st_pushed = push(st_audited, :meta, st.run.world.tick, %{
+          kind: :intent_declared,
+          agent_id: pc_id,
+          text: text
+        })
+        st_final = %{
+          st_pushed
+          | last_intents:
+              Map.put(st_pushed.last_intents, pc_id, %{
+                text: text,
+                action: action,
+                assumptions: assumptions,
+                tick: st.run.world.tick
+              })
+        }
+        {:reply, {:ok, %{reply: "Action registered: #{text}"}}, hold(st_final, st_final.run)}
     end
   end
 
@@ -250,12 +276,30 @@ defmodule Referee.Run.Session do
     do: {:reply, {:error, :paused}, st}
 
   def handle_call(:advance, _from, %{status: :running} = st) do
-    {:ok, texts, run2} = Run.advance(st.run)
-    {:reply, {:ok, texts}, hold(st, run2)}
+    {run_after_declares, player_texts} =
+      Enum.reduce(st.last_intents, {st.run, %{}}, fn {pc_id, intent}, {run_acc, text_acc} ->
+        case Map.get(intent, :action) do
+          nil ->
+            case Run.declare(run_acc, pc_id, intent.text) do
+              {:ok, reply, run_next} -> {run_next, Map.put(text_acc, pc_id, reply)}
+              {:stall, msg, run_next} -> {run_next, Map.put(text_acc, pc_id, msg)}
+            end
+
+          action ->
+            case Run.resolve_declared(run_acc, pc_id, action, Map.get(intent, :assumptions, [])) do
+              {:ok, reply, run_next} -> {run_next, Map.put(text_acc, pc_id, reply)}
+              {:stall, msg, run_next} -> {run_next, Map.put(text_acc, pc_id, msg)}
+            end
+        end
+      end)
+
+    {:ok, advance_texts, run_final} = Run.advance(run_after_declares)
+    merged_texts = Map.merge(player_texts, advance_texts)
+    st2 = %{st | run: run_final, last_intents: %{}}
+    {:reply, {:ok, merged_texts}, hold(st2, run_final)}
   end
 
   def handle_call(:advance, _from, %{status: :paused} = st), do: {:reply, {:error, :paused}, st}
-
   def handle_call(:pause, _from, %{status: :running} = st) do
     {dossiers, st2} =
       Enum.reduce(st.run.pcs, {%{}, st}, fn pc_map, {texts, acc} ->
@@ -315,16 +359,20 @@ defmodule Referee.Run.Session do
         body = if agent, do: Map.get(agent, :body, %{}) || %{}, else: %{}
         statblock = if agent, do: Map.get(agent, :statblock, %{}) || %{}, else: %{}
 
+        intent = Map.get(st.last_intents, pc.id)
+        intent_view = if intent, do: %{text: intent.text, tick: intent.tick}, else: nil
+
         %{
           id: pc.id,
           name: pc.name,
+          class: Map.get(statblock, :class),
           hp: Map.get(body, :hp),
           hp_max: Map.get(statblock, :hp_max),
           ac: Map.get(statblock, :ac),
           thac0: Map.get(statblock, :thac0),
           place_id: place_id,
           place_name: place_name,
-          last_intent: Map.get(st.last_intents, pc.id),
+          last_intent: intent_view,
           prompt: outstanding_prompt(st.run, pc.id)
         }
       end)

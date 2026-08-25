@@ -116,7 +116,7 @@ defmodule EngineCore.CognitionTest do
     assert Enum.any?(
              events2,
              &(Map.get(&1.payload, :kind) in [:damage] or
-                 Map.get(&1.payload, :purpose) == :to_hit)
+                 Map.get(&1.payload, :purpose) == :attack)
            )
   end
 
@@ -127,7 +127,7 @@ defmodule EngineCore.CognitionTest do
     {:ok, events, _, _} = Pack.decide(pen_w, Dice.new(9), wolf)
 
     assert Enum.any?(events, fn e ->
-             Map.get(e.payload, :purpose) == :to_hit or Map.get(e.payload, :kind) == :damage
+             Map.get(e.payload, :purpose) == :attack or Map.get(e.payload, :kind) == :damage
            end)
 
     hurt =

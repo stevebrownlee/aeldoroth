@@ -91,8 +91,9 @@ defmodule Referee.BrainsGoldenTest do
     {:ok, run} = Run.new(@yaml, seed, @pcs, routing: routing)
 
     {:ok, _, run} = Run.declare(run, "pc_thistle", "go east")
+    {:ok, _, run} = Run.advance(run)
     {:ok, _, run} = Run.declare(run, "pc_thistle", "go south")
-
+    {:ok, _, run} = Run.advance(run)
     run =
       Enum.reduce(1..20, run, fn _i, acc ->
         {:ok, _texts, acc2} = Run.advance(acc)

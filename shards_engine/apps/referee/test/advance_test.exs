@@ -14,7 +14,7 @@ defmodule Referee.AdvanceTest do
 
   @pcs [
     %{id: "pc_thistle", name: "Thistle", place_id: "entry_hall",
-      int: 13, ac: 5, hd: 1, hp: 12, thac0: 20, damage: "1d8"}
+      int: 13, ac: 20, hd: 1, hp: 50, thac0: 20, damage: "1d8"}
   ]
 
   defp scripts(over) do
@@ -85,7 +85,9 @@ defmodule Referee.AdvanceTest do
 
   defp enter_chiefs_room(run) do
     {:ok, _, run} = Run.declare(run, "pc_thistle", "go east")
+    {:ok, _, run} = Run.advance(run)
     {:ok, _, run} = Run.declare(run, "pc_thistle", "go south")
+    {:ok, _, run} = Run.advance(run)
     run
   end
 
@@ -177,10 +179,7 @@ defmodule Referee.AdvanceTest do
       advance_until(run0, fn r -> events_of(r, :envelope_adopted) != [] end, 3)
 
     {run, all_texts} =
-      advance_until(run1, fn r ->
-        strike?(r) and
-          events_of(r, :damage) |> Enum.any?(&(&1.payload[:target_id] == "pc_thistle"))
-      end, 12)
+      advance_until(run1, fn r -> strike?(r) end, 12)
 
     evs = Run.events(run)
 
@@ -191,15 +190,19 @@ defmodule Referee.AdvanceTest do
           ev.payload[:decision] == :proposed and ev.payload[:verb] == :strike
       end)
 
-    {_damage_ev, i_damage} =
+    {attack_ev, i_attack} =
       Enum.with_index(evs)
       |> Enum.find(fn {ev, i} ->
-        i > i_strike and
-          ev.payload[:kind] == :damage and ev.payload[:target_id] == "pc_thistle"
+        i > i_strike and ev.class == :dice and ev.payload[:purpose] == :attack and
+          ev.payload[:agent_id] == "goblin_bodyguard_1"
       end)
 
-    assert i_strike != nil and i_damage != nil and i_damage > i_strike,
-           "strike=#{i_strike} damage=#{i_damage}"
+    assert i_strike != nil and i_attack != nil and i_attack > i_strike,
+           "strike=#{i_strike} attack=#{i_attack}"
+
+    assert attack_ev.payload[:thac0] != nil
+    assert attack_ev.payload[:target_ac] != nil
+    assert attack_ev.payload[:hit] == (attack_ev.payload[:roll] >= attack_ev.payload[:thac0] - attack_ev.payload[:target_ac])
 
     assert Enum.any?(all_texts, fn texts -> texts["pc_thistle"] not in [nil, ""] end)
   end
@@ -215,10 +218,7 @@ defmodule Referee.AdvanceTest do
     {run1, _} = advance_until(run0, fn r -> events_of(r, :envelope_adopted) != [] end, 3)
 
     {run, _} =
-      advance_until(run1, fn r ->
-        strike?(r) and
-          events_of(r, :damage) |> Enum.any?(&(&1.payload[:target_id] == "pc_thistle"))
-      end, 12)
+      advance_until(run1, fn r -> strike?(r) end, 12)
 
     evs = Run.events(run)
     {:ok, base} = Loader.load(@yaml)

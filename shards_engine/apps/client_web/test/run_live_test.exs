@@ -109,7 +109,7 @@ defmodule ClientWeb.RunLiveTest do
     assert html =~ "Thistle"
   end
 
-  test "declare flows and perceptions stream", %{conn: conn, run_id: id} do
+  test "declare flows and perceptions stream on round advance", %{conn: conn, run_id: id} do
     {:ok, view, _html} = live(conn, "/runs/#{id}?pc=pc_thistle")
     eventually(fn -> render(view) =~ "Entry Hall" end)
 
@@ -117,15 +117,17 @@ defmodule ClientWeb.RunLiveTest do
     |> element("form#declare")
     |> render_submit(%{"text" => "I head north"})
 
-    eventually(fn -> render(view) =~ "You go north." end)
-
     {:ok, _} = Session.advance(id)
+
+    eventually(fn -> render(view) =~ "You go north." end)
 
     view
     |> element("form#declare")
     |> render_submit(%{"text" => "I head south"})
 
-    eventually(fn -> render(view) =~ "[tick 3] You go south." end)
+    {:ok, _} = Session.advance(id)
+
+    eventually(fn -> render(view) =~ "You go south." end)
   end
 
   test "paused run refuses declares", %{conn: conn, run_id: id} do
@@ -141,18 +143,47 @@ defmodule ClientWeb.RunLiveTest do
     eventually(fn -> render(view) =~ "paused" end)
   end
 
-  test "ooc renders for everyone", %{conn: conn, run_id: id} do
+  test "3-panel tabletop layout is rendered on the seat", %{conn: conn, run_id: id} do
+    {:ok, view, _html} = live(conn, "/runs/#{id}?pc=pc_thistle")
+    eventually(fn -> render(view) =~ "Entry Hall" end)
+
+    html = render(view)
+    assert html =~ ~s(<section class="panel scene-panel" data-testid="scene-panel">)
+    assert html =~ ~s(<section class="panel ooc-panel" data-testid="ooc-panel">)
+    assert html =~ ~s(<section class="panel action-panel" data-testid="action-panel">)
+    assert html =~ "Declare Next Action"
+    assert html =~ "OOC Table Chat"
+    assert html =~ "Story Chronicle"
+  end
+
+  test "ooc chat sends and receives in the dedicated panel", %{conn: conn, run_id: id} do
     {:ok, view_t, _html} = live(conn, "/runs/#{id}?pc=pc_thistle")
     eventually(fn -> render(view_t) =~ "Entry Hall" end)
     {:ok, view_b, _html} = live(conn, "/runs/#{id}?pc=pc_bramble")
     eventually(fn -> render(view_b) =~ "Entry Hall" end)
 
     view_t
-    |> element("form#ooc")
+    |> element("form#send_ooc")
     |> render_submit(%{"text" => "gm, what do I see?"})
 
     eventually(fn -> render(view_b) =~ "gm, what do I see?" end)
     assert render(view_t) =~ "gm, what do I see?"
+  end
+
+  test "action declaration updates the status badge to Action Ready", %{conn: conn, run_id: id} do
+    {:ok, view, _html} = live(conn, "/runs/#{id}?pc=pc_thistle")
+    eventually(fn -> render(view) =~ "Entry Hall" end)
+    action_status_html = view |> element("[data-testid='action-status']") |> render()
+    assert action_status_html =~ "Pending: Please declare your action"
+    refute action_status_html =~ "Action Ready"
+
+    view
+    |> element("form#declare")
+    |> render_submit(%{"text" => "I head north"})
+
+    action_status_after = view |> element("[data-testid='action-status']") |> render()
+    assert action_status_after =~ "Action Ready"
+    assert action_status_after =~ "I head north"
   end
 
   test "status ribbon shows connection state and tick", %{conn: conn, run_id: id} do
@@ -181,6 +212,8 @@ defmodule ClientWeb.RunLiveTest do
     view
     |> element("button.chip-exit", "north")
     |> render_click()
+
+    {:ok, _} = Session.advance(id)
 
     eventually(fn -> render(view) =~ "You go north." end)
   end

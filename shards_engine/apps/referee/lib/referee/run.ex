@@ -107,6 +107,13 @@ defmodule Referee.Run do
     end
   end
 
+  @doc "Execute a previously interpreted declared action during round advance."
+  @spec resolve_declared(t(), String.t(), map(), list()) ::
+          {:ok, String.t(), t()} | {:stall, String.t(), t()}
+  def resolve_declared(run, pc_id, action, assumptions) do
+    continue(run, pc_id, action, assumptions)
+  end
+
   defp continue(run, pc_id, action, assumptions) do
     case Validate.check(run.world, action) do
       :ok -> resolved(run, pc_id, action, assumptions)
@@ -115,13 +122,16 @@ defmodule Referee.Run do
   end
 
   @doc """
-  Advance the world one tick: scheduler arrivals, commitments, cadence,
-  sleep — then envelope delivery, order adoption, tier-3 deliberation, and
-  narration of what each PC newly perceived.
+  Advance the world one tick: roll 1E initiative for party vs enemies,
+  then scheduler arrivals, commitments, cadence, sleep — then envelope
+  delivery, order adoption, tier-3 deliberation, and narration of what each
+  PC newly perceived.
   """
   @spec advance(t()) :: {:ok, %{String.t() => String.t()}, t()}
   def advance(run) do
     seq0 = run.seq
+
+    run = roll_initiative(run)
 
     {:ok, events, w2, r2} = Scheduler.advance(run.world, run.rng)
     {:ok, reaction, w3, r3} = Scheduler.react(w2, r2, events)
@@ -138,6 +148,27 @@ defmodule Referee.Run do
     run = deliberation_phase(run, all)
 
     narrate_new_receipts(run, seq0)
+  end
+  # 1E initiative: each side rolls 1d6; lower roll wins. Tied rolls are
+  # simultaneous. The event carries the raw rolls and the resolved winner.
+  defp roll_initiative(run) do
+    {party_roll, rng2} = Dice.roll(run.rng, 6)
+    {enemy_roll, rng3} = Dice.roll(rng2, 6)
+
+    winner =
+      cond do
+        party_roll < enemy_roll -> :party
+        party_roll > enemy_roll -> :enemy
+        true -> :simultaneous
+      end
+
+    push(%{run | rng: rng3}, :dice, run.world.tick, %{
+      purpose: :initiative,
+      sides: 6,
+      party_roll: party_roll,
+      enemy_roll: enemy_roll,
+      winner: winner
+    })
   end
 
   # Envelopes deliver when their target holds a receipt for the voicing

@@ -123,6 +123,28 @@ defmodule Wire.SpectateChannelTest do
     assert spend.total.calls >= 1
   end
 
+  test "gm_chat pushes ooc to the spectate socket", %{run_id: id} do
+    {:ok, _pid} = start_run(id)
+    {:ok, socket} = connect(Wire.Socket, %{"run_id" => id})
+    {:ok, _, _chan} = join(socket, "spectate:#{id}", %{})
+
+    :ok = Session.gm_chat(id, "gm table talk")
+
+    assert_push "ledger_tail", %{events: _}
+    assert_push "ooc", %{"author" => "GM", "text" => "gm table talk"}
+  end
+
+  test "Session.ooc pushes ooc to the spectate socket", %{run_id: id} do
+    {:ok, _pid} = start_run(id)
+    {:ok, socket} = connect(Wire.Socket, %{"run_id" => id})
+    {:ok, _, _chan} = join(socket, "spectate:#{id}", %{})
+
+    :ok = Session.ooc(id, "pc_thistle", "player table talk")
+
+    assert_push "ledger_tail", %{events: _}
+    assert_push "ooc", %{"author" => "pc_thistle", "text" => "player table talk"}
+  end
+
   test "state_sync pushes tick and boundaries after world tails", %{run_id: id} do
     {:ok, _pid} = start_run(id)
     {:ok, socket} = connect(Wire.Socket, %{"run_id" => id})

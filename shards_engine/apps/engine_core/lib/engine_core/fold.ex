@@ -211,7 +211,7 @@ defmodule EngineCore.Fold do
       :paused -> world
       :resumed -> world
       :ooc -> world
-
+      :intent_declared -> world
       other ->
         raise ArgumentError, "unknown payload kind: #{inspect(other)}"
     end

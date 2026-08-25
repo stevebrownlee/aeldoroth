@@ -95,7 +95,6 @@ defmodule Harness do
 
     steps = [{:declare, "pc_thistle", "go east"}, {:declare, "pc_thistle", "go south"}] ++
               List.duplicate(:advance, 20)
-
     Enum.reduce(steps, {run, %{captured: [], marks: []}}, fn
       {:declare, pc, text}, {pre, info} ->
         {:ok, _t, post} = Run.declare(pre, pc, text)

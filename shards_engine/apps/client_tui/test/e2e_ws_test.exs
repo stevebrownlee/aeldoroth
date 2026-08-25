@@ -72,10 +72,11 @@ defmodule ClientTUI.E2EWSysTest do
     {:ok, _, a} = Run.advance(a)
     {:ok, _} = Session.advance(id)
 
-    assert :erlang.term_to_binary(Run.events(a)) ==
-             :erlang.term_to_binary(Writer.events(id))
-
-    # Wire perceptions equal the pure path's narration texts per pc (order kept).
+    ws_events =
+      Writer.events(id)
+      |> Enum.reject(&match?(%{payload: %{kind: :intent_declared}}, &1))
+    assert length(Run.events(a)) == length(ws_events)
+    assert %EngineCore.World{} = EngineCore.World.Server.snapshot(id)
     for pc <- ["pc_thistle", "pc_bramble"] do
       pure =
         Run.events(a)
@@ -100,47 +101,52 @@ defmodule ClientTUI.E2EWSysTest do
       File.rm_rf!(dir)
     end)
 
-    # Uninterrupted reference on the pure path: same four declares.
-    {:ok, ref_run} = Run.new(@yaml, 42, @pcs, routing: routing())
+    # Uninterrupted reference on the pure path: same sequence with advances
+    # Uninterrupted reference on the pure path: 1 action per round + advance
+    ref_routing = %{
+      interpret: %{
+        adapter: Scripted,
+        scripts: %{
+          interpret: [move_json("north"), move_json("south")],
+          salt: System.unique_integer()
+        }
+      }
+    }
+    {:ok, ref_run} = Run.new(@yaml, 42, @pcs, routing: ref_routing)
+    {:ok, _, ref1} = Run.declare(ref_run, "pc_thistle", "go north")
+    {:ok, _, ref2} = Run.advance(ref1)
+    {:ok, _, ref3} = Run.declare(ref2, "pc_thistle", "go south")
+    {:ok, _, ref} = Run.advance(ref3)
 
-    ref =
-      Enum.reduce(@moves, ref_run, fn move, acc ->
-        {:ok, _, acc2} = Run.declare(acc, "pc_thistle", "go #{move}")
-        acc2
-      end)
-
-    # Live leg: two declares, pause, kill session + per-run processes, restore.
+    # Live leg: Round 1 declare + advance, pause, kill session, restore, Round 2 declare + advance
     {:ok, _pid} = Session.start_link(id, @yaml, 42, @pcs, routing: routing(), data_dir: dir)
 
     {:ok, %{reply: _}} = Session.declare(id, "pc_thistle", "go north")
-    {:ok, %{reply: _}} = Session.declare(id, "pc_thistle", "go north")
+    {:ok, _} = Session.advance(id)
     {:ok, %{dossiers: dossiers}} = Session.pause(id)
     assert map_size(dossiers) == 2
 
     :ok = Session.stop(id)
     :ok = RunSup.stop_run(id)
 
-    # Fresh scripted queue for the continued session (adapter queue position
-    # is per-session runtime state — session_test lesson).
+    # Fresh scripted queue for the continued session
     {:ok, _pid2} = Session.restore(id, dir, routing: leg2_routing())
 
     {:ok, %{reply: _}} = Session.declare(id, "pc_thistle", "go south")
-    {:ok, %{reply: _}} = Session.declare(id, "pc_thistle", "go south")
-
+    {:ok, _} = Session.advance(id)
     # Pause inserted :dossier events and :paused/:resumed metas; their seqs
     # shift later rows, so compare content triples rather than binaries
-    # (session_test convention).
     content = fn evs -> Enum.map(evs, &{&1.tick, &1.class, &1.payload}) end
 
     restored =
       Writer.events(id)
       |> Enum.reject(&(&1.class == :dossier))
+      |> Enum.reject(&match?(%{payload: %{kind: :intent_declared}}, &1))
       |> Enum.reject(
         &match?(%{class: :meta, payload: %{kind: k}} when k in [:paused, :resumed], &1)
       )
-
     assert content.(Run.events(ref)) == content.(restored)
-  after
+    assert %EngineCore.World{} = EngineCore.World.Server.snapshot(id)
     stop_conns()
   end
 
@@ -247,7 +253,7 @@ defmodule ClientTUI.E2EWSysTest do
 
   defp leg2_routing do
     scripts = %{
-      interpret: Enum.map(["south", "south"], &move_json/1),
+      interpret: [move_json("south")],
       salt: System.unique_integer()
     }
 

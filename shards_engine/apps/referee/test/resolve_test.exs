@@ -70,7 +70,7 @@ defmodule Referee.ResolveTest do
     a = struct!(Types.Action, actor_id: "pc", verb: :strike, target_id: "gob")
     {:ok, events, w2, _r2} = Resolve.act(world(), rng(), a)
 
-    assert Enum.any?(events, &(&1.class == :dice and &1.payload[:purpose] == :to_hit))
+    assert Enum.any?(events, &(&1.class == :dice and &1.payload[:purpose] == :attack))
 
     if damage = Enum.find(events, &(&1.payload[:kind] == :damage)) do
       assert damage.payload.target_id == "gob"

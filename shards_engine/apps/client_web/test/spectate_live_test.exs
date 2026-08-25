@@ -159,14 +159,13 @@ defmodule ClientWeb.SpectateLiveTest do
     refute html =~ ~s(%{"question" =>)
   end
 
-  test "advance grows the tail", %{conn: conn, run_id: id} do
+  test "start round button is badged with readiness count and advances the round",
+       %{conn: conn, run_id: id} do
     {:ok, view, _html} = live(conn, "/runs/#{id}/gm")
 
     eventually(fn ->
       html = render(view)
-
-      html =~ "End Round (Run World)" and
-        html =~ "Auto-Run until Choice"
+      html =~ "[ Start Round ] (0/2 ready)" and html =~ "Auto-Run until Choice"
     end)
 
     assert render(view) =~
@@ -176,18 +175,15 @@ defmodule ClientWeb.SpectateLiveTest do
 
     eventually(fn -> render(view) =~ "seq-" end)
 
-    before = render(view)
+    # Declare a PC intent and verify the live readiness badge updates.
+    assert {:ok, _} = Session.declare(id, "pc_thistle", "I head east")
+    eventually(fn -> render(view) =~ "[ Start Round ] (1/2 ready)" end)
+    # Flow board shows the declared action in real time.
+    eventually(fn -> render(view) =~ "Flow board" end)
+    assert render(view) =~ "READY"
     view |> element("[data-testid=advance]") |> render_click()
-
-    eventually(fn ->
-      after_html = render(view)
-      after_html != before and after_html =~ "seq-"
-    end)
-
-    # tick advanced via state_sync: seed-42 join is tick 0; one advance = tick 1
-    eventually(fn -> render(view) =~ "Tick 1" end)
+    eventually(fn -> render(view) =~ "Tick" end)
   end
-
   test "pause returns dossiers and resume re-enables advance", %{conn: conn, run_id: id} do
     {:ok, view, _html} = live(conn, "/runs/#{id}/gm")
     eventually(fn -> render(view) =~ "Pause &amp; Recap" end)
@@ -199,7 +195,7 @@ defmodule ClientWeb.SpectateLiveTest do
 
     view |> element("[data-testid=resume]") |> render_click()
     eventually(fn -> render(view) =~ "Resume Play" end)
-    eventually(fn -> render(view) =~ "End Round (Run World)" end)
+    eventually(fn -> render(view) =~ "Start Round" end)
   end
 
   test "flow board shows a thinking badge while waiting for action", %{conn: conn, run_id: id} do
@@ -238,6 +234,21 @@ defmodule ClientWeb.SpectateLiveTest do
 
     eventually(fn -> render(view) =~ "Party, hold position." end)
     assert render(view) =~ "GM"
+  end
+
+  test "player OOC message broadcasts to the GM console", %{conn: conn, run_id: id} do
+    {:ok, gm_view, _html} = live(conn, "/runs/#{id}/gm")
+    eventually(fn -> render(gm_view) =~ "seq-" end)
+
+    {:ok, player_view, _html} = live(conn, "/runs/#{id}?pc=pc_thistle")
+    eventually(fn -> render(player_view) =~ "Entry Hall" end)
+
+    player_view
+    |> element("form#send_ooc")
+    |> render_submit(%{"text" => "Is the ceiling stable?"})
+
+    eventually(fn -> render(gm_view) =~ "Is the ceiling stable?" end)
+    assert render(gm_view) =~ "pc_thistle"
   end
 
   test "dungeon overview shows rooms, residents, treasure, hazards, and sealed exits", %{

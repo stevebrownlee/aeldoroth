@@ -76,8 +76,10 @@ defmodule Wire.SpectateChannel do
   def handle_info({:ledger_events, _run_id, events}, socket) do
     :ok = push(socket, "ledger_tail", %{events: JSONSafe.to_json(events)})
 
-    for %Ledger.Event{class: :ooc, payload: %{agent_id: id, text: text}} <- events do
-      :ok = push(socket, "ooc", %{agent_id: id, text: text})
+    for %Ledger.Event{class: :ooc, payload: payload} <- events, is_map(payload) do
+      author = payload[:agent_id] || payload["agent_id"] || "Table"
+      text = payload[:text] || payload["text"]
+      :ok = push(socket, "ooc", %{"author" => author, "text" => text})
     end
 
     push_state_sync(socket)

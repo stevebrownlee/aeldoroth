@@ -14,13 +14,13 @@ defmodule Referee.AcceptanceTest do
   ## 13.3 — first_divergence / llm_root?
 
   test "first_divergence: equal ledgers are identical" do
-    a = [row(1, :world, %{kind: :tick}), row(2, :dice, %{purpose: :to_hit})]
+    a = [row(1, :world, %{kind: :tick}), row(2, :dice, %{purpose: :attack})]
     assert Acceptance.first_divergence(a, a) == :identical
   end
 
   test "first_divergence: first differing index with both rows" do
-    a = [row(1, :world, %{kind: :t}), row(2, :dice, %{purpose: :to_hit, roll: 5})]
-    b = [row(1, :world, %{kind: :t}), row(2, :dice, %{purpose: :to_hit, roll: 12})]
+    a = [row(1, :world, %{kind: :t}), row(2, :dice, %{purpose: :attack, roll: 5})]
+    b = [row(1, :world, %{kind: :t}), row(2, :dice, %{purpose: :attack, roll: 12})]
 
     assert %{index: 1, a: a_row, b: b_row} = Acceptance.first_divergence(a, b)
     assert a_row.payload[:roll] == 5
@@ -38,7 +38,7 @@ defmodule Referee.AcceptanceTest do
     assert Acceptance.llm_root?(%{class: :llm})
     assert Acceptance.llm_root?(%{class: :clarify})
     assert Acceptance.llm_root?(%{class: :deliberation, decision: :proposed})
-    refute Acceptance.llm_root?(%{class: :dice, purpose: :to_hit})
+    refute Acceptance.llm_root?(%{class: :dice, purpose: :attack})
     refute Acceptance.llm_root?(nil)
   end
 
@@ -100,7 +100,7 @@ defmodule Referee.AcceptanceTest do
         verb: :strike,
         target_id: "pc_thistle"
       }),
-      row(9, :dice, %{purpose: :to_hit, agent_id: "gob", sides: 20, roll: 18, hit: true}),
+      row(9, :dice, %{purpose: :attack, agent_id: "gob", sides: 20, roll: 18, hit: true}),
       row(10, :world, %{kind: :damage, target_id: "pc_thistle", amount: 4})
     ]
   end
@@ -118,7 +118,7 @@ defmodule Referee.AcceptanceTest do
                :envelope_adopted,
                :commitment_created,
                :proposed,
-               :to_hit,
+               :attack,
                :damage
              ]
 
@@ -138,7 +138,7 @@ defmodule Referee.AcceptanceTest do
     events = Enum.reject(chain_events(), &(&1.payload[:kind] == :damage))
 
     {:ok, links} = Acceptance.receipt_chain(events, "env-5-1")
-    assert List.last(links).kind == :to_hit
+    assert List.last(links).kind == :attack
   end
 
   test "receipt_chain: rejected verdict truncates cleanly after the verdict link" do
@@ -591,7 +591,7 @@ defmodule Referee.AcceptanceTest do
                :envelope_adopted,
                :commitment_created,
                :proposed,
-               :to_hit
+               :attack
              ] ++ damage_kinds(kinds)
   end
 
@@ -683,7 +683,7 @@ defmodule Referee.AcceptanceTest do
   defp attack_count(evs),
     do:
       Enum.count(evs, fn ev ->
-        ev.class == :dice and ev.payload[:purpose] == :to_hit and
+        ev.class == :dice and ev.payload[:purpose] == :attack and
           ev.payload[:agent_id] == "goblin_bodyguard_1"
       end)
 

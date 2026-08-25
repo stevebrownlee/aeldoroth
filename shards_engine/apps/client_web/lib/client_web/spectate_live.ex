@@ -40,7 +40,8 @@ defmodule ClientWeb.SpectateLive do
         resumed: false,
         spend: nil,
         auto_note: nil,
-        gm_chat_draft: ""
+        gm_chat_draft: "",
+        ooc_log: []
       )
 
     if connected?(socket) && wire_url() do
@@ -56,21 +57,19 @@ defmodule ClientWeb.SpectateLive do
     end
   end
 
-  # Levers -------------------------------------------------------------------
-
-  # Advance is referee authority: the engine console calls the session
-  # directly (trusted surface), never the wire.
   @impl true
   def handle_event("advance", _params, socket) do
     case Session.advance(socket.assigns.run_id) do
-      {:ok, _} -> {:noreply, socket}
-      {:error, reason} -> {:noreply, assign(socket, error: inspect(reason))}
+      {:ok, _} ->
+        state = Session.state(socket.assigns.run_id)
+        tick = if state, do: state.tick, else: socket.assigns.tick
+        {:noreply, assign(socket, tick: tick)}
+
+      {:error, reason} ->
+        {:noreply, assign(socket, error: inspect(reason))}
     end
   end
 
-  # Advance until a seat needs input (clarify prompt) or the cap hits —
-  # the GM's cruise control (UX spec §6). Direct session calls: referee
-  # authority, same trust as advance.
   def handle_event("advance_until_input", _params, socket) do
     {steps, result} = advance_until_input(socket.assigns.run_id, 0, nil)
 
@@ -81,7 +80,9 @@ defmodule ClientWeb.SpectateLive do
         {:error, reason} -> "stopped after #{steps} step(s): #{inspect(reason)}"
       end
 
-    {:noreply, assign(socket, auto_note: note)}
+    state = Session.state(socket.assigns.run_id)
+    tick = if state, do: state.tick, else: socket.assigns.tick
+    {:noreply, assign(socket, auto_note: note, tick: tick)}
   end
 
   # Everything else is wire traffic (plan 5 Task 5): the spectate channel
@@ -143,7 +144,8 @@ defmodule ClientWeb.SpectateLive do
        dungeon: reply["dungeon"],
        spend: reply["spend"],
        awaiting: reply["awaiting"] || [],
-       tail: tail
+       tail: tail,
+       ooc_log: extract_ooc(tail)
      )}
   end
 
@@ -179,6 +181,12 @@ defmodule ClientWeb.SpectateLive do
   # Flow board refresh (UX spec §6): awaiting rows pushed on change.
   def handle_info({:chan, _topic, "awaiting", %{"pcs" => rows}}, socket) do
     {:noreply, assign(socket, awaiting: rows)}
+  end
+
+  # OOC wire events from any seat (including this GM) append to the shared
+  # table chat panel.
+  def handle_info({:chan, _topic, "ooc", %{"author" => author, "text" => text}}, socket) do
+    {:noreply, update(socket, :ooc_log, &append_ooc(&1, author, text))}
   end
 
   # New ledger events append to the preview.
@@ -237,9 +245,10 @@ defmodule ClientWeb.SpectateLive do
 
       <section class="lever-row" data-testid="levers">
         <div class="lever">
-          <button data-testid="advance" phx-click="advance">End Round (Run World)</button>
+          <button data-testid="advance" phx-click="advance">
+            [ Start Round ] (<%= readiness(@awaiting) %>/<%= length(@awaiting) %> ready)
+          </button>
           <p class="lever-subtitle">Executes declared player actions &amp; NPC AI deliberation for 1 round.</p>
-          <span class="badge readiness" data-testid="readiness-badge"><%= readiness(@awaiting) %>/<%= length(@awaiting) %> ready</span>
         </div>
         <div class="lever">
           <button data-testid="advance_until_input" phx-click="advance_until_input">Auto-Run until Choice</button>
@@ -271,6 +280,7 @@ defmodule ClientWeb.SpectateLive do
                 <span class="seat-dot" data-seated={seated?(row)}></span>
                 <div class="flow-card">
                   <strong class="pc-name"><%= name_of(row) %></strong>
+                  <span class="badge class"><%= class_of(row) %></span>
                   <div class="location"><%= place_name_of(row) %></div>
                   <%= if prompt = prompt_of(row) do %>
                     <span class="badge badge-prompt">NEEDS INPUT</span>
@@ -350,11 +360,18 @@ defmodule ClientWeb.SpectateLive do
             </ul>
           </section>
 
-          <section class="panel">
-            <h2>GM chat</h2>
+          <section class="panel" data-testid="ooc-chat-panel">
+            <h2>Table Chat</h2>
+            <p class="hint">Shared out-of-character table talk.</p>
+            <ul class="ooc-log" id="ooc-log" phx-hook="ChronicleScroll">
+              <li :for={msg <- @ooc_log} class="ooc-message">
+                <strong><%= msg.author %></strong>
+                <span class="ooc-text"><%= msg.text %></span>
+              </li>
+            </ul>
             <form phx-submit="gm_chat" data-testid="gm-chat-form" class="compose">
               <input name="text" type="text" placeholder="Message the table…" required />
-              <button type="submit">Send to table</button>
+              <button type="submit">[ Send OOC to Table ]</button>
             </form>
           </section>
 
@@ -497,6 +514,7 @@ defmodule ClientWeb.SpectateLive do
     case Map.get(row, "last_intent") || Map.get(row, :last_intent) do
       %{text: text} -> text
       %{"text" => text} -> text
+      text when is_binary(text) -> text
       _ -> nil
     end
   end
@@ -523,6 +541,10 @@ defmodule ClientWeb.SpectateLive do
 
   defp name_of(row) when is_map(row) do
     Map.get(row, "name") || Map.get(row, :name) || Map.get(row, "id") || Map.get(row, :id)
+  end
+
+  defp class_of(row) when is_map(row) do
+    Map.get(row, "class") || Map.get(row, :class) || "—"
   end
 
   defp seated?(row) when is_map(row) do
@@ -576,6 +598,23 @@ defmodule ClientWeb.SpectateLive do
     do: Map.get(state, "state") || Map.get(state, :state) || "?"
 
   defp state_value(other), do: other
+
+  defp extract_ooc(events) do
+    events
+    |> Enum.filter(&match?(%{"class" => "ooc"}, &1))
+    |> Enum.map(fn ev ->
+      p = ev["payload"] || %{}
+      author = p["agent_id"] || p["author"] || "?"
+      text = p["text"] || ""
+      id = ev["seq"] || System.unique_integer([:positive])
+      %{id: id, author: author, text: text}
+    end)
+  end
+
+  defp append_ooc(log, author, text) do
+    id = System.unique_integer([:positive])
+    log ++ [%{id: id, author: author, text: text}]
+  end
 
   defp get_num(nil, _key), do: 0
 

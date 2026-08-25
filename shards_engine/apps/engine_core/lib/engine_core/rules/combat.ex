@@ -32,7 +32,8 @@ defmodule EngineCore.Rules.Combat do
   end
 
   defp resolve(false, world, rng, a, t, roll) do
-    ev = dice_event(world.tick, %{purpose: :to_hit, sides: 20, roll: roll,
+    ev = dice_event(world.tick, %{purpose: :attack, sides: 20, roll: roll,
+                                  thac0: a.statblock.thac0,
                                   target_ac: t.statblock.ac, hit: false,
                                   agent_id: a.id})
     {:ok, [ev], world, rng}
@@ -44,7 +45,8 @@ defmodule EngineCore.Rules.Combat do
     amount = Enum.sum(rolls) + cfg.plus
 
     ev_dice =
-      dice_event(world.tick, %{purpose: :to_hit, sides: 20, roll: roll,
+      dice_event(world.tick, %{purpose: :attack, sides: 20, roll: roll,
+                               thac0: a.statblock.thac0,
                                target_ac: t.statblock.ac, hit: true,
                                dmg_rolls: rolls, amount: amount,
                                agent_id: a.id})

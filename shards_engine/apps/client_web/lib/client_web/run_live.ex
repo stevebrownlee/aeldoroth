@@ -284,7 +284,10 @@ defmodule ClientWeb.RunLive do
         paused: false,
         tick: 0,
         compose: "",
-        hint_shown: false
+        hint_shown: false,
+        ooc_messages: [],
+        action_status: :pending,
+        last_declared_text: ""
       )
       |> stream(:log, [])
 
@@ -396,10 +399,18 @@ defmodule ClientWeb.RunLive do
       when is_pid(conn) and text != "" do
     event = if socket.assigns.prompt, do: "answer", else: "declare_intent"
     :ok = Conn.send_event(conn, event, %{"text" => text})
-    {:noreply, assign(socket, prompt: nil, compose: "", hint_shown: true)}
+
+    {:noreply,
+     assign(socket,
+       prompt: nil,
+       compose: "",
+       hint_shown: true,
+       action_status: :ready,
+       last_declared_text: text
+     )}
   end
 
-  def handle_event("ooc", %{"text" => text}, %{assigns: %{conn: conn}} = socket)
+  def handle_event("send_ooc", %{"text" => text}, %{assigns: %{conn: conn}} = socket)
       when is_pid(conn) and text != "" do
     :ok = Conn.send_event(conn, "ooc", %{"text" => text})
     {:noreply, socket}
@@ -440,15 +451,29 @@ defmodule ClientWeb.RunLive do
   end
 
   def handle_info({:chan, _topic, "perception", %{"text" => text, "tick" => tick}}, socket) do
+    new_tick = max(tick, socket.assigns.tick)
+
+    action_status =
+      if new_tick > socket.assigns.tick, do: :pending, else: socket.assigns.action_status
+
+    last_declared_text =
+      if new_tick > socket.assigns.tick, do: "", else: socket.assigns.last_declared_text
+
     {:noreply,
      socket
      |> stream_insert(:log, log_row("perception", "[tick #{tick}] #{text}"))
-     |> assign(tick: max(tick, socket.assigns.tick))}
+     |> assign(tick: new_tick, action_status: action_status, last_declared_text: last_declared_text)}
   end
 
-  def handle_info({:chan, _topic, "ooc", %{"agent_id" => id, "text" => text}}, socket) do
-    label = if id == "GM", do: "[GM] #{text}", else: "#{id}: #{text}"
-    {:noreply, stream_insert(socket, :log, log_row("ooc", label))}
+  def handle_info({:chan, _topic, "ooc", %{"author" => id, "text" => text}}, socket) do
+    msg = %{
+      id: "ooc-#{System.unique_integer([:positive])}",
+      author: id,
+      text: text,
+      gm?: id == "GM"
+    }
+
+    {:noreply, assign(socket, ooc_messages: socket.assigns.ooc_messages ++ [msg])}
   end
 
   def handle_info({:chan, _topic, "prompt", %{"question" => question}}, socket) do
@@ -692,9 +717,10 @@ defmodule ClientWeb.RunLive do
         <strong>Referee asks:</strong> <%= @prompt %>
       </div>
 
-      <div class="play-grid">
-        <div class="play-main">
-          <section class="slice panel">
+      <div class="tabletop">
+        <%!-- Panel 1: Sensory Scene & Story Chronicle --%>
+        <section class="panel scene-panel" data-testid="scene-panel">
+          <div class="scene-card">
             <h3><%= @slice["place"]["name"] %></h3>
             <p><%= @slice["summary"] %></p>
 
@@ -735,18 +761,45 @@ defmodule ClientWeb.RunLive do
                 class="chip-static"
               ><%= e["dir"] || e["to"] %><%= if e["sealed"], do: " (sealed)" %></span>
             </p>
-          </section>
+          </div>
 
-          <section class="log panel">
-            <h3>Chronicle</h3>
+          <div class="chronicle-card">
+            <h3>Story Chronicle</h3>
             <ul id="log" class="log chronicle" phx-hook="ChronicleScroll" phx-update="stream">
               <li :for={{dom_id, row} <- @streams.log} id={dom_id} class={"kind-#{row.kind}"}>
                 <%= row.text %>
               </li>
             </ul>
-          </section>
+          </div>
+        </section>
 
-          <section class="compose panel">
+        <%!-- Panel 2: Live OOC Table Chat --%>
+        <section class="panel ooc-panel" data-testid="ooc-panel">
+          <h3>OOC Table Chat</h3>
+
+          <ul class="ooc-messages" data-testid="ooc-messages">
+            <li :for={msg <- @ooc_messages} class={"ooc-message #{if msg.gm?, do: "ooc-gm", else: "ooc-player"}"}>
+              <span
+                :if={msg.gm?}
+                class="ooc-badge ooc-gm-badge"
+                style="color: #d4af37; font-weight: bold;"
+              >[GM]</span>
+              <span :if={!msg.gm?} class="ooc-badge ooc-player-badge"><%= msg.author %></span>
+              <span class="ooc-text"><%= msg.text %></span>
+            </li>
+          </ul>
+
+          <form id="send_ooc" phx-submit="send_ooc" class="ooc-compose">
+            <input name="text" placeholder="table talk" />
+            <button type="submit">Send OOC</button>
+          </form>
+        </section>
+
+        <%!-- Panel 3: Action Declaration & Character Sheet --%>
+        <section class="panel action-panel" data-testid="action-panel">
+          <div class="action-card">
+            <h3>Declare Next Action</h3>
+
             <div class="verb-palette" data-testid="verb-palette">
               <button
                 :for={{label, scaffold} <- verb_palette()}
@@ -761,73 +814,77 @@ defmodule ClientWeb.RunLive do
               <input
                 name="text"
                 value={@compose}
-                placeholder={if @prompt, do: "your answer", else: "declare intent"}
+                placeholder={if @prompt, do: "your answer", else: "declare your next action"}
                 disabled={@paused}
               />
-              <button type="submit" disabled={@paused}>
-                <%= if @prompt, do: "Answer", else: "Declare" %>
-              </button>
+              <button type="submit" disabled={@paused}>[ Submit Action ]</button>
             </form>
 
             <p :if={@paused} class="hint">Paused by the GM — the referee will resume play.</p>
             <p :if={!@hint_shown && !@prompt} class="hint"><%= first_run_hint() %></p>
 
-            <form id="ooc" phx-submit="ooc">
-              <input name="text" placeholder="table talk" />
-              <button type="submit">OOC</button>
-            </form>
-          </section>
-        </div>
+            <div class="action-status" data-testid="action-status">
+              <%= if @action_status == :pending do %>
+                <span class="status-pending">🟡 Pending: Please declare your action for Round <%= @tick + 1 %></span>
+              <% else %>
+                <span class="status-ready">🟢 Action Ready: "<%= @last_declared_text %>" — Waiting for GM to Start Round</span>
+              <% end %>
+            </div>
+          </div>
 
-        <aside class="rail">
-          <section class="sheet panel">
+          <div class="sheet-card">
             <%= if sh = @slice["sheet"] do %>
+              <% hp_max = sh["hp_max"] || sh["hp"] %>
               <h3>Character<%= if sh["race"] || sh["class"], do: " • #{Enum.filter([sh["race"], sh["class"]], &(&1 && &1 != "")) |> Enum.join(" ")}" %></h3>
+
               <p class="hp">
                 <strong>HP</strong>
-                <span class="hp-numbers"><%= sh["hp"] %><%= if sh["hp_max"], do: " / #{sh["hp_max"]}" %></span>
+                <span class="hp-numbers"><%= sh["hp"] %> / <%= hp_max %></span>
               </p>
               <div class="hp-bar">
                 <div class="hp-fill" style={"width: #{hp_percent(sh)}%"}></div>
               </div>
+
               <dl class="stats">
-                <div><dt>Level</dt><dd><%= sh["level"] || 1 %></dd></div>
-                <div><dt>XP</dt><dd><%= sh["xp"] || 0 %></dd></div>
                 <div><dt>AC</dt><dd><%= sh["ac"] %></dd></div>
                 <div><dt>THAC0</dt><dd><%= sh["thac0"] %></dd></div>
-                <div><dt>Damage</dt><dd><%= sh["damage"] || "—" %></dd></div>
                 <div :if={sh["int"]}><dt>INT</dt><dd><%= sh["int"] %></dd></div>
+                <div><dt>Damage</dt><dd><%= sh["damage"] || "—" %></dd></div>
               </dl>
+
               <p :if={sh["conditions"] != []} class="conditions">
                 <span :for={c <- sh["conditions"]} class="chip-static"><%= c %></span>
               </p>
 
-              <div :if={sh["armor"] || sh["weapons"] || sh["inventory"]} class="char-section">
-                <div class="char-section-title">Equipment & Inventory</div>
+              <div :if={sh["armor"] || sh["weapons"]} class="char-section">
+                <div class="char-section-title">Equipment</div>
                 <ul class="sheet-gear-list">
                   <li :if={sh["armor"]}><span class="gear-label">Armor:</span> <%= sh["armor"] %></li>
                   <li :if={sh["weapons"]}><span class="gear-label">Weapons:</span> <%= sh["weapons"] %></li>
-                  <li :if={sh["inventory"]}><span class="gear-label">Gear:</span> <%= sh["inventory"] %></li>
                 </ul>
               </div>
 
               <div :if={sh["spells"]} class="char-section">
-                <div class="char-section-title" style="color: #d0a8e8;">✨ Spells</div>
-                <div style="font-size: 0.85rem; color: #e8d9a8;"><%= sh["spells"] %></div>
+                <div class="char-section-title" style="color: #d0a8e8;">✨ Prepared Spells</div>
+                <ul class="sheet-list">
+                  <li :for={spell <- list_or_text(sh["spells"])}><%= spell %></li>
+                </ul>
               </div>
 
               <div :if={sh["prayers"]} class="char-section">
-                <div class="char-section-title" style="color: #a8c8e8;">🙏 Prayers</div>
-                <div style="font-size: 0.85rem; color: #e8d9a8;"><%= sh["prayers"] %></div>
+                <div class="char-section-title" style="color: #a8c8e8;">🙏 Prepared Prayers</div>
+                <ul class="sheet-list">
+                  <li :for={prayer <- list_or_text(sh["prayers"])}><%= prayer %></li>
+                </ul>
               </div>
             <% end %>
-          </section>
+          </div>
 
           <section class="dossier panel" :if={@dossier}>
             <h3>Dossier</h3>
             <pre><%= @dossier %></pre>
           </section>
-        </aside>
+        </section>
       </div>
     </div>
     """
@@ -1006,6 +1063,15 @@ defmodule ClientWeb.RunLive do
   defp status(_conn, true, _prompt?, _tick), do: "paused by GM"
   defp status(_conn, _paused?, prompt, _tick) when is_binary(prompt), do: "answer needed"
   defp status(_conn, _paused?, _prompt?, tick), do: "connected · tick #{tick} · your move"
+
+  defp list_or_text(value) when is_list(value), do: value
+  defp list_or_text(value) when is_binary(value) do
+    value
+    |> String.split(",")
+    |> Enum.map(&String.trim/1)
+    |> Enum.reject(&(&1 == ""))
+  end
+  defp list_or_text(_), do: []
 
   defp hp_percent(%{"hp" => hp, "hp_max" => hp_max})
        when is_number(hp) and is_number(hp_max) and hp_max > 0,

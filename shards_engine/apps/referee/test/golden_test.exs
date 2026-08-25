@@ -84,10 +84,10 @@ defmodule Referee.GoldenTest do
     run =
       Enum.reduce(@intents, run, fn utterance, acc ->
         {:ok, _text, run2} = Run.declare(acc, "pc_thistle", utterance)
-        run2
+        {:ok, _narrations, run3} = Run.advance(run2)
+        run3
       end)
 
-    {:ok, _narrations, run} = Run.advance(run)
     {:ok, run}
   end
 end
