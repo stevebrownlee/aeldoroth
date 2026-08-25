@@ -991,7 +991,7 @@ defmodule ClientWeb.RunLive do
             <div class="sheet-shield">
               <div style="font-size: 0.7rem; color: #8fb7e8;">ARMOR CLASS</div>
               <%= if @editable? do %>
-                <input type="number" name="hero[ac]" value={@h.ac} style="width: 50px; text-align: center; font-weight: bold; font-size: 1.1rem;" />
+                <input type="number" name="hero[ac]" value={@h.ac} style="width: 72px; text-align: center; font-weight: bold; font-size: 1.25rem; padding: 0.2rem 0.3rem;" />
               <% else %>
                 <div class="ac-val"><%= @h.ac %></div>
               <% end %>
@@ -1021,7 +1021,7 @@ defmodule ClientWeb.RunLive do
             <div class="sheet-shield" style="border-color: #e88f8f; background: #2e1c1c;">
               <div style="font-size: 0.7rem; color: #e88f8f;">HIT POINTS</div>
               <%= if @editable? do %>
-                <input type="number" name="hero[hp]" value={@h.hp} min="1" style="width: 50px; text-align: center; font-weight: bold; font-size: 1.1rem; color: #e88f8f;" />
+                <input type="number" name="hero[hp]" value={@h.hp} min="1" style="width: 72px; text-align: center; font-weight: bold; font-size: 1.25rem; color: #e88f8f; padding: 0.2rem 0.3rem;" />
               <% else %>
                 <div class="ac-val" style="color: #e88f8f;"><%= @h.hp %></div>
               <% end %>

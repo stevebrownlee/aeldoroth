@@ -239,10 +239,15 @@
         color: #e8d9a8; font-weight: bold; background: #202736;
       }
       .sheet-shield {
-        display: inline-block; border: 2px solid #8fb7e8; padding: 0.4rem 0.7rem;
+        display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
+        border: 2px solid #8fb7e8; padding: 0.5rem 0.8rem; min-width: 90px;
         border-radius: 0 0 14px 14px; background: #222938; text-align: center;
       }
-      .sheet-shield .ac-val { font-size: 1.3rem; font-weight: bold; color: #e8d9a8; }
+      .sheet-shield .ac-val { font-size: 1.35rem; font-weight: bold; color: #e8d9a8; line-height: 1.2; }
+      .sheet-shield input[type=number] {
+        width: 70px; padding: 0.2rem 0.3rem; font-size: 1.3rem; font-weight: bold;
+        text-align: center; margin-top: 0.2rem;
+      }
       .sheet-matrix-1e { width: 100%; border-collapse: collapse; font-size: 0.75rem; text-align: center; }
       .sheet-matrix-1e th, .sheet-matrix-1e td { border: 1px solid #343c4d; padding: 0.2rem 0.25rem; }
       .sheet-matrix-1e th { background: #222733; color: #9aa3af; font-weight: normal; }
