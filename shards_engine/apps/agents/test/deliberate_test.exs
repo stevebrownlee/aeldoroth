@@ -78,4 +78,21 @@ defmodule Agents.DeliberateTest do
     assert head =~ "Commitments:"
     assert head =~ "Salient here:"
   end
+
+  test "prompt includes formatted dossier lines" do
+    dossier = %{
+      role: "bandit chief",
+      personality: "gruff and suspicious",
+      goals: ["protect the treasure", "drive off intruders"],
+      knowledge: ["pc_thistle is a thief", "the back exit leads east"]
+    }
+    entry = ~s({"verb":"wait","reason":"biding"})
+    {:ok, d} = Agents.deliberate("grisk_the_snatcher",
+      %{slice: slice("grisk_the_snatcher", %{dossier: dossier}), ctx: ctx([entry])})
+
+    assert d.request.user =~ "Role: bandit chief"
+    assert d.request.user =~ "Personality: gruff and suspicious"
+    assert d.request.user =~ "Goals: protect the treasure; drive off intruders"
+    assert d.request.user =~ "Knowledge / Rumors: pc_thistle is a thief; the back exit leads east"
+  end
 end

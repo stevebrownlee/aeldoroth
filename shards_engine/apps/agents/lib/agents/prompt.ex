@@ -30,19 +30,53 @@ defmodule Agents.Prompt do
     subordinate's id as target_id, and the spoken order as message.
     """
 
-    user = """
-    You are #{slice.agent.name} in #{slice.place.name}.
-    Commitments: #{commitment_lines(slice.commitments)}
-    Salient here: #{Enum.join(slice.salient, ", ")}
-    Believed here: #{Enum.join(slice.believed, ", ")}
-    Exits: #{Enum.join(slice.place.exits, ", ")}
-    Capabilities: #{Enum.join(slice.capabilities, ", ")}
+    dossier = format_dossier(slice[:dossier])
 
-    Summary: #{slice.summary}
-    """
+    user =
+      [
+        "You are #{slice.agent.name} in #{slice.place.name}.",
+        dossier,
+        "Commitments: #{commitment_lines(slice.commitments)}",
+        "Salient here: #{Enum.join(slice.salient, ", ")}",
+        "Believed here: #{Enum.join(slice.believed, ", ")}",
+        "Exits: #{Enum.join(slice.place.exits, ", ")}",
+        "Capabilities: #{Enum.join(slice.capabilities, ", ")}",
+        "",
+        "Summary: #{slice.summary}"
+      ]
+      |> Enum.reject(&is_nil/1)
+      |> Enum.join("\n")
 
     {system, user, schema}
-end
+  end
+
+  defp format_dossier(nil), do: nil
+  defp format_dossier(%{} = d) when map_size(d) == 0, do: nil
+  defp format_dossier(dossier) do
+    lines =
+      []
+      |> maybe_dossier_line("Role", dossier_field(dossier, :role))
+      |> maybe_dossier_line("Personality", dossier_field(dossier, :personality))
+      |> maybe_dossier_line("Goals", dossier_field(dossier, :goals))
+      |> maybe_dossier_line("Knowledge / Rumors",
+           dossier_field(dossier, :knowledge) || dossier_field(dossier, :rumors))
+
+    if Enum.empty?(lines), do: nil, else: Enum.join(lines, "\n")
+  end
+
+  defp dossier_field(dossier, key) do
+    dossier[key] || dossier[Atom.to_string(key)]
+  end
+
+  defp maybe_dossier_line(lines, _label, nil), do: lines
+  defp maybe_dossier_line(lines, _label, []), do: lines
+  defp maybe_dossier_line(lines, _label, ""), do: lines
+  defp maybe_dossier_line(lines, label, value) when is_list(value) do
+    lines ++ ["#{label}: #{Enum.join(value, "; ")}"]
+  end
+  defp maybe_dossier_line(lines, label, value) do
+    lines ++ ["#{label}: #{value}"]
+  end
 
   @doc """
   Adoption prompt. The envelope is stripped to its deniable face — id, from,
