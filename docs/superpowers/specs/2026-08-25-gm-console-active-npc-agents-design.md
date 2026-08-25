@@ -15,14 +15,19 @@ This design introduces the **Active NPC Agents** panel in the GM Console. It pro
 ```mermaid
 flowchart TD
     PC[Player Character] -->|Move / Signal| Boundary[EngineCore.Boundaries]
-    Boundary -->|:boundary_wake| Ledger[EngineCore.Ledger]
-    Ledger -->|Fold| World[EngineCore.World.Server]
+    Boundary -->|:boundary_wake with reason| Ledger[EngineCore.Ledger]
+    Ledger -->|Fold: records last_trigger_reason| World[EngineCore.World.Server]
     World -->|active_agents/1| SpectateChan[Wire.SpectateChannel]
     SpectateChan -->|state_sync push| GMConsole[ClientWeb.SpectateLive]
     GMConsole -->|Renders| ActiveNPCPanel[Active NPC Agents Panel]
 ```
 
-### 2.1 Query Function (`EngineCore.World.Server.active_agents/1`)
+### 2.1 Boundary State Persistence (`Types.Boundary` & `Fold`)
+
+* `EngineCore.Types.Boundary` struct adds field `last_trigger_reason: nil`.
+* `EngineCore.Fold` on `:boundary_wake` updates `last_trigger_reason: Map.get(payload, :reason)`. On `:boundary_refresh`, updates `last_trigger_tick`. On `:boundary_sleep`, resets `state: :dormant` (and clears or preserves trigger context).
+
+### 2.2 Query Function (`EngineCore.World.Server.active_agents/1`)
 
 A dedicated query function in `EngineCore.World.Server`:
 
@@ -50,8 +55,8 @@ def active_agents(run_id)
    - `place_id`: Current place ID.
    - `place_name`: Human-readable room/settlement name from `world.places`.
    - `boundary_id`: ID of the waking boundary.
-   - `wake_tick`: Tick at which the boundary woke.
-   - `wake_reason`: Reason recorded during wake event (e.g. `"presence_crossing by pc1"`, `"signal_arrived: alarm"`).
+   - `wake_tick`: Tick at which the boundary woke (`boundary.last_trigger_tick`).
+   - `wake_reason`: Reason recorded during wake event (`boundary.last_trigger_reason || "presence crossing"`).
    - `hp`: Current hit points (`agent.body.hp`).
    - `hp_max`: Maximum hit points (`agent.statblock.hp_max`).
    - `ac`: Armor Class (`agent.statblock.ac`).
@@ -62,7 +67,7 @@ def active_agents(run_id)
    - `last_intent`: Most recent deliberated action proposal or declared intent string.
    - `dossier`: Roleplay dossier map containing keys `:role`, `:personality`, `:goals`, `:knowledge`, `:rumors`.
 
-### 2.2 Wire Serialization (`Wire.JSONSafe` & `Wire.SpectateChannel`)
+### 2.3 Wire Serialization (`Wire.JSONSafe` & `Wire.SpectateChannel`)
 
 * `Wire.JSONSafe`: Ensures all atoms, lists, and maps inside `active_agents` format cleanly as JSON.
 * `Wire.SpectateChannel.join/3`: Snapshot payload includes `active_agents: JSONSafe.to_json(Server.active_agents(run_id))`.
@@ -213,8 +218,8 @@ The **Active NPC Agents** panel is positioned in `.gm-main` (the left column), d
    * `SpectateLive` initializes `@active_agents` to `[]`.
    * On channel connect / join reply, assigns `active_agents: reply["active_agents"] || []`.
 2. **Real-time Boundary Crossings**:
-   * When a player declares movement into a room containing a dormant boundary, `Boundaries.evaluate/2` generates a `:boundary_wake` event.
-   * `Fold.fold/2` updates boundary to `:awake` and bound agents to `attention: :alert`.
+   * When a player declares movement into a room containing a dormant boundary, `Boundaries.evaluate/2` generates a `:boundary_wake` event with `reason: "..."`.
+   * `Fold.fold/2` updates boundary to `state: :awake`, `last_trigger_tick: p.tick`, `last_trigger_reason: p.reason`, and bound agents to `attention: :alert`.
    * `Wire.SpectateChannel` receives ledger events and pushes `"state_sync"` containing refreshed `active_agents`.
    * LiveView re-renders the panel, animating the new active NPC cards into view.
 3. **Boundary Sleep**:
@@ -225,14 +230,15 @@ The **Active NPC Agents** panel is positioned in `.gm-main` (the left column), d
 
 ## 5. Testing & Verification Plan
 
-1. **Engine Core Unit Tests (`apps/engine_core/test/server_test.exs` or `world_test.exs`)**:
+1. **Engine Core Unit Tests (`apps/engine_core/test/world_server_test.exs` & `fold_test.exs`)**:
+   * Verify `Fold.fold/2` on `:boundary_wake` persists `last_trigger_reason` to `Types.Boundary`.
    * Verify `Server.active_agents/1` returns empty list when all boundaries are dormant.
-   * Verify waking a boundary (e.g. `guard_room_zone` or `maras_inn_zone`) causes `Server.active_agents/1` to return enriched maps with correct HP, AC, THAC0, wake trigger reason, and dossier.
+   * Verify waking a boundary (e.g. `guard_room_zone` or `maras_inn_zone`) causes `Server.active_agents/1` to return enriched maps with correct HP, AC, THAC0, wake trigger reason (`last_trigger_reason`), and dossier.
    * Verify PCs are excluded from `Server.active_agents/1`.
 2. **Wire Channel Integration Tests (`apps/wire/test/spectate_channel_test.exs`)**:
    * Verify initial join snapshot includes `"active_agents"`.
    * Verify `"state_sync"` broadcast contains `"active_agents"` array.
-3. **LiveView Interface Tests (`apps/client_web/test/client_web/spectate_live_test.exs`)**:
+3. **LiveView Interface Tests (`apps/client_web/test/spectate_live_test.exs`)**:
    * Verify presence of `section[data-testid="active-npcs-panel"]`.
    * Verify empty state banner displays when no NPCs are awake.
    * Verify active NPC cards render with name, tier badge, wake trigger text, HP bar, vitals, and roleplay dossier drawer.
