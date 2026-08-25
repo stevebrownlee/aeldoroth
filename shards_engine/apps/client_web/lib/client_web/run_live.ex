@@ -1595,6 +1595,12 @@ defmodule ClientWeb.RunLive do
     end)
     |> Enum.reject(&is_nil/1)
   end
+  defp hp_percent(sh) when is_map(sh) do
+    hp = sh["hp"] || sh[:hp] || 0
+    max = sh["hp_max"] || sh[:hp_max] || hp
+    if max > 0, do: min(100, max(0, trunc(hp / max * 100))), else: 0
+  end
+
   defp hp_percent(_), do: 0
 
   defp list_or_text(list) when is_list(list), do: list
