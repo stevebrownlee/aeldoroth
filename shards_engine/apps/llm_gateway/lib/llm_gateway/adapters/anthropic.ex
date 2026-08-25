@@ -66,12 +66,25 @@ defmodule LLMGateway.Adapters.Anthropic do
   defp usage(_), do: {:error, :no_usage}
 
   defp parse_json(content) do
-    case Json.decode(content) do
+    cleaned =
+      content
+      |> String.trim()
+      |> String.replace(~r/^```(?:json)?\s*/i, "")
+      |> String.replace(~r/\s*```$/i, "")
+      |> String.trim()
+
+    case Json.decode(cleaned) do
       {:ok, decoded} when is_map(decoded) -> decoded
-      _ -> nil
+      _ ->
+        case Json.decode(content) do
+          {:ok, decoded} when is_map(decoded) -> decoded
+          _ -> nil
+        end
     end
   end
 
   defp resolve_key(nil), do: ""
-  defp resolve_key(key_ref), do: Application.get_env(:llm_gateway, :keys, %{})[key_ref] || ""
+  defp resolve_key(key) when is_binary(key), do: key
+  defp resolve_key(key_ref) when is_atom(key_ref),
+    do: Application.get_env(:llm_gateway, :keys, %{})[key_ref] || ""
 end

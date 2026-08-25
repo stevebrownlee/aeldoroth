@@ -15,5 +15,5 @@ defmodule LLMGateway.MixProject do
     ]
   end
 
-  def application, do: [extra_applications: [:logger, :ssl, :crypto]]
+  def application, do: [extra_applications: [:logger, :ssl, :crypto, :inets]]
 end

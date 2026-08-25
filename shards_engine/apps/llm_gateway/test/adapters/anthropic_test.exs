@@ -49,6 +49,17 @@ defmodule LLMGateway.Adapters.AnthropicTest do
     assert result.usage == %{tokens_in: 13, tokens_out: 4}
   end
 
+  test "parse_response decodes markdown-fenced json" do
+    body =
+      Jason.encode!(%{
+        "content" => [%{"type" => "text", "text" => "```json\n{\"verb\":\"speak\",\"message\":\"welcome\"}\n```"}],
+        "usage" => %{"input_tokens" => 20, "output_tokens" => 8}
+      })
+
+    assert {:ok, result} = Anthropic.parse_response(200, body)
+    assert result.parsed == %{"verb" => "speak", "message" => "welcome"}
+  end
+
   test "parse_response maps vendor error statuses" do
     assert {:error, :unauthorized} = Anthropic.parse_response(401, ~s({}))
     assert {:error, :rate_limited} = Anthropic.parse_response(429, ~s({}))
