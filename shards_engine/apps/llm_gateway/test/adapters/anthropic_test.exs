@@ -69,4 +69,14 @@ defmodule LLMGateway.Adapters.AnthropicTest do
   test "parse_response rejects empty content blocks" do
     assert {:error, {:bad_response, _}} = Anthropic.parse_response(200, ~s({"content": []}))
   end
+
+  test "complete respects bounded timeout and returns transport error" do
+    cfg = Map.merge(@cfg, %{endpoint: "http://192.0.2.1:81", timeout: 50, connect_timeout: 50})
+    start_time = System.monotonic_time(:millisecond)
+    res = Anthropic.complete(@req, cfg)
+    duration = System.monotonic_time(:millisecond) - start_time
+
+    assert {:error, {:transport, _}} = res
+    assert duration < 500
+  end
 end

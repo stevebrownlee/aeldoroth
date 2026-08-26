@@ -58,13 +58,20 @@ defmodule LLMGateway.Adapters.OpenAICompat do
 
     ssl_opts = ssl_opts()
     json_body = Json.encode!(body)
-    timeout = Map.get(cfg, :timeout, 15_000)
+    timeout = Map.get(cfg, :timeout, 10_000)
+    connect_timeout = Map.get(cfg, :connect_timeout, min(timeout, 5_000))
+
+    http_opts = [
+      ssl: ssl_opts,
+      timeout: timeout,
+      connect_timeout: connect_timeout
+    ]
 
     case :httpc.request(
            :post,
            {~c"#{url}", charlist_headers, ~c"application/json", String.to_charlist(json_body)},
-           [ssl: ssl_opts],
-           timeout: timeout
+           http_opts,
+           []
          ) do
       {:ok, {{_, status, _}, _, resp_body}} ->
         parse_response(status, IO.iodata_to_binary(resp_body))

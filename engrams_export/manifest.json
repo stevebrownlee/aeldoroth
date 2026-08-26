@@ -1,13 +1,13 @@
 {
   "counts": {
     "active_context": 1,
-    "anchors": 61,
+    "anchors": 65,
     "custom_data": 32,
-    "decisions": 72,
-    "links": 72,
+    "decisions": 73,
+    "links": 74,
     "patterns": 14,
     "product_context": 1,
-    "progress": 35
+    "progress": 36
   },
-  "exported_at": "2026-08-26T03:45:52.849949+00:00"
+  "exported_at": "2026-08-26T13:59:38.386135+00:00"
 }

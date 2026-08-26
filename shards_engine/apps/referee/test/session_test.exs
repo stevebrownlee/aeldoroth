@@ -260,6 +260,32 @@ defmodule Referee.SessionTest do
     end)
   end
 
+  test "declare gracefully falls back to grammar on LLM adapter transport failure", ctx do
+    anthropic_failing_routing = %{
+      interpret: %{
+        adapter: LLMGateway.Adapters.Anthropic,
+        endpoint: "http://192.0.2.1:81",
+        model: "claude-3-5-haiku-20241022",
+        key_ref: nil,
+        timeout: 50,
+        connect_timeout: 50,
+        temperature: 0.2,
+        max_tokens: 128
+      }
+    }
+
+    with_session(ctx.test, [routing: anthropic_failing_routing], fn id, _dir, _pid ->
+      assert {:ok, %{reply: reply}} = Session.declare(id, "pc_bramble", "listen to the patrons")
+      assert reply =~ "Action registered"
+
+      assert {:ok, rows} = Session.awaiting(id)
+      bramble = Enum.find(rows, &(&1.id == "pc_bramble"))
+      assert bramble.last_intent.text == "listen to the patrons"
+
+      assert {:ok, _texts} = Session.advance(id)
+    end)
+  end
+
   defp declare_all(run) do
     Enum.reduce(@moves, run, fn dir, acc ->
       {:ok, _, acc2} = Run.declare(acc, "pc_thistle", "go #{dir}")
