@@ -222,48 +222,66 @@ defmodule ClientWeb.RunLive do
 
   @impl true
   def mount(%{"run_id" => run_id} = params, _session, socket) do
-    pc = params["pc_id"] || params["pc"]
+    raw_pc = params["pc_id"] || params["pc"]
+    raw_pc = if is_binary(raw_pc) and String.trim(raw_pc) != "", do: String.trim(raw_pc), else: nil
 
-    socket =
-      assign(socket,
-        run_id: run_id,
-        pc: pc,
-        roster: nil,
-        hero: default_hero(),
-        races: @races,
-        classes: @classes,
-        alignments: @alignments,
-        archetypes: @archetypes,
-        conn: nil,
-        slice: nil,
-        dossier: nil,
-        prompt: nil,
-        paused: false,
-        tick: 0,
-        compose: "",
-        hint_shown: false,
-        ooc_messages: [],
-        action_status: :pending,
-        last_declared_text: "",
-        show_sheet_modal: false,
-        error: nil
-      )
-      |> stream(:log, [])
-
-    if connected?(socket) && pc && wire_url() do
-      case Conn.start_link(wire_url(),
-             run_id: run_id,
-             character_id: pc,
-             parent: self()
-           ) do
-        {:ok, pid} ->
-          {:ok, monitor_conn(assign(socket, conn: pid))}
-
-        {:error, reason} ->
-          {:ok, put_flash(socket, :error, "wire connection failed: #{inspect(reason)}")}
+    {pc, redirect_to} =
+      if raw_pc do
+        case ensure_pc_present(run_id, raw_pc) do
+          {:ok, resolved_pc} -> {resolved_pc, nil}
+          :not_found -> {nil, "/runs/#{run_id}"}
+        end
+      else
+        {nil, nil}
       end
+
+    if redirect_to do
+      {:ok,
+       socket
+       |> put_flash(:error, "Character '#{raw_pc}' not found in this run. Create your hero below.")
+       |> push_navigate(to: redirect_to)}
     else
-      {:ok, assign(socket, roster: Session.roster(run_id))}
+      socket =
+        assign(socket,
+          run_id: run_id,
+          pc: pc,
+          roster: nil,
+          hero: default_hero(),
+          races: @races,
+          classes: @classes,
+          alignments: @alignments,
+          archetypes: @archetypes,
+          conn: nil,
+          slice: nil,
+          dossier: nil,
+          prompt: nil,
+          paused: false,
+          tick: 0,
+          compose: "",
+          hint_shown: false,
+          ooc_messages: [],
+          action_status: :pending,
+          last_declared_text: "",
+          show_sheet_modal: false,
+          error: nil
+        )
+        |> stream(:log, [])
+
+      if connected?(socket) && pc && wire_url() do
+        case Conn.start_link(wire_url(),
+               run_id: run_id,
+               character_id: pc,
+               parent: self()
+             ) do
+          {:ok, pid} ->
+            {:ok, monitor_conn(assign(socket, conn: pid))}
+
+          {:error, reason} ->
+            {:ok, put_flash(socket, :error, "wire connection failed: #{inspect(reason)}")}
+        end
+      else
+        {:ok, assign(socket, roster: Session.roster(run_id))}
+      end
     end
   end
 
@@ -408,6 +426,20 @@ defmodule ClientWeb.RunLive do
      )}
   end
 
+  def handle_info({:chan_reply, _ref, :error, %{"reason" => "unauthorized"}}, socket) do
+    {:noreply,
+     socket
+     |> put_flash(:error, "Character not found or not authorized in this run.")
+     |> push_navigate(to: "/runs/#{socket.assigns.run_id}")}
+  end
+
+  def handle_info({:chan_reply, _ref, :error, %{"reason" => "character_already_claimed"}}, socket) do
+    {:noreply,
+     socket
+     |> put_flash(:error, "That character seat is already claimed by another player.")
+     |> push_navigate(to: "/runs/#{socket.assigns.run_id}")}
+  end
+
   def handle_info({:chan_reply, _ref, :error, %{"reason" => reason}}, socket) do
     {:noreply, put_flash(socket, :error, "referee: #{reason}")}
   end
@@ -464,18 +496,19 @@ defmodule ClientWeb.RunLive do
 
   def handle_info(:rejoin, %{assigns: %{conn: nil, pc: pc, run_id: run_id}} = socket)
       when is_binary(pc) do
-    if url = wire_url() do
-      case Conn.start_link(url, run_id: run_id, character_id: pc, parent: self()) do
-        {:ok, pid} -> {:noreply, monitor_conn(assign(socket, conn: pid, error: nil))}
-        _ ->
-          Process.send_after(self(), :rejoin, 1_000)
-          {:noreply, socket}
-      end
-    else
-      {:noreply, socket}
+    case wire_url() do
+      url when is_binary(url) and url != "" ->
+        case Conn.start_link(url, run_id: run_id, character_id: pc, parent: self()) do
+          {:ok, pid} -> {:noreply, monitor_conn(assign(socket, conn: pid, error: nil))}
+          _ ->
+            Process.send_after(self(), :rejoin, 1_000)
+            {:noreply, socket}
+        end
+
+      _ ->
+        {:noreply, socket}
     end
   end
-
   def handle_info(:rejoin, socket), do: {:noreply, socket}
   def handle_info(_msg, socket), do: {:noreply, socket}
 
@@ -1513,6 +1546,58 @@ defmodule ClientWeb.RunLive do
       :ok
     end
   end
+  defp ensure_pc_present(run_id, pc) do
+    case Session.pcs(run_id) do
+      {:ok, pcs} ->
+        if pc in pcs do
+          {:ok, pc}
+        else
+          case find_archetype(pc) do
+            {:ok, archetype} ->
+              pc_id = slug_id(archetype.name)
+
+              pc_map = %{
+                id: pc_id,
+                name: archetype.name,
+                race: archetype.race,
+                class: archetype.class,
+                level: archetype.level,
+                xp: archetype.xp,
+                int: archetype.int,
+                hp: archetype.hp,
+                ac: archetype.ac,
+                thac0: archetype.thac0,
+                damage: archetype.damage,
+                armor: archetype.armor,
+                weapons: archetype.weapons,
+                inventory: archetype.inventory,
+                spells: Enum.join(archetype.spells, ", "),
+                prayers: Enum.join(archetype.prayers, ", ")
+              }
+
+              case Session.add_pc(run_id, pc_map) do
+                {:ok, created_id} -> {:ok, created_id}
+                _ -> :not_found
+              end
+
+            :error ->
+              :not_found
+          end
+        end
+
+      _ ->
+        {:ok, pc}
+    end
+  end
+
+  defp find_archetype(pc) do
+    Enum.find_value(@archetypes, :error, fn {name, data} ->
+      if slug_id(name) == pc or String.downcase(name) == String.downcase(pc) do
+        {:ok, data}
+      end
+    end)
+  end
+
 
   defp slug_id(name) do
     base =

@@ -117,6 +117,8 @@ defmodule ClientWeb.RunLiveTest do
     |> element("form#declare")
     |> render_submit(%{"text" => "I head north"})
 
+    eventually(fn -> render(view) =~ "Waiting for GM to Start Round" end)
+
     {:ok, _} = Session.advance(id)
 
     eventually(fn -> render(view) =~ "You go north." end)
@@ -124,6 +126,8 @@ defmodule ClientWeb.RunLiveTest do
     view
     |> element("form#declare")
     |> render_submit(%{"text" => "I head south"})
+
+    eventually(fn -> render(view) =~ "Waiting for GM to Start Round" end)
 
     {:ok, _} = Session.advance(id)
 
@@ -310,6 +314,21 @@ defmodule ClientWeb.RunLiveTest do
 
     closed_html = render(view)
     refute closed_html =~ "sheet-modal-backdrop"
+  end
+
+  test "navigating directly to an unspawned archetype auto-spawns the hero into the session", %{conn: conn, run_id: id} do
+    # Mirage is not in initial @pcs
+    refute Enum.any?(Session.pcs(id) |> elem(1), &(&1 == "pc_mirage"))
+
+    {:ok, view, _html} = live(conn, "/runs/#{id}/pc_mirage")
+    eventually(fn -> render(view) =~ "Mirage" end)
+
+    assert Enum.any?(Session.pcs(id) |> elem(1), &(&1 == "pc_mirage"))
+    assert render(view) =~ "Gnome Illusionist"
+    refute render(view) =~ "Awaiting location"
+  end
+  test "navigating to an unknown non-existent character redirects to hero builder", %{conn: conn, run_id: id} do
+    assert {:error, {:live_redirect, %{to: "/runs/" <> ^id}}} = live(conn, "/runs/#{id}/pc_unknown_stranger")
   end
 
   defp eventually(fun, tries \\ 80) do

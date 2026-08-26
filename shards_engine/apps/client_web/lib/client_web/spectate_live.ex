@@ -16,7 +16,9 @@ defmodule ClientWeb.SpectateLive do
   use ClientWeb, :live_view
 
   alias ClientTUI.Conn
+  alias EngineCore.World.Server
   alias Referee.Run.Session
+  alias Wire.JSONSafe
 
   alias Phoenix.LiveView.JS
 
@@ -24,6 +26,13 @@ defmodule ClientWeb.SpectateLive do
 
   @impl true
   def mount(%{"run_id" => run_id}, _session, socket) do
+    initial_awaiting = enrich_awaiting(run_id, Session.awaiting(run_id))
+    state = Session.state(run_id)
+    tick = if state, do: state.tick, else: 0
+    boundaries = Server.boundaries(run_id)
+    dungeon = Server.dungeon_overview(run_id)
+    active_agents = Server.active_agents(run_id)
+
     socket =
       assign(socket,
         run_id: run_id,
@@ -31,12 +40,12 @@ defmodule ClientWeb.SpectateLive do
         invite_url: invite_url(run_id),
         conn: nil,
         error: nil,
-        tick: nil,
+        tick: tick,
         tail: [],
-        boundaries: nil,
-        dungeon: nil,
-        awaiting: [],
-        active_agents: [],
+        boundaries: JSONSafe.to_json(boundaries),
+        dungeon: JSONSafe.to_json(dungeon),
+        awaiting: initial_awaiting,
+        active_agents: JSONSafe.to_json(active_agents),
         dossiers: nil,
         resumed: false,
         spend: nil,
@@ -172,12 +181,19 @@ defmodule ClientWeb.SpectateLive do
   end
 
   def handle_info({:chan, _topic, "state_sync", %{"tick" => tick} = push}, socket) do
+    current_awaiting =
+      case Session.awaiting(socket.assigns.run_id) do
+        {:ok, rows} -> enrich_awaiting(socket.assigns.run_id, {:ok, rows})
+        _ -> socket.assigns.awaiting
+      end
+
     {:noreply,
      assign(socket,
        tick: tick,
        boundaries: push["boundaries"] || socket.assigns.boundaries,
        dungeon: push["dungeon"] || socket.assigns.dungeon,
-       active_agents: push["active_agents"] || socket.assigns.active_agents
+       active_agents: push["active_agents"] || socket.assigns.active_agents,
+       awaiting: current_awaiting
      )}
   end
 
@@ -194,9 +210,21 @@ defmodule ClientWeb.SpectateLive do
 
   # New ledger events append to the preview.
   def handle_info({:chan, _topic, "ledger_tail", %{"events" => events}}, socket) do
+    socket =
+      if Enum.any?(events, fn ev ->
+           payload = ev["payload"] || %{}
+           ev["class"] == "world" or payload["kind"] in ["intent_declared", "clarify", "agent_added"]
+         end) do
+        case Session.awaiting(socket.assigns.run_id) do
+          {:ok, rows} -> assign(socket, awaiting: enrich_awaiting(socket.assigns.run_id, {:ok, rows}))
+          _ -> socket
+        end
+      else
+        socket
+      end
+
     {:noreply, update(socket, :tail, &(&1 ++ events))}
   end
-
   # Protocol growth never crashes the console.
   def handle_info({:chan, _topic, _event, _payload}, socket), do: {:noreply, socket}
   def handle_info({:chan_reply, _ref, _status, _payload}, socket), do: {:noreply, socket}
@@ -498,7 +526,18 @@ defmodule ClientWeb.SpectateLive do
 
   ## Internals
 
-  defp wire_url, do: Application.get_env(:client_web, :wire_url)
+  defp wire_url do
+    System.get_env("WIRE_URL") || Application.get_env(:client_web, :wire_url) || "ws://127.0.0.1:4000"
+  end
+
+  defp enrich_awaiting(run_id, {:ok, pcs}) when is_list(pcs) do
+    Enum.map(pcs, fn pc ->
+      seated = Registry.lookup(Wire.ClaimsReg, {run_id, pc.id}) != []
+      Map.put(pc, :seated, seated)
+    end)
+  end
+
+  defp enrich_awaiting(_run_id, _), do: []
 
   defp invite_url(run_id) do
     base =

@@ -58,11 +58,13 @@ defmodule LLMGateway.Adapters.Anthropic do
 
     json_body = Json.encode!(body)
 
+    timeout = Map.get(cfg, :timeout, 15_000)
+
     case :httpc.request(
            :post,
            {~c"#{url}", charlist_headers, ~c"application/json", String.to_charlist(json_body)},
            [ssl: ssl_opts],
-           timeout: 30_000
+           timeout: timeout
          ) do
       {:ok, {{_, status, _}, _, resp_body}} ->
         parse_response(status, IO.iodata_to_binary(resp_body))

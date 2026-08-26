@@ -195,9 +195,10 @@ defmodule ClientWeb.SpectateLiveTest do
     view |> element("[data-testid=pause]") |> render_click()
     eventually(fn -> render(view) =~ "Dossiers" end)
     assert render(view) =~ "Thistle"
+    eventually(fn -> render(view) =~ "Resume Play" end)
 
     view |> element("[data-testid=resume]") |> render_click()
-    eventually(fn -> render(view) =~ "Resume Play" end)
+    eventually(fn -> render(view) =~ "Pause &amp; Recap" end)
     eventually(fn -> render(view) =~ "Start Round" end)
   end
 
@@ -371,6 +372,41 @@ defmodule ClientWeb.SpectateLiveTest do
     assert html =~ "Anna Mordale"
     assert html =~ "maras_inn_zone"
     assert html =~ "presence_crossing by pc_thistle"
+  end
+
+  test "GM console displays initial party on mount and updates in real-time when a dynamic PC declares intent", %{conn: conn} do
+    id = "run_dyn_#{:erlang.unique_integer([:positive])}"
+    {:ok, _pid} = Session.start_link(id, @yaml, 42, [])
+    on_exit(fn -> TestSupport.stop_run(id) end)
+
+    {:ok, view, html} = live(conn, "/runs/#{id}/gm")
+    assert html =~ "Party readiness: 0/0"
+
+    # Add Mirage dynamically
+    mirage = %{
+      id: "pc_mirage",
+      name: "Mirage",
+      race: "Gnome",
+      class: "Illusionist",
+      level: 1,
+      xp: 0,
+      int: 17,
+      hp: 4,
+      ac: 10,
+      thac0: 20,
+      damage: "1d4"
+    }
+    assert {:ok, "pc_mirage"} = Session.add_pc(id, mirage)
+
+    eventually(fn -> render(view) =~ "Mirage" end)
+    eventually(fn -> render(view) =~ "Party readiness: 0/1" end)
+
+    # Declare action for Mirage
+    assert {:ok, _} = Session.declare(id, "pc_mirage", "talk to the barkeep")
+
+    eventually(fn -> render(view) =~ "Party readiness: 1/1" end)
+    eventually(fn -> render(view) =~ "talk to the barkeep" end)
+    eventually(fn -> render(view) =~ "READY" end)
   end
 
   # Ambiguity staging (run_channel_test convention): one scripted move,

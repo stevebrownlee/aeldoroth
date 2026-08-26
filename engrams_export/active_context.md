@@ -1,14 +1,14 @@
 ---
 identifier: active_context
 title: Active Context
-created: 2026-08-26T03:21:47Z
+created: 2026-08-26T03:44:48Z
 ---
 # Active Context
 
 ```json
 {
   "content": {
-    "current_focus": "Session GenServer timeout resilience and channel fallback",
+    "current_focus": "Multiplayer Join & GM Flow Board Reactive Synchronization",
     "current_plan": "Plan 5 (protocol-live-runs) COMPLETE",
     "decisions": [
       47,
@@ -70,7 +70,7 @@ created: 2026-08-26T03:21:47Z
     "watch": "Party's choice for the Shadow-Crystal (keep/sell/study/destroy) is the Act 1 pacing lever"
   },
   "name": "default",
-  "updated_at": "2026-08-26T03:21:47Z",
-  "version": 25
+  "updated_at": "2026-08-26T03:44:48Z",
+  "version": 26
 }
 ```
