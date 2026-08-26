@@ -20,8 +20,7 @@ defmodule Wire.RunChannel do
   @impl true
   def join("run:" <> run_id, _params, %{assigns: assigns} = socket) do
     with %{run_id: ^run_id, role: :pc, character_id: pc_id} <- assigns,
-         {:ok, pcs} <- Session.pcs(run_id),
-         true <- pc_id in pcs || :not_a_pc,
+         true <- valid_pc?(run_id, pc_id),
          :ok <- Claims.claim(run_id, pc_id),
          :ok <- Writer.subscribe(run_id) do
       {:ok,
@@ -87,6 +86,7 @@ defmodule Wire.RunChannel do
       {:ok, %{reply: reply}} -> {:reply, {:ok, %{reply: reply}}, socket}
       {:error, :paused} -> {:reply, {:error, %{reason: :paused}}, socket}
       {:error, :no_run} -> {:reply, {:error, %{reason: :no_run}}, socket}
+      {:error, :timeout} -> {:reply, {:error, %{reason: :timeout}}, socket}
     end
   end
 
@@ -135,6 +135,25 @@ defmodule Wire.RunChannel do
   defp push_one(_ev, _pc, _open?, _socket), do: :ok
 
   defp slice(run_id, pc_id), do: Slice.for_actor(Server.snapshot(run_id), pc_id)
+
+  defp valid_pc?(run_id, pc_id) do
+    case Session.pcs(run_id) do
+      {:ok, pcs} ->
+        pc_id in pcs
+
+      _ ->
+        try do
+          world = Server.snapshot(run_id)
+
+          case Map.get(world.agents, pc_id) do
+            %{kind: :pc} -> true
+            _ -> false
+          end
+        catch
+          :exit, _ -> false
+        end
+    end
+  end
 
   defp dice_visibility(socket) do
     case Session.prefs(run_id(socket)) do

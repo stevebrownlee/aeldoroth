@@ -221,6 +221,45 @@ defmodule Referee.SessionTest do
     end)
   end
 
+  test "call timeout handling and exit safety", ctx do
+    with_session(ctx.test, fn id, _dir, pid ->
+      assert %{status: :running} = Session.state(id)
+      assert is_list(Session.roster(id))
+      assert {:ok, _} = Session.awaiting(id)
+      assert {:ok, _} = Session.pcs(id)
+      assert {:ok, _} = Session.prefs(id)
+
+      # Block the GenServer temporarily
+      caller = self()
+      task = Task.async(fn ->
+        :sys.suspend(pid)
+        send(caller, :suspended)
+        receive do
+          :resume -> :sys.resume(pid)
+        after
+          5000 -> :sys.resume(pid)
+        end
+      end)
+
+      assert_receive :suspended, 1000
+
+      # With the process suspended, calls with short timeout must return safe error tuples / nil instead of raising exits
+      assert Session.state(id, 10) == nil
+      assert Session.roster(id, 10) == nil
+      assert Session.awaiting(id, 10) == {:error, :timeout}
+      assert Session.pcs(id, 10) == {:error, :timeout}
+      assert Session.prefs(id, 10) == {:error, :timeout}
+      assert Session.declare(id, "pc_thistle", "go east", 10) == {:error, :timeout}
+      assert Session.advance(id, 10) == {:error, :timeout}
+
+      send(task.pid, :resume)
+      Task.await(task)
+
+      # Normal calls resume
+      assert %{status: :running} = Session.state(id)
+    end)
+  end
+
   defp declare_all(run) do
     Enum.reduce(@moves, run, fn dir, acc ->
       {:ok, _, acc2} = Run.declare(acc, "pc_thistle", "go #{dir}")

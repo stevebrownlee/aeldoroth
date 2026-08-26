@@ -1,14 +1,14 @@
 ---
 identifier: active_context
 title: Active Context
-created: 2026-08-25T21:38:07Z
+created: 2026-08-26T03:21:47Z
 ---
 # Active Context
 
 ```json
 {
   "content": {
-    "current_focus": "Fixed :httpc charlist headers and SSL ca cert handling in Anthropic and OpenAICompat adapters",
+    "current_focus": "Session GenServer timeout resilience and channel fallback",
     "current_plan": "Plan 5 (protocol-live-runs) COMPLETE",
     "decisions": [
       47,
@@ -55,9 +55,7 @@ created: 2026-08-25T21:38:07Z
       "GM flow board: show believed monster HP or keep referee-only",
       "Roster builder: canonical four seats vs arbitrary party size"
     ],
-    "open_threads": [
-      "referee suite had one transient port-race failure under parallel sweep — isolated runs green, watch for recurrence"
-    ],
+    "open_threads": [],
     "phase": "spec 12.4 phase 7 done",
     "progress_state": "All enemies alive, no treasure collected, session log empty (as of 2026-08-17)",
     "session_checklist": [
@@ -72,7 +70,7 @@ created: 2026-08-25T21:38:07Z
     "watch": "Party's choice for the Shadow-Crystal (keep/sell/study/destroy) is the Act 1 pacing lever"
   },
   "name": "default",
-  "updated_at": "2026-08-25T21:38:07Z",
-  "version": 24
+  "updated_at": "2026-08-26T03:21:47Z",
+  "version": 25
 }
 ```

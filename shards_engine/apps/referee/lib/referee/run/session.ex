@@ -44,54 +44,62 @@ defmodule Referee.Run.Session do
 
   def start_link({:restore, run_id, _, _, _} = init_arg),
     do: GenServer.start_link(__MODULE__, init_arg, name: via(run_id))
-
   def start_link(run_id, yaml_path, seed, pcs, opts \\ []) do
     start_named(run_id, {:new, run_id, yaml_path, seed, pcs, opts})
   end
 
-  @doc "One PC's declared intent. `{:ok, %{reply: text}}` | `{:error, :paused | :no_run}`."
-  @spec declare(String.t(), String.t(), String.t()) ::
-          {:ok, %{reply: String.t() | nil}} | {:error, :paused | :no_run}
-  def declare(run_id, pc_id, text) do
-    call(run_id, {:declare, pc_id, text})
+  @doc "One PC's declared intent. `{:ok, %{reply: text}}` | `{:error, :paused | :no_run | :timeout}`."
+  @spec declare(String.t(), String.t(), String.t(), timeout()) ::
+          {:ok, %{reply: String.t() | nil}} | {:error, :paused | :no_run | :timeout}
+  def declare(run_id, pc_id, text, timeout \\ 30_000) do
+    call(run_id, {:declare, pc_id, text}, timeout)
   end
 
-  @doc "Advance one tick. `{:ok, texts}` mirroring the pure path | `{:error, :paused | :no_run}`."
-  @spec advance(String.t()) :: {:ok, map()} | {:error, :paused | :no_run}
-  def advance(run_id), do: call(run_id, :advance)
+  @doc "Advance one tick. `{:ok, texts}` mirroring the pure path | `{:error, :paused | :no_run | :timeout}`."
+  @spec advance(String.t(), timeout()) :: {:ok, map()} | {:error, :paused | :no_run | :timeout}
+  def advance(run_id, timeout \\ 60_000), do: call(run_id, :advance, timeout)
 
   @doc """
   Pause: dossiers per living PC (`:dossier` events), checkpoint, gate the
   pipeline. `{:error, :already_paused}` on repeat.
   """
-  @spec pause(String.t()) :: {:ok, %{dossiers: %{String.t() => String.t()}}} | {:error, term()}
-  def pause(run_id), do: call(run_id, :pause)
+  @spec pause(String.t(), timeout()) :: {:ok, %{dossiers: %{String.t() => String.t()}}} | {:error, term()}
+  def pause(run_id, timeout \\ 60_000), do: call(run_id, :pause, timeout)
 
   @doc "Resume a paused session."
-  @spec resume(String.t()) :: :ok | {:error, :not_paused | :no_run}
-  def resume(run_id), do: call(run_id, :resume)
+  @spec resume(String.t(), timeout()) :: :ok | {:error, :not_paused | :no_run | :timeout}
+  def resume(run_id, timeout \\ 5000), do: call(run_id, :resume, timeout)
 
   @doc "Out-of-character table talk: ledgers an `:ooc` event, touches no pipeline."
-  @spec ooc(String.t(), String.t(), String.t()) :: :ok | {:error, :no_run}
-  def ooc(run_id, pc_id, text), do: call(run_id, {:ooc, pc_id, text})
+  @spec ooc(String.t(), String.t(), String.t(), timeout()) :: :ok | {:error, :no_run | :timeout}
+  def ooc(run_id, pc_id, text, timeout \\ 5000), do: call(run_id, {:ooc, pc_id, text}, timeout)
 
   @doc "GM table-wide announcement, ledgered as an `:ooc` event from the GM."
-  @spec gm_chat(String.t(), String.t()) :: :ok | {:error, :no_run}
-  def gm_chat(run_id, text), do: call(run_id, {:gm_chat, text})
+  @spec gm_chat(String.t(), String.t(), timeout()) :: :ok | {:error, :no_run | :timeout}
+  def gm_chat(run_id, text, timeout \\ 5000), do: call(run_id, {:gm_chat, text}, timeout)
 
   @doc "This run's PC ids (from the immutable seed spec)."
-  @spec pcs(String.t()) :: {:ok, [String.t()]} | {:error, :no_run}
-  def pcs(run_id), do: call(run_id, :pcs)
+  @spec pcs(String.t(), timeout()) :: {:ok, [String.t()]} | {:error, :no_run | :timeout}
+  def pcs(run_id, timeout \\ 5000), do: call(run_id, :pcs, timeout)
 
   @doc "Resolved preference stack for this run's ruleset."
-  @spec prefs(String.t()) :: {:ok, map()} | {:error, :no_run}
-  def prefs(run_id), do: call(run_id, :prefs)
+  @spec prefs(String.t(), timeout()) :: {:ok, map()} | {:error, :no_run | :timeout}
+  def prefs(run_id, timeout \\ 5000), do: call(run_id, :prefs, timeout)
+
   @doc "Dynamically add a PC to the running session."
-  @spec add_pc(String.t(), map()) :: {:ok, String.t()} | {:error, term()}
-  def add_pc(run_id, pc_map) do
-    call(run_id, {:add_pc, pc_map})
+  @spec add_pc(String.t(), map(), timeout()) :: {:ok, String.t()} | {:error, term()}
+  def add_pc(run_id, pc_map, timeout \\ 5000) do
+    call(run_id, {:add_pc, pc_map}, timeout)
   end
 
+  @doc "Find the registered session pid for run_id or nil if absent."
+  @spec whereis(String.t()) :: pid() | nil
+  def whereis(run_id) do
+    case Registry.lookup(@registry, {:session, run_id}) do
+      [{pid, _}] -> pid
+      [] -> nil
+    end
+  end
 
   @doc "Stop the session process (engine per-run processes stay up; see `EngineCore.RunSup.stop_run/1`)."
   @spec stop(String.t()) :: :ok | {:error, :no_run}
@@ -111,24 +119,38 @@ defmodule Referee.Run.Session do
     end
   end
 
-  @doc "Session status: `%{status, tick, seq, run_id}` or nil when absent."
-  @spec state(String.t()) :: map() | nil
-  def state(run_id) do
+  @doc "Session status: `%{status, tick, seq, run_id}` or nil when absent or busy."
+  @spec state(String.t(), timeout()) :: map() | nil
+  def state(run_id, timeout \\ 5000) do
     case whereis(run_id) do
-      nil -> nil
-      pid -> GenServer.call(pid, :state)
+      nil ->
+        nil
+
+      pid ->
+        try do
+          GenServer.call(pid, :state, timeout)
+        catch
+          :exit, _ -> nil
+        end
     end
   end
 
   @doc """
   Seat list `[%{id, name}]` for the web picker (GM-console introspection,
-  not on the wire). `nil` when the run doesn't exist.
+  not on the wire). `nil` when the run doesn't exist or is unresponsive.
   """
-  @spec roster(String.t()) :: [%{id: String.t(), name: String.t()}] | nil
-  def roster(run_id) do
+  @spec roster(String.t(), timeout()) :: [%{id: String.t(), name: String.t()}] | nil
+  def roster(run_id, timeout \\ 5000) do
     case whereis(run_id) do
-      nil -> nil
-      pid -> GenServer.call(pid, :roster)
+      nil ->
+        nil
+
+      pid ->
+        try do
+          GenServer.call(pid, :roster, timeout)
+        catch
+          :exit, _ -> nil
+        end
     end
   end
 
@@ -139,7 +161,7 @@ defmodule Referee.Run.Session do
   state, not ledgered) and any outstanding clarify prompt — a clarify
   ledger event newer than that PC's latest narration.
   """
-  @spec awaiting(String.t()) ::
+  @spec awaiting(String.t(), timeout()) ::
           {:ok,
            [
              %{
@@ -155,8 +177,8 @@ defmodule Referee.Run.Session do
                prompt: %{question: String.t(), tick: integer()} | nil
              }
            ]}
-          | {:error, :no_run}
-  def awaiting(run_id), do: call(run_id, :awaiting)
+          | {:error, :no_run | :timeout}
+  def awaiting(run_id, timeout \\ 5000), do: call(run_id, :awaiting, timeout)
 
   @doc """
   Restart `run_id` from its checkpoint + journal (both under `data_dir`).
@@ -501,20 +523,21 @@ defmodule Referee.Run.Session do
     end
   end
 
-  defp call(run_id, msg) do
+  defp call(run_id, msg, timeout) do
     case whereis(run_id) do
-      nil -> {:error, :no_run}
-      pid -> GenServer.call(pid, msg)
+      nil ->
+        {:error, :no_run}
+
+      pid ->
+        try do
+          GenServer.call(pid, msg, timeout)
+        catch
+          :exit, {:timeout, _} -> {:error, :timeout}
+          :exit, {:noproc, _} -> {:error, :no_run}
+          :exit, _ -> {:error, :no_run}
+        end
     end
   end
-
-  defp whereis(run_id) do
-    case Registry.lookup(@registry, {:session, run_id}) do
-      [{pid, _}] -> pid
-      [] -> nil
-    end
-  end
-
   # Sessions live under `Referee.SessionSup` (spec §12.1), so they outlive
   # the process that started them (a test process, a channel, a script).
   # `:temporary` — a crashed session is recovered explicitly via

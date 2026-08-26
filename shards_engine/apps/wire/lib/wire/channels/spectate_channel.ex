@@ -21,12 +21,12 @@ defmodule Wire.SpectateChannel do
   @impl true
   def join("spectate:" <> run_id, _params, %{assigns: assigns} = socket) do
     with %{run_id: ^run_id, role: :spectate} <- assigns,
-         %{} = state <- Session.state(run_id),
+         true <- run_exists?(run_id),
          :ok <- Writer.subscribe(run_id) do
       awaiting = enrich_awaiting(run_id, Session.awaiting(run_id))
 
       snapshot = %{
-        tick: state.tick,
+        tick: tick_of(run_id),
         boundaries: JSONSafe.to_json(Server.boundaries(run_id)),
         dungeon: JSONSafe.to_json(Server.dungeon_overview(run_id)),
         active_agents: JSONSafe.to_json(Server.active_agents(run_id)),
@@ -114,20 +114,31 @@ defmodule Wire.SpectateChannel do
     end
   end
 
-  defp enrich_awaiting(run_id, {:ok, pcs}) do
+  defp enrich_awaiting(run_id, {:ok, pcs}) when is_list(pcs) do
     Enum.map(pcs, fn pc ->
       seated = Registry.lookup(Wire.ClaimsReg, {run_id, pc.id}) != []
       Map.put(pc, :seated, seated)
     end)
   end
 
-  defp enrich_awaiting(_run_id, {:error, :no_run}), do: []
+  defp enrich_awaiting(_run_id, _), do: []
 
   defp tick_of(run_id) do
     case Session.state(run_id) do
-      %{} = state -> state.tick
-      nil -> 0
+      %{} = state ->
+        state.tick
+
+      nil ->
+        try do
+          Server.snapshot(run_id).tick
+        catch
+          :exit, _ -> 0
+        end
     end
+  end
+
+  defp run_exists?(run_id) do
+    Session.whereis(run_id) != nil or EngineCore.whereis_writer(run_id) != nil
   end
 
   defp run_id(socket), do: socket.assigns.run_id

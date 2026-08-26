@@ -327,7 +327,7 @@ defmodule ClientWeb.SpectateLiveTest do
 
     :ok = Writer.append(id, [event])
 
-    eventually(fn -> render(view) =~ "Goblin Guard" end)
+    eventually(fn -> render(view) =~ "presence_crossing by pc_thistle" end)
     html = render(view)
 
     refute html =~ ~s(data-testid="active-npcs-empty")

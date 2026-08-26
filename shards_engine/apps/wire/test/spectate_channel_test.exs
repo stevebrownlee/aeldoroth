@@ -241,7 +241,24 @@ defmodule Wire.SpectateChannelTest do
     refute_push "awaiting", %{}
   end
 
+  test "spectate join succeeds without crashing when session is busy", %{run_id: id} do
+    {:ok, session_pid} = start_run(id)
+
+    # Suspend the session process to simulate a long synchronous LLM advance/deliberation call
+    :sys.suspend(session_pid)
+
+    {:ok, socket} = connect(Wire.Socket, %{"run_id" => id})
+    # Join must succeed and return the snapshot from World.Server and Writer without crashing or timing out
+    assert {:ok, snapshot, _chan} = join(socket, "spectate:#{id}", %{})
+    assert is_integer(snapshot.tick)
+    assert is_map(snapshot.boundaries)
+    assert is_list(snapshot.awaiting)
+
+    :sys.resume(session_pid)
+  end
+
   defp start_run(id) do
+
     scripts = %{
       interpret: [
         ~s({"verb":"move","target_id":null,"params":{"direction":"east"}}),
