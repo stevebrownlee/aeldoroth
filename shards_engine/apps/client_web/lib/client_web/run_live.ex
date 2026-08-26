@@ -262,6 +262,7 @@ defmodule ClientWeb.RunLive do
           ooc_messages: [],
           action_status: :pending,
           last_declared_text: "",
+          declare_reply: nil,
           show_sheet_modal: false,
           error: nil
         )
@@ -391,7 +392,8 @@ defmodule ClientWeb.RunLive do
        compose: "",
        hint_shown: true,
        action_status: :ready,
-       last_declared_text: text
+      last_declared_text: text,
+      declare_reply: nil
      )}
   end
 
@@ -425,6 +427,12 @@ defmodule ClientWeb.RunLive do
        paused: reply["paused"] == true
      )}
   end
+  # Referee's declare/answer confirmation (may carry assumptions like
+  # "grammar fallback used" — honest feedback, never silently dropped).
+  def handle_info({:chan_reply, _ref, :ok, %{"reply" => reply}}, socket)
+      when is_binary(reply) and reply != "",
+      do: {:noreply, assign(socket, declare_reply: reply)}
+
 
   def handle_info({:chan_reply, _ref, :error, %{"reason" => "unauthorized"}}, socket) do
     {:noreply,
@@ -448,11 +456,12 @@ defmodule ClientWeb.RunLive do
     new_tick = max(tick, socket.assigns.tick)
     action_status = if new_tick > socket.assigns.tick, do: :pending, else: socket.assigns.action_status
     last_declared_text = if new_tick > socket.assigns.tick, do: "", else: socket.assigns.last_declared_text
+    declare_reply = if new_tick > socket.assigns.tick, do: nil, else: socket.assigns.declare_reply
 
     {:noreply,
      socket
      |> stream_insert(:log, log_row("perception", "[tick #{tick}] #{text}"))
-     |> assign(tick: new_tick, action_status: action_status, last_declared_text: last_declared_text)}
+     |> assign(tick: new_tick, action_status: action_status, last_declared_text: last_declared_text, declare_reply: declare_reply)}
   end
 
   def handle_info({:chan, _topic, "ooc", %{"author" => id, "text" => text}}, socket) do
@@ -670,6 +679,7 @@ defmodule ClientWeb.RunLive do
                 <span class="status-pending">🟡 Pending: Please declare your action for Round <%= @tick + 1 %></span>
               <% else %>
                 <span class="status-ready">🟢 Action Ready: "<%= @last_declared_text %>" — Waiting for GM to Start Round</span>
+                <p :if={@declare_reply} class="declare-reply dim"><%= @declare_reply %></p>
               <% end %>
             </div>
           </div>

@@ -333,7 +333,7 @@ defmodule Referee.Run do
   defp deliberate_one(run, agent) do
     slice = Slice.for_actor(run.world, agent.id)
 
-    case Agents.deliberate(agent.id, %{slice: slice, ctx: run.ctx}) do
+    case Agents.deliberate(agent.id, %{slice: slice, ctx: run.ctx, tick: run.world.tick}) do
       {:ok, d} ->
         run =
           run
@@ -397,19 +397,24 @@ defmodule Referee.Run do
   end
 
   defp narrate_new_receipts(run, seq0) do
-    received =
-      events(run)
-      |> Enum.filter(&(&1.seq > seq0 and &1.payload[:kind] == :signal_received))
+    new_events = Enum.filter(events(run), &(&1.seq > seq0))
+    received = Enum.filter(new_events, &(&1.payload[:kind] == :signal_received))
+    # Damage the PC personally suffered (hazard or combat) must reach their
+    # chronicle too — an HP drop without narration is an unexplained wound.
+    damages = Enum.filter(new_events, &(&1.class == :world and &1.payload[:kind] == :damage))
 
     {narrations, run} =
       Enum.reduce(run.pcs, {%{}, run}, fn pc_map, {texts, acc} ->
         mine = Enum.filter(received, &(&1.payload[:agent_id] == pc_map.id))
+        my_damage = Enum.filter(damages, &(&1.payload[:target_id] == pc_map.id))
 
-        if mine == [] do
+        if mine == [] and my_damage == [] do
           {texts, acc}
         else
           {text, ctx2, _audit} =
             Narrate.received(acc.ctx, acc.prefs, pc_map.id, Enum.map(mine, & &1.payload))
+
+          text = String.trim(String.trim_trailing(text) <> " " <> damage_lines(my_damage))
 
           acc = push(acc, :narration, acc.world.tick, %{kind: :narration, agent_id: pc_map.id, text: text})
           {Map.put(texts, pc_map.id, text), %{acc | ctx: ctx2}}
@@ -417,6 +422,18 @@ defmodule Referee.Run do
       end)
 
     {:ok, narrations, run}
+  end
+
+  # Facts stay engine-side; only the phrasing is a template (decision 31).
+  defp damage_lines([]), do: ""
+
+  defp damage_lines(damages) do
+    Enum.map_join(damages, " ", fn ev ->
+      case ev.payload[:attacker_id] do
+        nil -> "You take #{ev.payload[:amount]} damage."
+        attacker -> "You take #{ev.payload[:amount]} damage from #{attacker}'s attack."
+      end
+    end)
   end
 
   defp dead?(agent) do
@@ -451,6 +468,16 @@ defmodule Referee.Run do
           Narrate.action(run.ctx, run.prefs, pc_id, action, {verdict, world_events},
             assumptions: assumptions
           )
+
+        # Hazard/combat damage this PC suffered during resolution (e.g. a
+        # trap on the crossed threshold) rides the same narration — an HP
+        # drop with no line is an unexplained wound. Damage landing inside
+        # Run.advance's own window is narrated by narrate_new_receipts.
+        my_damage =
+          (world_events ++ reaction)
+          |> Enum.filter(&(&1.class == :world and &1.payload[:kind] == :damage and &1.payload[:target_id] == pc_id))
+
+        text = String.trim(String.trim_trailing(text) <> " " <> damage_lines(my_damage))
 
         run =
           run

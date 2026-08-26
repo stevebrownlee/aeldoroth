@@ -176,7 +176,39 @@ defmodule EngineCore.Fold do
 
       :agent_added ->
         a = struct!(EngineCore.Types.Agent, Map.to_list(p.agent))
-        %{world | agents: Map.put(world.agents, a.id, a)}
+
+        # Mutual presence sweep (mirrors Loader's boot-time seeding): an
+        # agent appearing mid-run — an injected PC, a summoned ally — is
+        # immediately visible to co-located agents and vice versa. Without
+        # this, NPCs never believe a PC standing in their room.
+        neighbors =
+          world.agents
+          |> Map.values()
+          |> Enum.reject(&(&1.place_id != a.place_id or &1.body.hp == 0))
+
+        seen = %{count: 1, last_tick: tick, last_fidelity: 3, salience: 6.0, seen: true}
+
+        agents =
+          world.agents
+          |> Map.put(a.id, %{
+            a
+            | beliefs:
+                Map.put(
+                  a.beliefs,
+                  a.place_id,
+                  Map.new(neighbors, &{&1.id, seen})
+                )
+          })
+          |> Map.new(fn {id, w} ->
+            if id != a.id and w.place_id == a.place_id and w.body.hp != 0 do
+              place_map = Map.put(w.beliefs[a.place_id] || %{}, a.id, seen)
+              {id, %{w | beliefs: Map.put(w.beliefs, a.place_id, place_map)}}
+            else
+              {id, w}
+            end
+          end)
+
+        %{world | agents: agents}
 
       :belief_corrected ->
         update_agent(world, p.agent_id, fn a ->

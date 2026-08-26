@@ -52,6 +52,7 @@ defmodule Referee.Narrate do
         lines =
           payloads
           |> Enum.map(&template_line/1)
+          |> Enum.uniq()
           |> Enum.reject(&(&1 == ""))
 
         {Enum.join(lines, " "), ctx2, %{@fallback_audit | agent_id: pc_id}}
@@ -154,9 +155,9 @@ defmodule Referee.Narrate do
     view = %{
       kind: p[:signal_kind],
       intensity: p[:intensity],
-      content_core: %{class: :voices},
+      content_core: p[:content_core] || %{class: :voices},
       about: p[:about],
-      content_nl: nil
+      content_nl: p[:content_nl]
     }
 
     Narrate.render(view, p[:fidelity] || 1, nil)

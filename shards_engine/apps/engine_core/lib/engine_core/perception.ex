@@ -56,9 +56,12 @@ defmodule EngineCore.Perception do
     receivers =
       world
       |> World.agents_in(arrival.place_id)
+      # Presence (footsteps) and speech (voices) are emitted BY their
+      # subject: the mover/speaker never receives its own signal. Combat
+      # noise is about its VICTIM, who must perceive it.
+      |> Enum.reject(&(&1.id == arrival.about and emitter_subject?(arrival)))
       |> Enum.reject(&(&1.body.hp == 0 or :dead in (&1.body.conditions || [])))
       |> Enum.sort_by(& &1.id)
-
     {events, rng2} =
       Enum.flat_map_reduce(receivers, rng, fn a, r ->
         base = base_fidelity(arrival, a)
@@ -81,7 +84,9 @@ defmodule EngineCore.Perception do
               intensity: Float.round(arrival.intensity * 1.0, 4),
               fidelity: f,
               salience: salience(arrival, a, world),
-              roll: roll
+              roll: roll,
+              content_core: arrival.content_core,
+              content_nl: arrival.content_nl
             }
           }
 
@@ -90,5 +95,11 @@ defmodule EngineCore.Perception do
       end)
 
     {:ok, events, Fold.fold(world, events), rng2}
+  end
+
+  # Footsteps (presence) and voices (shout) are emitted by their subject;
+  # combat noise is about its victim. Only the former self-exclude.
+  defp emitter_subject?(arrival) do
+    Map.get(arrival.content_core || %{}, :class) in [:footsteps, :voices]
   end
 end

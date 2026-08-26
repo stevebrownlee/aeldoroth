@@ -13,7 +13,7 @@ defmodule Referee.Resolve do
 
   alias EngineCore.{Dice, Envelopes, Fold, Ledger, Rules, Signals, Types, World}
 
-  @shout_intensity 6.0
+  @shout_intensity 7.0
 
   @doc """
   Where a `:move` action leads, from `from_place`. Target ids must name real
@@ -61,8 +61,11 @@ defmodule Referee.Resolve do
       :move -> act_move(world, rng, action)
       :strike -> act_strike(world, rng, action)
       :shout -> act_shout(world, rng, action)
-      :order -> act_order(world, rng, action)
-      other -> raise ArgumentError, "unresolvable verb: #{inspect(other)}"
+:order -> act_order(world, rng, action)
+      # Capability-gated verbs without a resolver yet (:parley, :hide, :obey,
+      # :flee are in tier-3 caps): the caller already ledgered the decision
+      # row, so the moment is spent — never a crash into the owning Session.
+      _other -> {:diegetic_fail, [], world, rng}
     end
   end
 

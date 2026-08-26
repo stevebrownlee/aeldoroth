@@ -20,7 +20,7 @@ defmodule Agents.Brain do
   def init(agent_id), do: {:ok, agent_id}
 
   @impl true
-  def handle_call({:deliberate, %{slice: slice, ctx: ctx}}, _from, agent_id) do
+  def handle_call({:deliberate, %{slice: slice, ctx: ctx} = msg}, _from, agent_id) do
     {system, user, schema} = Agents.Prompt.deliberate(slice)
 
     req = %LLMGateway.Request{class: :deliberate, agent_id: agent_id,
@@ -40,7 +40,14 @@ defmodule Agents.Brain do
           end
 
         {:ok, _result, audit, ctx2} ->
-          {:hesitate, %{reason: "deliberation unavailable", request: req, ctx: ctx2, audit: audit}}
+          deliberate_heuristic(slice, agent_id, Map.get(msg, :tick, 0), req, audit, ctx2)
+
+        # No route configured (pure offline mode): the world must still
+        # react — deterministic heuristic (decision 30 pattern). Real
+        # adapter failures below still hesitate: unknown failures must
+        # not fabricate speech.
+        {:error, :no_route, audit, ctx2} ->
+          deliberate_heuristic(slice, agent_id, Map.get(msg, :tick, 0), req, audit, ctx2)
 
         {:error, _reason, audit, ctx2} ->
           {:hesitate, %{reason: "deliberation unavailable", request: req, ctx: ctx2, audit: audit}}
@@ -96,6 +103,61 @@ defmodule Agents.Brain do
 
   defp fallback_audit(%LLMGateway.Audit{} = a),
     do: %LLMGateway.Audit{a | class: :adopt, adapter: :heuristic, parse_verdict: :fallback, ok: true}
+
+  # Deterministic deliberate fallback (decision 30 pattern): with no LLM
+  # route the world must still react. Restricted to verbs Resolve.act
+  # actually implements. An NPC who can speak addresses the most salient
+  # PC in the room with a dossier line (rumors/knowledge, rotated by tick);
+  # otherwise it holds. Facts stay engine-side — only phrasing is local.
+  defp deliberate_heuristic(slice, agent_id, tick, req, audit, ctx2) do
+    pc = most_salient_pc(slice)
+
+    if pc != nil and :shout in Map.get(slice, :capabilities, []) do
+      line = fallback_line(slice, pc, tick)
+
+      {:ok, %{
+        action: struct!(EngineCore.Types.Action, actor_id: agent_id, verb: :shout, params: %{message: line}),
+        reason: "offline heuristic: addresses #{pc[:name]}",
+        request: req, ctx: ctx2,
+        audit: deliberate_fallback_audit(audit)
+      }}
+    else
+      {:ok, %{
+        action: struct!(EngineCore.Types.Action, actor_id: agent_id, verb: :wait, params: %{}),
+        reason: "offline heuristic: holds and watches",
+        request: req, ctx: ctx2,
+        audit: deliberate_fallback_audit(audit)
+      }}
+    end
+  end
+
+  defp deliberate_fallback_audit(nil),
+    do: %LLMGateway.Audit{class: :deliberate, adapter: :heuristic, parse_verdict: :fallback, ok: true}
+
+  defp deliberate_fallback_audit(%LLMGateway.Audit{} = a),
+    do: %LLMGateway.Audit{a | class: :deliberate, adapter: :heuristic, parse_verdict: :fallback, ok: true}
+
+  defp most_salient_pc(slice) do
+    pcs =
+      slice
+      |> Map.get(:believed_agents, [])
+      |> Enum.filter(& &1[:pc])
+      |> Map.new(&{&1[:id], &1})
+
+    Enum.find_value(Map.get(slice, :salient, []), fn id -> pcs[id] end) ||
+      Enum.at(Map.values(pcs), 0)
+  end
+
+  # Dossier comes straight from YAML: string keys.
+  defp fallback_line(slice, pc, tick) do
+    dossier = Map.get(slice, :dossier, %{})
+    lines = List.wrap(dossier["rumors"] || dossier["knowledge"] || [])
+    if lines != [] do
+      "“#{Enum.at(lines, rem(tick, length(lines)))}”"
+    else
+      "#{slice.agent[:name]} nods to #{pc[:name]} and keeps watching the room."
+    end
+  end
 
   defp bool(true), do: true
   defp bool(_), do: false

@@ -52,7 +52,7 @@ defmodule EngineCore.Rules.Combat do
                                agent_id: a.id})
 
     ev_dmg = %Ledger.Event{seq: 0, tick: world.tick, class: :world,
-                           payload: %{kind: :damage, target_id: t.id, amount: amount}}
+                           payload: %{kind: :damage, target_id: t.id, attacker_id: a.id, amount: amount}}
 
     w2 = %{
       world

@@ -290,7 +290,13 @@ defmodule Referee.Run.Session do
                 tick: st.run.world.tick
               })
         }
-        {:reply, {:ok, %{reply: "Action registered: #{text}"}}, hold(st_final, st_final.run)}
+        reply =
+          case assumptions do
+            [] -> "Action registered: #{text}"
+            notes -> "Action registered: #{text} (#{Enum.join(notes, "; ")})"
+          end
+
+        {:reply, {:ok, %{reply: reply}}, hold(st_final, st_final.run)}
     end
   end
 

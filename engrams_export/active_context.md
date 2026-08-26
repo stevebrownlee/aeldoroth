@@ -1,15 +1,15 @@
 ---
 identifier: active_context
 title: Active Context
-created: 2026-08-26T13:59:34Z
+created: 2026-08-26T19:03:15Z
 ---
 # Active Context
 
 ```json
 {
   "content": {
-    "current_focus": "LLMGateway Adapter Timeout Placement & Session Declare Grammar Fallback",
-    "current_plan": "Plan 5 (protocol-live-runs) COMPLETE",
+    "current_focus": "Join-after-start + multi-round GM/player consistency COMPLETE (decisions 74-79); live-verified with agent-browser multi-session",
+    "current_plan": "Next: LLM-live mode (real API key) full-session trial; parley/hide/obey/flee resolvers",
     "decisions": [
       47,
       48,
@@ -58,10 +58,8 @@ created: 2026-08-26T13:59:34Z
       "run live campaign play sessions of The Ruined Tower"
     ],
     "open_questions": [
-      "Verb palette set — core ten vs campaign-specific (Pry, Listen at door)",
-      "Advance-until-input cap (proposed 20 steps)",
-      "GM flow board: show believed monster HP or keep referee-only",
-      "Roster builder: canonical four seats vs arbitrary party size"
+      "Unexplained 10s declare latency when ANTHROPIC_API_KEY present in server env (live adapter timeouts stack behind grammar fallback)",
+      "dir_phrase says somewhere nearby for co-located speech — cosmetic"
     ],
     "open_threads": [],
     "phase": "spec 12.4 phase 7 done",
@@ -78,7 +76,7 @@ created: 2026-08-26T13:59:34Z
     "watch": "Party's choice for the Shadow-Crystal (keep/sell/study/destroy) is the Act 1 pacing lever"
   },
   "name": "default",
-  "updated_at": "2026-08-26T13:59:34Z",
-  "version": 27
+  "updated_at": "2026-08-26T19:03:15Z",
+  "version": 28
 }
 ```

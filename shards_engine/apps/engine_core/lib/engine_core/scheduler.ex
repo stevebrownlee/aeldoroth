@@ -67,9 +67,9 @@ defmodule EngineCore.Scheduler do
         {:footsteps, mv.payload.to, mv.payload.agent_id, 3, "soft footsteps"}
       end) ++
         Enum.map(damages, fn dm ->
-          about = Map.get(dm.payload, :attacker_id, dm.payload.target_id)
-          target_place = place_of_agent(world, dm.payload.target_id)
-          {:combat, target_place, about, 7, "the sounds of violent blows"}
+        about = Map.get(dm.payload, :attacker_id) || Map.get(dm.payload, :agent_id) || dm.payload.target_id
+        target_place = place_of_agent(world, dm.payload.target_id)
+        {:combat, target_place, about, 7, "the sounds of violent blows"}
         end)
 
     Enum.reduce(emissions, {[], world}, fn

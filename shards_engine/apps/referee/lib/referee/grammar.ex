@@ -30,6 +30,7 @@ defmodule Referee.Grammar do
     "head" => :move,
     "run" => :move,
     "travel" => :move,
+    "follow" => :move,
     "enter" => :move,
     "step" => :move,
     "advance" => :move,
@@ -52,6 +53,8 @@ defmodule Referee.Grammar do
     "speak" => :shout,
     "tell" => :shout,
     "wait" => :wait,
+    "stay" => :wait,
+    "remain" => :wait,
     "hold" => :wait,
     "look" => :wait,
     "examine" => :wait,
@@ -70,6 +73,12 @@ defmodule Referee.Grammar do
   @filler ~w(i we you lets let's let my please carefully cautiously quickly slowly)
   # Prepositions to strip during movement target parsing: "walk into the library".
   @prepositions ~w(to the into through toward towards in at over around for)
+  # Travel phrasing before the direction: "set out north", "head off east",
+  # "make my way to the library". Normalized to a bare "go" so the move
+  # parser sees direction, room target, and preposition cleanup (decision 54
+  # pattern: parse, don't stall).
+  @travel_pairs ["set out", "set off", "set forth", "head out", "head off", "head forth"]
+  @travel_triples ["make my way", "make your way", "make our way"]
 
   @spec parse(World.t(), String.t(), String.t()) ::
           Types.Action.t() | {:ambiguous, [String.t()]} | {:unclear, String.t()}
@@ -80,6 +89,7 @@ defmodule Referee.Grammar do
       text
       |> String.split(" ", trim: true)
       |> Enum.drop_while(fn w -> String.downcase(w) in @filler end)
+      |> normalize_travel()
 
     case words do
       [verb | rest] ->
@@ -113,8 +123,53 @@ defmodule Referee.Grammar do
     end
   end
 
+  defp normalize_travel([a, b | rest] = words) do
+    pair = String.downcase(a) <> " " <> String.downcase(b)
+
+    if pair in @travel_pairs and rest != [] do
+      ["go" | rest]
+    else
+      normalize_travel3(words)
+    end
+  end
+
+  defp normalize_travel(words), do: normalize_travel3(words)
+
+  defp normalize_travel3([a, b, c | rest] = words) do
+    triple = String.downcase(a) <> " " <> String.downcase(b) <> " " <> String.downcase(c)
+
+    if triple in @travel_triples and rest != [] do
+      ["go" | rest]
+    else
+      words
+    end
+  end
+
+  defp normalize_travel3(words), do: words
+
   defp parse_move(world, actor_id, rest) do
     filtered = Enum.drop_while(rest, fn w -> String.downcase(w) in @prepositions end)
+
+    # "follow Bramble east", "go east watching for tracks": a direction may
+    # appear anywhere in the phrase, not only as the first token.
+    dir_anywhere =
+      Enum.find_value(filtered, fn w ->
+        case Map.get(@directions, String.downcase(w)) do
+          canonical when is_binary(canonical) -> canonical
+          nil -> nil
+        end
+      end)
+
+    case dir_anywhere do
+      canonical when is_binary(canonical) ->
+        struct!(Types.Action, actor_id: actor_id, verb: :move, params: %{direction: canonical})
+
+      nil ->
+        parse_move_target(world, actor_id, filtered)
+    end
+  end
+
+  defp parse_move_target(world, actor_id, filtered) do
 
     case filtered do
       [first | _] ->
