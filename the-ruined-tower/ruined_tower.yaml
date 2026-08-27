@@ -18,65 +18,173 @@ preferences:
 
 home_base:
   name: "Thornhollow"
-  description: "A small farming community of hardworking folk, surrounded by autumn fields ready for harvest. The village has about 150 souls, mostly farmers and craftspeople who rarely see trouble. Until now."
+  description: "A resilient farming village of approximately 150 souls nestled in the Western Lands near the Thornwood forest. Timber-and-stone cottages with thatched roofs cluster around a central village green, surrounded by autumn fields ready for harvest. Until recently the folk here were simple farmers and craftspeople who rarely saw trouble; now livestock disappearances, strange lights on the old tower hill, and the kidnapping of Willem Mordale have left the community anxious and desperate for help."
 
   key_locations:
     - name: "Mara's Inn"
       type: "tavern"
-      description: "A cozy two-story inn with a thatched roof and warm hearth. Mara serves hearty stews, fresh bread, and local ale. The common room is the village's social center."
+      description: "A cozy two-story inn with a thatched roof and a warm hearth. Mara serves hearty stews, fresh bread, and local ale. The common room is the village's social center and the adventurers' starting point."
       services: ["food and lodging", "local gossip", "warm meals (3 sp)", "rooms (1-3 gp/night)"]
 
-    - name: "Jorren's General Store"
+    - name: "The Ironhand Forge"
+      type: "blacksmith"
+      description: "A soot-stained stone smithy ringing with the sound of hammer on iron. Master Torvald sells arms, armor, iron spikes, crowbars, and smithing services."
+      services: ["weapon and armor sales", "iron spikes x12 (1 gp)", "crowbar (2 gp)", "hammer (5 sp)", "weapon silvering (50 gp + blade)", "armor mending (1-5 sp)"]
+
+    - name: "Jorren's Provisions"
       type: "general_store"
-      description: "A cluttered shop selling farming tools, basic adventuring supplies, and household goods. Jorren knows where to find anything a traveler might need."
-      services: ["basic equipment", "rations and rope", "adventuring gear", "buys minor treasures"]
+      description: "A dry, crowded general store packed with adventuring essentials, farm supplies, and household wares. Old Jorren keeps tally at a sturdy counter."
+      services: ["delving tools", "rope and torches", "rations", "backpacks and sacks", "buys dungeon salvage at 70% value"]
 
-    - name: "Sister Aldara's Chapel"
+    - name: "Greenweft Apothecary"
+      type: "herbalist"
+      description: "A fragrant shop filled with drying herbs, crushed petals, and pungent tinctures. Thessia Brightmix stocks spell reagents and herbal remedies."
+      services: ["arcane spell components", "herbal poultices", "antivenom draughts", "healing tinctures"]
+
+    - name: "Hael's Cleaver"
+      type: "butcher"
+      description: "A clean, cool stone butchery with sawdust floors and hanging game. Hael trims venison, mutton, and prepared trail rations."
+      services: ["fresh and smoked meats", "trail rations", "fresh offal bait (3 sp)", "butcher's cleaver (2 gp)"]
+
+    - name: "The Silver Trinket & Curios"
+      type: "pawn_shop"
+      description: "A dimly lit shop of antique curiosities, estate oddities, and salvaged relics. Silas Vance appraises and brokers unusual goods."
+      services: ["curios and tools", "gem and jewelry appraisal (1 gp)", "bullion and ancient coin exchange"]
+
+    - name: "Sanctuary of Thyra & Solara"
       type: "temple"
-      description: "A small stone chapel dedicated to the gods of harvest and healing. Sister Aldara tends to the sick and injured."
-      services: ["healing (donation-based)", "blessings", "sanctuary"]
+      description: "A serene fieldstone chapel dedicated to Thyra the Green Mother and Solara the Daystar. Sister Aldara tends the sick and offers blessings."
+      services: ["healing and wound binding", "holy water vials (25 gp)", "harvest and dawn blessings", "divine omens"]
 
-    - name: "Erik's Farm"
+    - name: "Thornhollow Council Hall"
+      type: "town_hall"
+      description: "The civic meeting hall of Thornhollow, built with heavy oak timbers and fieldstone. Mayor Grevik convenes the council here."
+      services: ["bounty authorization (100 gp)", "watch records", "regional land maps", "access to jail and treasury"]
+
+    - name: "Village Lockup & Watch Post"
+      type: "jail"
+      description: "A stark stone holding room and militia watch post. Captain Gareth keeps the night roster and incident logs here."
+      services: ["militia spear and crossbow loans", "patrol incident logs", "secure holding cells"]
+
+    - name: "Municipal Vault"
+      type: "treasury"
+      description: "A cool, windowless stone cellar beneath the council hall, reinforced with iron braces. The village emergency reserve is secured here."
+      services: ["emergency bounty reserve", "municipal tax coinage storage"]
+
+    - name: "Erik's Sheep Farm"
       type: "farm"
-      description: "A sheep farm on the village outskirts. Erik the Shepherd has lost several animals to the mysterious raids."
-      services: ["information about attacks", "local geography knowledge"]
+      description: "A modest sheep farm on the northeast outskirts of the village. The paddock shows recent violent damage from the raids."
+      services: ["information about attacks", "local geography knowledge", "evidence of wolf and goblin tracks"]
+
+    - name: "Willem & Anna's Cottage"
+      type: "cottage"
+      description: "A tidy fieldstone cottage surrounded by a quiet vegetable garden. Willem and Anna Mordale lived here before Willem's disappearance."
+      services: ["Willem's scouting sketches", "violet crystal fragment clue", "20 gp rescue reward"]
+
+    - name: "Kaelen's Woodsman Cabin"
+      type: "trappers_cabin"
+      description: "A rugged log cabin on the western fringe where the village meets the Thornwood. Kaelen the trapper cures pelts and tracks beasts."
+      services: ["pelts and tracking tools", "wolf behavior notes", "goblin wolf-collar clue"]
+
+    - name: "Elder Corvus's Cottage"
+      type: "elders_study"
+      description: "A warm, cluttered cottage filled with cedar bookshelves, rolled maps, and curious brass instruments. Elder Corvus archives village history."
+      services: ["tower history chronicles", "Vaelith estate receipts", "regional lore"]
 
   notable_npcs:
     - name: "Mayor Grevik"
       role: "village_leader"
-      description: "A weathered man in his sixties with kind eyes but worried demeanor. Respected leader who puts his people first. Offers 100 gp reward for stopping the threat."
+      description: "A weathered man in his sixties with kind eyes but a worried demeanor. The respected leader of Thornhollow puts his people first and authorizes a 100 gp bounty to end the raids."
 
     - name: "Mara"
       role: "innkeeper"
-      description: "A warm, motherly woman who runs the village inn. Knows everyone's business and treats travelers like family. Source of local gossip and rumors."
+      description: "A warm, motherly woman who runs the village inn. She knows everyone's business, treats travelers like family, and is a source of local gossip and rumors."
 
     - name: "Jorren"
       role: "shopkeeper"
-      description: "A practical middle-aged merchant who stocks adventuring supplies. Fair prices and honest dealing. Can acquire special items with advance notice."
+      description: "A practical middle-aged merchant who stocks adventuring supplies. Fair prices and honest dealing; he recommends a 10-foot pole to every would-be delver."
 
     - name: "Sister Aldara"
       role: "cleric"
-      description: "A gentle healer devoted to serving the village. Offers healing and blessings to those in need, accepting only donations."
+      description: "A gentle healer devoted to Thyra the Green Mother and Solara the Daystar. She tends wounds, sells holy water, and channels ominous divine omens."
 
     - name: "Erik the Shepherd"
       role: "victim"
-      description: "A gruff farmer whose sheep have been disappearing. Can describe the timing of raids and strange lights on the hill."
+      description: "A gruff farmer whose sheep have been disappearing. He saw green-skinned creatures carry off his stock toward the ruined tower."
 
-    - name: "Willem's Wife (Anna)"
+    - name: "Anna Mordale"
       role: "victim's_family"
-      description: "Frantic with worry about her missing husband Willem, the kidnapped farmer. Will offer 20 gp reward for his safe return."
+      description: "Willem Mordale's frantic, grieving wife. She is quietly determined to rescue her husband and will pay 20 gp to anyone who returns him safely."
+
+    - name: "Torvald Ironhand"
+      role: "blacksmith"
+      description: "A stalwart smith and devotee of Korvath the Iron Lord. He complains of tools stolen by goblins and forges sturdy arms for the village militia."
+
+    - name: "Thessia Brightmix"
+      role: "herbalist"
+      description: "An observant student of Mystara the Weaver who studies arcane reagents. She has noted a strange purple blight on plants near the ruined tower."
+
+    - name: "Hael Bloodwood"
+      role: "butcher"
+      description: "A sharp-eyed butcher who analyzes wolf bite marks and provides fresh offal bait useful for distracting the beasts in the ruins."
+
+    - name: "Silas Vance"
+      role: "broker"
+      description: "A quiet, appraising broker of curios and ancient coins. He warns customers against shadow crystals and bad dreams."
+
+    - name: "Captain Gareth"
+      role: "watch_captain"
+      description: "A veteran soldier who commands the village watch. His incident logs confirm the goblin raids occur on moonless, foggy nights."
+
+    - name: "Kaelen the Trapper"
+      role: "trapper"
+      description: "A keen-eyed woodsman who knows the Thornwood. His notes reveal that the ruin wolves are chained, starved, and fear open fire."
+
+    - name: "Elder Corvus"
+      role: "scholar"
+      description: "The village elder and historian. He knows the story of Vaelith's tower collapse and the hollow stonework of the old storeroom."
 
   available_services:
     shopping:
-      - category: "adventuring_supplies"
-        items: ["10-foot pole (1 gp)", "rope 50ft (1 gp)", "torches x10 (1 gp)", "waterskin (1 gp)", "rations x7 (5 gp)", "chalk (1 sp)", "iron spikes x12 (1 gp)", "hammer (5 sp)"]
-        vendor: "Jorren's General Store"
+      - category: "delving_tools"
+        items: ["10-foot pole (1 gp)", "hemp rope 50ft (1 gp)", "torches x10 (1 gp)", "lantern (9 gp)", "flask of oil (1 gp)", "waterskin (1 gp)", "chalk x10 (1 sp)", "sacks small (2 sp) / large (1 gp)", "backpack (2 gp)", "thieves' tools (30 gp)"]
+        vendor: "Jorren's Provisions"
+
+      - category: "provisions"
+        items: ["standard rations 7-day (3 gp)", "iron preserved rations 7-day (5 gp)"]
+        vendor: "Jorren's Provisions"
+
       - category: "weapons"
-        items: ["dagger (2 gp)", "club (3 sp)", "spear (1 gp)", "hand axe (3 gp)", "short sword (7 gp)"]
-        vendor: "Jorren's General Store"
-      - category: "armor"
-        items: ["leather armor (5 gp)", "shield (10 gp)"]
-        vendor: "Jorren's General Store"
+        items: ["dagger (2 gp)", "hand axe (3 gp)", "short sword (7 gp)", "spear (1 gp)", "mace (5 gp)", "club (3 sp)", "heavy butcher's cleaver (2 gp)"]
+        vendor: "The Ironhand Forge / Hael's Cleaver"
+
+      - category: "armor_and_protection"
+        items: ["shield (10 gp)", "leather armor (5 gp)", "iron helm (10 gp)"]
+        vendor: "The Ironhand Forge"
+
+      - category: "hardware_and_tools"
+        items: ["iron spikes x12 (1 gp)", "crowbar (2 gp)", "hammer (5 sp)"]
+        vendor: "The Ironhand Forge"
+
+      - category: "arcane_components"
+        items: ["bat guano & sulfur (5 gp)", "pinch of fine sand & rose petals (5 sp)", "powdered silver & iron filings (10 gp)", "dried wolfsbane & belladonna sprigs (2 gp)", "glass vials & stoppered flasks (1 gp)"]
+        vendor: "Greenweft Apothecary"
+
+      - category: "herbal_remedies"
+        items: ["herbal poultice (5 gp)", "antivenom draught (15 gp)", "healing tincture (25 gp)"]
+        vendor: "Greenweft Apothecary"
+
+      - category: "meats_and_bait"
+        items: ["fresh meat rations 3-day (6 sp)", "smoked mutton strips 7-day (2 gp)", "fresh offal and scent bait (3 sp)"]
+        vendor: "Hael's Cleaver"
+
+      - category: "curios_and_tools"
+        items: ["brass pocket mirror (5 gp)", "magnifying glass (25 gp)", "scroll case (1 gp)", "ancient Titan-era silver coin (10 gp)"]
+        vendor: "The Silver Trinket & Curios"
+
+      - category: "holy_water"
+        items: ["consecrated holy water vial (25 gp)"]
+        vendor: "Sanctuary of Thyra & Solara"
 
     lodging:
       - type: "common_room"
@@ -94,6 +202,41 @@ home_base:
         cost: "donation"
         description: "Sister Aldara will tend wounds and cure diseases. She accepts whatever you can afford to give."
 
+    divine_services:
+      - type: "harvest_and_dawn_blessing"
+        cost: "10 gp donation"
+        description: "Praying at the altar confers +1 to saving throws vs. Fear and Poison for the upcoming delve."
+
+      - type: "divine_communion"
+        cost: "donation"
+        description: "Sister Aldara channels omens from the gods about the ruined tower."
+
+    civic_services:
+      - type: "bounty"
+        cost: "100 gp reward"
+        description: "Mayor Grevik authorizes a 100 gp bounty for stopping the livestock raids."
+
+      - type: "watch_records"
+        cost: 0
+        description: "Captain Gareth's incident logs confirm raids occur on moonless, foggy nights between midnight and second watch."
+
+    investigation:
+      - type: "farm_clues"
+        location: "Erik's Sheep Farm"
+        items: ["mutilated sheep fleece", "goblin javelin scrap"]
+
+      - type: "cottage_clues"
+        location: "Willem & Anna's Cottage"
+        items: ["Willem's scouting sketch", "violet crystal shard"]
+
+      - type: "trapper_clues"
+        location: "Kaelen's Woodsman Cabin"
+        items: ["goblin wolf collar", "trapper's beast notes"]
+
+      - type: "elder_clues"
+        location: "Elder Corvus's Cottage"
+        items: ["Vaelith's chronicle excerpt", "archival estate receipt"]
+
   rumors:
     - "The tower belonged to Vaelith the Mirage-Weaver, a powerful illusionist who died thirty years ago when his tower collapsed in a magical accident."
     - "Some say Vaelith was researching dangerous shadow magic from the old days, before the Darkening ended."
@@ -102,18 +245,25 @@ home_base:
     - "Willem the farmer went to investigate the tower three days ago and never returned. His wife Anna is beside herself with worry."
     - "Old Jorren says adventurers should bring a 10-foot pole. 'Vaelith was paranoid,' he mutters. 'Traps everywhere.'"
     - "Mara whispers that Vaelith's ghost might still haunt the ruins, angry at being disturbed after so long."
+    - "A purple blight is creeping into the crops and herbs closest to the tower hill; Thessia Brightmix believes it is shadow-touched."
+    - "Torvald Ironhand claims goblins stole iron tools and scrap from his forge to arm themselves in the ruins."
+    - "Captain Gareth's watch logs say the raids always come on moonless, foggy nights, when the goblins can see in the dark."
+    - "Kaelen the trapper found a wolf collar etched with crude beast-runes near the Thornwood edge; the wolves may be trained, not wild."
+    - "Elder Corvus has an old receipt for 'double-walled hollow stonecraft' in Vaelith's private storeroom—perhaps the real cache is hidden inside the wall."
 
 rooms:
   maras_inn:
     id: "maras_inn"
     name: "Mara's Inn (Common Room)"
     kind: "settlement"
-    description: "The cozy common room of Mara's inn in Thornhollow. A hearth crackles warmly against the autumn chill. Mayor Grevik sits at the head table with a furrowed brow, while Mara tends the counter and worried villagers murmur nearby. Through the front door, a winding trail leads up the hill toward the crumbled silhouette of the wizard's tower."
+    description: "The cozy common room of Mara's inn in Thornhollow. A hearth crackles warmly against the autumn chill. Mayor Grevik sits at the head table with a furrowed brow, while Mara tends the counter and worried villagers murmur nearby. Through the front door, the village green opens out toward the town and the hill path."
     terrain: "warm wooden floorboards"
     lighting: "bright (hearth and lanterns)"
-    structures: ["stone hearth", "heavy oak tables", "innkeeper's counter", "door to trail"]
+    structures: ["stone hearth", "heavy oak tables", "innkeeper's counter", "door to village green"]
     atmosphere: "Warm, bustling with anxious tavern folk, smell of hearty stew and spiced ale."
     exits:
+      east: "village_green"
+      green: "village_green"
       north: "entry_hall"
       tower: "entry_hall"
     features: ["Mayor Grevik offering 100 gp bounty", "warm hearthfire", "local rumors and gossip"]
@@ -122,7 +272,7 @@ rooms:
   entry_hall:
     id: "entry_hall"
     name: "Entry Hall"
-    description: "The entrance to the tower is partially collapsed. Rubble litters the floor, and sections of the ceiling have fallen in, allowing dim daylight to filter through. The remains of what was once an impressive stone archway stand broken and weathered. Fresh tracks—small, clawed footprints—are visible in the dust and dirt. Passages lead deeper into the ruins north and east, while the southern path heads back toward Thornhollow."
+    description: "The entrance to the tower is partially collapsed. Rubble litters the floor, and sections of the ceiling have fallen in, allowing dim daylight to filter through. The remains of what was once an impressive stone archway stand broken and weathered. Fresh tracks—small, clawed footprints—are visible in the dust and dirt. Passages lead deeper into the ruins north and east, while the southern path heads back toward Thornhollow and the village green."
     terrain: "rubble-strewn stone floor"
     lighting: "dim (daylight from collapsed ceiling)"
     structures: ["broken stone archway", "collapsed ceiling sections", "rubble piles", "cracked walls"]
@@ -130,7 +280,9 @@ rooms:
     exits:
       north: "library"
       east: "guard_room"
-      south: "maras_inn"
+      south: "village_green"
+      green: "village_green"
+      inn: "maras_inn"
     features: ["goblin tracks in dust", "unstable ceiling (1 in 6 chance of collapse if loud noise)", "evidence of recent traffic"]
     traps:
       - id: "alarm_tripwire"
@@ -142,6 +294,232 @@ rooms:
         save_type: "none"
         is_triggered: false
         trigger_effect: "Loud clattering alerts all goblins in guard room. Possible ceiling collapse (1 in 6)."
+
+  village_green:
+    id: "village_green"
+    name: "Thornhollow Village Green"
+    kind: "settlement"
+    description: "The open village green of Thornhollow, surrounded by timber-and-stone cottages and shops with thatched roofs. A weathered stone well stands at the center beneath a spreading golden oak tree. To the west, the warm lights of Mara's Inn beckon. Paths lead north toward the ruined tower hill, east toward the stone chapel, southwest to the council hall, and south along the row of craftsman shops."
+    terrain: "beaten earth paths, autumn grass, fallen golden leaves"
+    lighting: "bright (daylight / lantern-lit paths)"
+    structures: ["ancient stone well", "spreading golden oak", "village notice board", "timber signposts"]
+    atmosphere: "Crisp autumn air carrying the scent of woodsmoke, roasted barley, and damp earth. Anxious murmurs from passing villagers."
+    exits:
+      west: "maras_inn"
+      north: "entry_hall"
+      tower: "entry_hall"
+      east: "temple_of_thyra"
+      southwest: "town_hall"
+      provisions: "general_store"
+      forge: "blacksmith_shop"
+      apothecary: "herbalist_shop"
+      butcher: "butchers_shop"
+      curio: "pawn_shop"
+      farm: "eriks_farm"
+      cottage: "mordale_cottage"
+      trapper: "trappers_cabin"
+      study: "elders_study"
+    features: ["weathered stone well", "spreading golden oak tree", "village notice board", "paths to inn, tower, chapel, shops, and farms"]
+    traps: []
+
+  blacksmith_shop:
+    id: "blacksmith_shop"
+    name: "The Ironhand Forge"
+    kind: "settlement"
+    description: "A soot-stained stone smithy ringing with the rhythmic strike of hammer on iron. Master Torvald works beside a roaring forge, surrounded by weapon racks, barrels of tempering brine, and rows of sharpened farm tools and blades. An iron anvil bearing the hammer-and-anvil rune of Korvath stands prominently in the center."
+    terrain: "soot-stained stone floor packed with coal dust"
+    lighting: "bright (roaring forge and hot coals)"
+    structures: ["roaring charcoal forge", "stone chimney", "Korvath-inscribed anvil", "weapon racks", "tempering brine barrel"]
+    atmosphere: "Ringing hammer blows, scorching dry heat, and the smell of hot iron and coal smoke."
+    exits:
+      north: "village_green"
+      green: "village_green"
+    features: ["Master Torvald Ironhand at work", "weapon and armor racks", "Korvath-inscribed anvil", "tempering brine barrel"]
+    traps: []
+
+  general_store:
+    id: "general_store"
+    name: "Jorren's Provisions"
+    kind: "settlement"
+    description: "A dry, crowded general store packed to the rafters with adventuring essentials, farm supplies, and household wares. Coils of hemp rope and iron chains hang from ceiling beams alongside smoked hams and bundles of torches. Old Jorren keeps tally at a sturdy counter."
+    terrain: "sawdust-covered wooden floorboards"
+    lighting: "bright (windows and oil lamps)"
+    structures: ["wooden display counters", "heavy shelving units", "hanging rope and torch racks", "ledger desk"]
+    atmosphere: "Dry, dusty air mingled with smoked ham and hemp rope. The quiet scratch of Jorren's tally quill."
+    exits:
+      north: "village_green"
+      green: "village_green"
+    features: ["Old Jorren behind the counter", "coils of rope and chains", "ration sacks and torch bundles", "ledger desk"]
+    traps: []
+
+  herbalist_shop:
+    id: "herbalist_shop"
+    name: "Greenweft Apothecary"
+    kind: "settlement"
+    description: "A fragrant, sunlit shop filled with the earthy aroma of drying herbs, crushed petals, and pungent tinctures. Bundles of lavender, sage, and belladonna hang from exposed cedar rafters. Glass alembics, mortar stones, and jars of arcane mineral powders line the polished wooden shelves."
+    terrain: "polished cedar floorboards"
+    lighting: "bright (sunlit windows and hanging lanterns)"
+    structures: ["cedar drying rafters", "alchemical workbench", "glass distillation apparatus", "specimen cabinets"]
+    atmosphere: "Earthy aromas of lavender, sage, and belladonna. The soft clink of glass alembics and the rustle of drying herbs."
+    exits:
+      north: "village_green"
+      green: "village_green"
+    features: ["Thessia Brightmix arranging reagents", "bundles of drying herbs", "alchemical workbench", "specimen cabinets"]
+    traps: []
+
+  butchers_shop:
+    id: "butchers_shop"
+    name: "Hael's Cleaver"
+    kind: "settlement"
+    description: "A clean, cool stone butchery with sawdust-covered floors and hanging game. Large wooden chopping blocks bear the marks of decades of cleaver work. Hael the butcher trims cuts of fresh venison and salted mutton with practiced ease."
+    terrain: "sawdust-covered stone floor"
+    lighting: "cool and dim (shuttered windows)"
+    structures: ["heavy maple butcher blocks", "iron meat hooks", "smokehouse door", "salting bins"]
+    atmosphere: "Clean but coppery smell of fresh meat. The steady thud of Hael's cleaver and the whisper of hanging game."
+    exits:
+      north: "village_green"
+      green: "village_green"
+    features: ["Hael Bloodwood trimming cuts", "smokehouse door", "salting bins", "iron meat hooks"]
+    traps: []
+
+  pawn_shop:
+    id: "pawn_shop"
+    name: "The Silver Trinket & Curios"
+    kind: "settlement"
+    description: "A quiet, dimly lit shop filled with antique curiosities, estate oddities, and salvaged relics. Glass display cases hold silver brooches, pocket lenses, strange coins, and carved wooden figurines. Silas Vance peers through a jeweler's loupe behind the velvet-lined counter."
+    terrain: "plush carpet over wooden floor"
+    lighting: "dim (velvet-shaded lamps)"
+    structures: ["locked glass display cabinets", "velvet appraisal counter", "iron strongbox", "curio display shelves"]
+    atmosphere: "Hushed and close, smell of old velvet and polished silver. Silas Vance peers through his jeweler's loupe."
+    exits:
+      north: "village_green"
+      green: "village_green"
+    features: ["Silas Vance at the velvet counter", "locked glass cabinets", "iron strongbox", "antique curiosities"]
+    traps: []
+
+  temple_of_thyra:
+    id: "temple_of_thyra"
+    name: "Sanctuary of the Green Mother & Solara"
+    kind: "settlement"
+    description: "A serene fieldstone chapel with arched windows that let in radiant autumn sunlight. A carved wooden altar draped in living ivy and golden sheaves of wheat honors Thyra the Green Mother, flanked by sunburst mosaics of Solara the Daystar. A consecrated stone basin of pure spring water rests near the entrance, and the scent of sweet incense fills the air."
+    terrain: "polished fieldstone floor"
+    lighting: "bright (sunlight through arched windows and votive candles)"
+    structures: ["living ivy altar of Thyra", "Solara sunburst mosaic", "consecrated holy water font", "prayer benches", "votive candle stands"]
+    atmosphere: "Serene and incense-sweet. Quiet prayer and the trickle of the holy water font."
+    exits:
+      west: "village_green"
+      green: "village_green"
+    features: ["Sister Aldara at the altar", "consecrated holy water font", "prayer benches", "Solara sunburst mosaic"]
+    traps: []
+
+  town_hall:
+    id: "town_hall"
+    name: "Thornhollow Council Hall"
+    kind: "settlement"
+    description: "The civic meeting hall of Thornhollow, built with heavy oak timbers and fieldstone. A long council table sits beneath banners of the Western Lands. Parchment archives and regional land maps line the walls. An iron-reinforced door leads east to the watch post and jail, while a heavy padlocked trapdoor in the corner leads down into the stone vault."
+    terrain: "herringbone oak floor over fieldstone"
+    lighting: "bright (clerestory windows and oil lamps)"
+    structures: ["oak council table", "magistrate's high-backed chair", "parchment archive shelves", "iron-reinforced jail door", "banded treasury trapdoor"]
+    atmosphere: "Solemn and orderly, smelling of oak polish and parchment. The low murmur of village business."
+    exits:
+      north: "village_green"
+      green: "village_green"
+      east: "town_jail"
+      jail: "town_jail"
+      down: "town_treasury"
+      vault: "town_treasury"
+    features: ["Mayor Grevik's council table", "parchment archives", "jail door", "treasury trapdoor"]
+    traps: []
+
+  town_jail:
+    id: "town_jail"
+    name: "Village Lockup & Watch Post"
+    kind: "settlement"
+    description: "A stark stone holding room and militia watch post. Two iron-barred cells occupy the southern wall, fitted with heavy deadbolts and straw bunks. A sturdy desk holds the night watch roster, patrol incident logs, and iron keys. A weapons rack holds militia spears and light crossbows."
+    terrain: "cold flagstone floor"
+    lighting: "dim (iron sconces)"
+    structures: ["two iron-barred cells with heavy locks", "watch commander's desk", "militia weapon rack", "iron key ring on peg"]
+    atmosphere: "Stark and serious. The clink of keys, scrape of boots, and the smell of lamp oil and straw."
+    exits:
+      west: "town_hall"
+      hall: "town_hall"
+    features: ["Captain Gareth at the watch desk", "two holding cells", "militia weapon rack", "night watch roster"]
+    traps: []
+
+  town_treasury:
+    id: "town_treasury"
+    name: "Municipal Vault"
+    kind: "settlement"
+    description: "A cool, windowless stone cellar beneath the council hall. The masonry is reinforced with iron braces. In the center sits a heavy iron-banded chest secured with dual dwarven-forged locks. Sacks of municipal tax coinage and the village emergency bounty reserve are kept here under strict lock and guard."
+    terrain: "reinforced stone floor"
+    lighting: "dim (single torch sconce)"
+    structures: ["iron-braced masonry walls", "heavy iron-banded chest with dual locks", "coin tally ledger", "torch sconce"]
+    atmosphere: "Cool, dry, and still. The faint metallic scent of coin and the weight of secrets behind locked steel."
+    exits:
+      up: "town_hall"
+      hall: "town_hall"
+    features: ["dwarven-banded locked chest", "coin tally ledger", "municipal reserve sacks", "iron braces in the masonry"]
+    traps: []
+
+  eriks_farm:
+    id: "eriks_farm"
+    name: "Erik's Sheep Farm"
+    kind: "settlement"
+    description: "A modest sheep farm on the northeast outskirts of the village. The wooden split-rail paddock shows recent violent damage, with several fence rails splintered and smashed. A thatched farmhouse and hay barn sit beside the muddy pasture where the remaining sheep huddle nervously."
+    terrain: "muddy pasture and trampled grass"
+    lighting: "bright (open sky)"
+    structures: ["thatched farmhouse", "timber hay barn", "splintered sheepfold fencing", "muddy feeding paddock"]
+    atmosphere: "Worry and wool. Nervous sheep huddle together while Erik gestures at the broken fence."
+    exits:
+      southwest: "village_green"
+      green: "village_green"
+    features: ["splintered sheepfold fencing", "mutilated sheep fleece clue", "goblin javelin scrap clue", "nervous sheep huddled in the paddock"]
+    traps: []
+
+  mordale_cottage:
+    id: "mordale_cottage"
+    name: "Willem & Anna's Cottage"
+    kind: "settlement"
+    description: "A tidy fieldstone cottage surrounded by a quiet vegetable garden. Inside, simple wooden furnishings and a warm hearth reflect years of quiet farming life. On a writing desk in the corner lie Willem's crop notes and recent scouting sketches."
+    terrain: "packed earth floor with a braided rug"
+    lighting: "bright (hearth and window)"
+    structures: ["stone hearth", "simple dining table", "farmer's writing desk", "small pantry cupboard"]
+    atmosphere: "Quiet domesticity undercut by fear. A half-finished supper sits cold on the table."
+    exits:
+      southeast: "village_green"
+      green: "village_green"
+    features: ["Willem's crop notes", "scouting sketches on the writing desk", "violet crystal shard clue", "Anna's worry evident in the disheveled room"]
+    traps: []
+
+  trappers_cabin:
+    id: "trappers_cabin"
+    name: "Kaelen's Woodsman Cabin"
+    kind: "settlement"
+    description: "A rugged log cabin situated on the western fringe where the village meets the Thornwood. Cured animal pelts hang on wooden drying frames against the exterior walls. Inside, hunting bows, snaring wire, and tracking tools are neatly organized along the cedar walls."
+    terrain: "cedar plank floor"
+    lighting: "bright (hearth and window)"
+    structures: ["log hearth", "pelt drying racks", "bowyer's workbench", "snare and trap rack"]
+    atmosphere: "Smell of cured hides and woodsmoke. Kaelen's quiet competence fills the small space."
+    exits:
+      east: "village_green"
+      green: "village_green"
+    features: ["Kaelen the trapper mending snares", "pelt drying racks", "goblin wolf collar clue", "trapper's beast notes clue"]
+    traps: []
+
+  elders_study:
+    id: "elders_study"
+    name: "Elder Corvus's Cottage"
+    kind: "settlement"
+    description: "A warm, cluttered cottage filled with tall cedar bookshelves, rolled parchment maps, and curious instruments of brass and glass. Elder Corvus sits in a comfortable high-backed armchair beside a crackling hearth, surrounded by five decades of compiled histories and regional lore."
+    terrain: "carpeted floor between cedar bookshelves"
+    lighting: "bright (hearth and reading lamps)"
+    structures: ["floor-to-ceiling cedar bookshelves", "brass astrolabe", "scholar's reading desk", "high-backed armchair"]
+    atmosphere: "Comfortable clutter of old parchment, pipe smoke, and cedar. Elder Corvus gestures with a brass astrolabe."
+    exits:
+      west: "village_green"
+      green: "village_green"
+    features: ["Elder Corvus in his armchair", "brass astrolabe", "Vaelith's chronicle excerpt", "archival estate receipt"]
+    traps: []
 
   library:
     id: "library"
