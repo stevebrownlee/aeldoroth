@@ -37,7 +37,7 @@ defmodule Referee.Run do
       run = %__MODULE__{
         world: world,
         prefs: prefs,
-        ctx: Ctx.from_config(opts[:routing]),
+        ctx: Ctx.from_config(opts[:routing] || Application.get_env(:llm_gateway, :routing)),
         rng: :rand.seed_s(:exsss, seed),
         pcs: pcs,
         events: [],

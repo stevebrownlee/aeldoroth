@@ -1,14 +1,14 @@
 ---
 identifier: active_context
 title: Active Context
-created: 2026-08-26T19:03:15Z
+created: 2026-08-26T23:25:57Z
 ---
 # Active Context
 
 ```json
 {
   "content": {
-    "current_focus": "Join-after-start + multi-round GM/player consistency COMPLETE (decisions 74-79); live-verified with agent-browser multi-session",
+    "current_focus": "4 full multi-seat rounds verified live across GM and 2 player sessions without errors or inconsistencies (decisions 80-81)",
     "current_plan": "Next: LLM-live mode (real API key) full-session trial; parley/hide/obey/flee resolvers",
     "decisions": [
       47,
@@ -76,7 +76,7 @@ created: 2026-08-26T19:03:15Z
     "watch": "Party's choice for the Shadow-Crystal (keep/sell/study/destroy) is the Act 1 pacing lever"
   },
   "name": "default",
-  "updated_at": "2026-08-26T19:03:15Z",
-  "version": 28
+  "updated_at": "2026-08-26T23:25:57Z",
+  "version": 29
 }
 ```

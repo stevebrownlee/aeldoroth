@@ -75,6 +75,19 @@ defmodule EngineCore.World.Server do
         if b.scope_group, do: Map.put_new(acc, b.scope_group, b), else: acc
       end)
 
+    last_deliberations =
+      try do
+        EngineCore.Ledger.Writer.events(run_id)
+        |> Enum.filter(&(&1.class == :deliberation))
+        |> Enum.reduce(%{}, fn ev, acc ->
+          p = ev.payload || %{}
+          aid = p[:agent_id] || p["agent_id"]
+          if aid, do: Map.put(acc, aid, p), else: acc
+        end)
+      catch
+        _, _ -> %{}
+      end
+
     world.agents
     |> Map.values()
     |> Enum.reject(&Map.get(&1, :pc, false))
@@ -118,6 +131,7 @@ defmodule EngineCore.World.Server do
             }
           end),
         last_intent: nil,
+        last_deliberation: Map.get(last_deliberations, a.id),
         dossier: a.dossier || %{}
       }
     end)

@@ -96,16 +96,24 @@ defmodule Referee.Interpret do
     {"verb": "move" | "strike" | "shout" | "wait", "target_id": string | null,
     "params": {"direction": string | null, "message": string | null},
     "assumptions": [string]}.
-    target_id must be an id from the believed list you are given — never
-    invent one. If the utterance is unparseable as one of these verbs,
-    return {"verb": "wait"} and say why in assumptions.
+    Verbs:
+    - "move": moving, walking, exploring in a direction (params.direction: "north", "south", "east", "west", "up", "down", etc.) or heading toward an exit/room
+    - "strike": attacking, fighting, or striking a target (target_id must be from believed list)
+    - "shout": speaking, saying, asking, talking, calling out, greeting, questioning, or addressing someone (params.message: the spoken text or inquiry, target_id: target agent id if addressing someone specific, or null)
+    - "wait": waiting, pausing, resting, examining, searching, or looking around (params: {})
+    target_id must be an id from the believed list you are given — never invent one.
     """
   end
 
   defp user_prompt(slice, utterance) do
+    believed_list =
+      Enum.map_join(slice[:believed_agents] || slice.believed_agents || [], ", ", fn a ->
+        "#{a[:name] || a.name} (#{a[:id] || a.id})"
+      end)
+
     """
     Scene: #{slice.summary}
-    Believed here: #{Enum.join(slice.believed, ", ")}
+    Believed here: #{believed_list}
     Exits: #{Enum.join(slice.place.exits, ", ")}
 
     Player says: "#{utterance}"

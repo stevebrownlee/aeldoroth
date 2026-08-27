@@ -374,6 +374,14 @@ defmodule ClientWeb.SpectateLive do
                     <span class="stat">THAC0 <%= thac0_of(agent) %></span>
                     <span class="stat">Morale <%= morale_of(agent) %></span>
                   </div>
+                  <%= if last_delib = agent["last_deliberation"] || agent[:last_deliberation] do %>
+                    <p class="npc-last-intent" data-testid="npc-last-intent">
+                      <span class="badge badge-intent">Recent Action:</span>
+                      <span class="dim">
+                        <%= last_delib["reason"] || last_delib[:reason] || last_delib["verb"] || last_delib[:verb] || last_delib["decision"] || last_delib[:decision] %>
+                      </span>
+                    </p>
+                  <% end %>
                   <%= if has_dossier?(agent) do %>
                     <% dossier = agent["dossier"] || agent[:dossier] %>
                     <details class="npc-dossier-drawer" data-testid="npc-dossier">
@@ -794,15 +802,33 @@ defmodule ClientWeb.SpectateLive do
   defp render_event(%{"class" => "dossier", "payload" => %{"pc_id" => pc}}),
     do: "dossier: #{pc}"
 
+  defp render_event(%{"class" => "meta", "payload" => %{"kind" => "intent_declared", "agent_id" => who, "text" => text}}),
+    do: "intent declared: #{who} → \"#{text}\""
+
   defp render_event(%{"class" => "meta", "payload" => %{"kind" => kind}}),
     do: "meta: #{kind}"
+
+  defp render_event(%{"class" => "world", "payload" => %{"kind" => "damage", "target_id" => target, "amount" => amount}}),
+    do: "damage → #{target}: #{amount} HP"
+
+  defp render_event(%{"class" => "world", "payload" => %{"kind" => "agent_moved", "agent_id" => who, "from" => from, "to" => to}}),
+    do: "world: #{who} moved #{from} → #{to}"
 
   defp render_event(%{"class" => "world", "payload" => %{"kind" => kind}}),
     do: "world: #{kind}"
 
-  defp render_event(%{"class" => "deliberation", "payload" => p}),
-    do: "deliberation: #{p["decision"]} · #{p["agent_id"]}"
+  defp render_event(%{"class" => "deliberation", "payload" => p}) do
+    agent = p["agent_id"] || "?"
+    decision = p["decision"] || "?"
+    reason = p["reason"]
+    verb = p["verb"]
 
+    cond do
+      reason && reason != "" -> "deliberation: #{agent} (#{decision}) — #{reason}"
+      verb -> "deliberation: #{agent} (#{decision}) → #{verb}"
+      true -> "deliberation: #{decision} · #{agent}"
+    end
+  end
   defp render_event(%{"class" => class, "payload" => %{"kind" => kind}}),
     do: "#{class}: #{kind}"
 

@@ -52,6 +52,14 @@ defmodule Referee.Grammar do
     "say" => :shout,
     "speak" => :shout,
     "tell" => :shout,
+    "talk" => :shout,
+    "ask" => :shout,
+    "inquire" => :shout,
+    "question" => :shout,
+    "greet" => :shout,
+    "chat" => :shout,
+    "order" => :shout,
+    "demand" => :shout,
     "wait" => :wait,
     "stay" => :wait,
     "remain" => :wait,
@@ -226,8 +234,14 @@ defmodule Referee.Grammar do
   defp parse_shout(actor_id, text) do
     message =
       case Regex.run(~r/['"](.*)['"]/, text) do
-        [_, msg] -> msg
-        nil -> String.trim(String.replace(text, ~r/^\S+\s*/, ""))
+        [_, msg] ->
+          msg
+
+        nil ->
+          text
+          |> String.replace(~r/^\S+\s*/, "")
+          |> String.replace(~r/^(to|with|at)\s+/i, "")
+          |> String.trim()
       end
 
     struct!(Types.Action, actor_id: actor_id, verb: :shout, params: %{message: message})
