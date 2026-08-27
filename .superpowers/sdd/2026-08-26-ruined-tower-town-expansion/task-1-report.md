@@ -4,7 +4,7 @@
 **Complete.**
 
 ## Commit Hash
-`41bcdb5`
+`5b472e59`
 
 ## Summary of Changes
 - **File modified:** `the-ruined-tower/ruined_tower.yaml`
