@@ -1175,6 +1175,222 @@ initial_actors:
         - "Willem went to investigate the tower three days ago and never returned."
         - "She can offer a 20 gp reward for his safe return."
 
+
+  torvald_ironhand:
+    id: "torvald_ironhand"
+    name: "Torvald Ironhand"
+    type: "human_blacksmith"
+    current_room_id: "blacksmith_shop"
+    tier: 3
+    hit_dice: "2d8"
+    hit_points: 12
+    armor_class: 8
+    thac0: 20
+    morale: 9
+    is_alive: true
+    dossier:
+      role: "Village Blacksmith & Devotee of Korvath"
+      personality: "Stout, hardworking, proud of his craft, devout follower of Korvath the Iron Lord."
+      goals:
+        - "provide honest smithing, armor repairs, and weapon silvering to protect Thornhollow"
+        - "prevent goblins from stealing tools and iron scrap from outer sheds"
+      knowledge:
+        - "Goblins have crept around his outer workshop at night, stealing tongs and scrap iron."
+        - "Goblin blades are crudely notched iron that break easily against tempered steel."
+      rumors:
+        - "Vaelith's tower had dwarven-forged iron gates that never rusted or squeaked."
+
+  jorren:
+    id: "jorren"
+    name: "Old Jorren"
+    type: "human_shopkeeper"
+    current_room_id: "general_store"
+    tier: 3
+    hit_dice: "1d8"
+    hit_points: 5
+    armor_class: 10
+    thac0: 20
+    morale: 7
+    is_alive: true
+    dossier:
+      role: "General Provisioner & Merchant"
+      personality: "Pragmatic, honest, cautious, and full of practical advice for survival."
+      goals:
+        - "keep travelers and locals supplied with quality ropes, torches, and provisions"
+        - "buy salvaged trade goods and minor relics at fair prices"
+      knowledge:
+        - "Vaelith was paranoid and filled his tower with mechanical and magical traps."
+        - "Never step into an unexplored dungeon corridor without tapping the floor with a 10-foot pole."
+      rumors:
+        - "A subterranean library in the ruins held books on forbidden shadow transmutation."
+
+  thessia_brightmix:
+    id: "thessia_brightmix"
+    name: "Thessia Brightmix"
+    type: "human_herbalist"
+    current_room_id: "herbalist_shop"
+    tier: 3
+    hit_dice: "1d8"
+    hit_points: 6
+    armor_class: 10
+    thac0: 20
+    morale: 7
+    is_alive: true
+    dossier:
+      role: "Apothecary, Herbalist & Scholar of Mystara"
+      personality: "Curious, observant, gentle, fascinated by arcane reagents and botanical remedies."
+      goals:
+        - "brew herbal poultices and antivenoms to treat village injuries"
+        - "supply magic-users with spell reagents and study strange flora from the tower hill"
+      knowledge:
+        - "Wildflowers on the north ridge toward the ruins have developed sickly purple blight."
+        - "Shadow corruption causes natural plant life to wither or turn aggressively toxic."
+      rumors:
+        - "Vaelith grew exotic magical herbs in his personal chambers that could amplify illusion magic."
+
+  hael_bloodwood:
+    id: "hael_bloodwood"
+    name: "Hael Bloodwood"
+    type: "human_butcher"
+    current_room_id: "butchers_shop"
+    tier: 3
+    hit_dice: "2d8"
+    hit_points: 11
+    armor_class: 10
+    thac0: 20
+    morale: 8
+    is_alive: true
+    dossier:
+      role: "Village Butcher"
+      personality: "Gruff, observant, unshakeable stomach, plain-spoken about beast anatomy."
+      goals:
+        - "provide clean cuts of meat, smoked rations, and fresh offal bait"
+        - "help identify what manner of beasts are preying on village livestock"
+      knowledge:
+        - "The slaughtered sheep carcasses were torn by trained war-wolves, not wild packs."
+        - "The bite wounds showed cold blackened ash, indicating shadow-tainted predators."
+      rumors:
+        - "Goblins keep two massive starving wolves penned in the tower beast yard."
+
+  silas_vance:
+    id: "silas_vance"
+    name: "Silas Vance"
+    type: "human_broker"
+    current_room_id: "pawn_shop"
+    tier: 3
+    hit_dice: "1d8"
+    hit_points: 4
+    armor_class: 10
+    thac0: 20
+    morale: 6
+    is_alive: true
+    dossier:
+      role: "Pawn Broker & Curio Appraiser"
+      personality: "Sharp-eyed, shrewd, appreciative of antiquities, wary of cursed artifacts."
+      goals:
+        - "appraise gems, precious jewelry, and ancient coinage for fair market value"
+        - "collect rare historical curios while avoiding dangerous shadow relics"
+      knowledge:
+        - "Looters who brought purple crystal shards into town 30 years ago suffered madness and bad dreams."
+        - "Ancient Titan-era coins carry high value to collectors in regional city-states."
+      rumors:
+        - "Vaelith possessed an enchanted dagger whose blade never dulled or rusted."
+
+  sister_aldara:
+    id: "sister_aldara"
+    name: "Sister Aldara"
+    type: "human_cleric"
+    current_room_id: "temple_of_thyra"
+    tier: 3
+    hit_dice: "2d8"
+    hit_points: 10
+    armor_class: 10
+    thac0: 20
+    morale: 8
+    is_alive: true
+    dossier:
+      role: "Priestess of Thyra the Green Mother & Solara the Daystar"
+      personality: "Serene, compassionate, spiritually resolute, dedicated to healing and cleansing dark corruption."
+      goals:
+        - "tend the sick and wounded, provide sacred blessings of health and courage"
+        - "channel divine guidance to aid those who oppose the encroaching shadow"
+      knowledge:
+        - "The chill emanating from the hill is ancient shadow corruption disturbing the natural life cycle."
+        - "Holy water deals severe burns to undead and creatures animated by shadow magic."
+      rumors:
+        - "A divine omen revealed that an apprentice's unfulfilled oath still binds a skeletal guardian beneath the ruins."
+
+  captain_gareth:
+    id: "captain_gareth"
+    name: "Captain Gareth"
+    type: "human_guard_captain"
+    current_room_id: "town_jail"
+    tier: 3
+    hit_dice: "3d8"
+    hit_points: 18
+    armor_class: 6
+    thac0: 18
+    morale: 10
+    is_alive: true
+    dossier:
+      role: "Captain of the Village Watch"
+      personality: "Disciplined veteran, protective of Thornhollow, pragmatic tactician."
+      goals:
+        - "maintain perimeter defenses, coordinate night patrols, secure the holding cells"
+        - "brief adventurers on goblin raid tactics and weaknesses"
+      knowledge:
+        - "Goblin raids occur exclusively on moonless or foggy nights between midnight and second watch."
+        - "Goblins suffer severe visual penalties and fighting sluggishness in full sunlight."
+      rumors:
+        - "A goblin scout captured last week carried crude maps showing secret tunnels beneath the tower."
+
+  kaelen_the_trapper:
+    id: "kaelen_the_trapper"
+    name: "Kaelen the Trapper"
+    type: "human_woodsman"
+    current_room_id: "trappers_cabin"
+    tier: 3
+    hit_dice: "2d8"
+    hit_points: 12
+    armor_class: 8
+    thac0: 20
+    morale: 8
+    is_alive: true
+    dossier:
+      role: "Trapper, Tracker & Woodsman"
+      personality: "Quiet, observant, skilled tracker, respects wild beasts and hates shadow blight."
+      goals:
+        - "track goblin raiders and predatory wolves along the Thornwood perimeter"
+        - "share tactical advice on beast handling and trap evasion with adventurers"
+      knowledge:
+        - "Wolves in the ruins are chained and starved into frenzy by their goblin masters."
+        - "The wolves are terrified of open flame and will break morale if threatened with torches or distracted with raw meat."
+      rumors:
+        - "Strange shadow tracks that leave no scent have been spotted near the northern forest line."
+
+  elder_corvus:
+    id: "elder_corvus"
+    name: "Elder Corvus"
+    type: "human_scholar"
+    current_room_id: "elders_study"
+    tier: 3
+    hit_dice: "1d8"
+    hit_points: 4
+    armor_class: 10
+    thac0: 20
+    morale: 6
+    is_alive: true
+    dossier:
+      role: "Village Lorekeeper & Historian"
+      personality: "Scholarly, patient, contemplative, custodian of Thornhollow's history and legends."
+      goals:
+        - "preserve historical archives of the Age of Shadow and the founding of Thornhollow"
+        - "help adventurers understand the historical origins of Vaelith's magical research"
+      knowledge:
+        - "Vaelith's catastrophic ritual 30 years ago killed his apprentice Talven and caused the tower collapse."
+        - "Vaelith designed hollow concealed wall compartments in his private supply chambers."
+      rumors:
+        - "Vaelith was attempting to purify a Shadow-Crystal left over from the Darkening when his wards failed."
 coinage:
   description: "Coin values expressed in copper pieces (AD&D 1E). Treasure value in gp = sum(count x value_in_cp) / 100. House rule: 1 gp of treasure value = 1 XP. Electrum (ep) is unused in this adventure."
   value_in_cp:
