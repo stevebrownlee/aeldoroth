@@ -1863,6 +1863,76 @@ boundaries:
     triggers: ["presence_crossing", "signal_arrived"]
     wake_on_intensity: 4
     sleep_after: 60
+  - id: "town_green_zone"
+    place: "village_green"
+    triggers: ["presence_crossing", "signal_arrived"]
+    wake_on_intensity: 4
+    sleep_after: 60
+  - id: "blacksmith_zone"
+    place: "blacksmith_shop"
+    triggers: ["presence_crossing", "signal_arrived"]
+    wake_on_intensity: 4
+    sleep_after: 60
+  - id: "general_store_zone"
+    place: "general_store"
+    triggers: ["presence_crossing", "signal_arrived"]
+    wake_on_intensity: 4
+    sleep_after: 60
+  - id: "apothecary_zone"
+    place: "herbalist_shop"
+    triggers: ["presence_crossing", "signal_arrived"]
+    wake_on_intensity: 4
+    sleep_after: 60
+  - id: "butcher_zone"
+    place: "butchers_shop"
+    triggers: ["presence_crossing", "signal_arrived"]
+    wake_on_intensity: 4
+    sleep_after: 60
+  - id: "pawn_shop_zone"
+    place: "pawn_shop"
+    triggers: ["presence_crossing", "signal_arrived"]
+    wake_on_intensity: 4
+    sleep_after: 60
+  - id: "temple_zone"
+    place: "temple_of_thyra"
+    triggers: ["presence_crossing", "signal_arrived"]
+    wake_on_intensity: 4
+    sleep_after: 60
+  - id: "town_hall_zone"
+    place: "town_hall"
+    triggers: ["presence_crossing", "signal_arrived"]
+    wake_on_intensity: 4
+    sleep_after: 60
+  - id: "town_jail_zone"
+    place: "town_jail"
+    triggers: ["presence_crossing", "signal_arrived"]
+    wake_on_intensity: 4
+    sleep_after: 60
+  - id: "town_treasury_zone"
+    place: "town_treasury"
+    triggers: ["presence_crossing", "signal_arrived"]
+    wake_on_intensity: 4
+    sleep_after: 60
+  - id: "eriks_farm_zone"
+    place: "eriks_farm"
+    triggers: ["presence_crossing", "signal_arrived"]
+    wake_on_intensity: 4
+    sleep_after: 60
+  - id: "mordale_cottage_zone"
+    place: "mordale_cottage"
+    triggers: ["presence_crossing", "signal_arrived"]
+    wake_on_intensity: 4
+    sleep_after: 60
+  - id: "trappers_cabin_zone"
+    place: "trappers_cabin"
+    triggers: ["presence_crossing", "signal_arrived"]
+    wake_on_intensity: 4
+    sleep_after: 60
+  - id: "elders_study_zone"
+    place: "elders_study"
+    triggers: ["presence_crossing", "signal_arrived"]
+    wake_on_intensity: 4
+    sleep_after: 60
 
 initial_commitments:
   - id: "guard_watch_rotation"
@@ -1906,3 +1976,51 @@ initial_commitments:
     due: 5
     every: 45
     priority: 4
+  - id: "torvald_forge_work"
+    debtor: "torvald_ironhand"
+    deed: "hammer forge iron, offer sturdy blades, armor repairs, and weapon silvering"
+    due: 4
+    every: 30
+    priority: 5
+  - id: "jorren_stock_gear"
+    debtor: "jorren"
+    deed: "check inventory tally, equip adventurers with 10-foot poles and ropes, buy salvage"
+    due: 4
+    every: 30
+    priority: 5
+  - id: "thessia_alchemical_care"
+    debtor: "thessia_brightmix"
+    deed: "measure spell reagents, brew herbal poultices and antivenom, observe purple hill blight"
+    due: 4
+    every: 30
+    priority: 5
+  - id: "aldara_sacred_communion"
+    debtor: "sister_aldara"
+    deed: "tend temple incense, offer healing and dawn blessings, channel divine omens"
+    due: 4
+    every: 30
+    priority: 6
+  - id: "gareth_militia_watch"
+    debtor: "captain_gareth"
+    deed: "inspect militia spears, review night watch logs, explain goblin midnight raids"
+    due: 4
+    every: 30
+    priority: 6
+  - id: "silas_appraisal_desk"
+    debtor: "silas_vance"
+    deed: "appraise jewelry and curios with magnifying lens, exchange antique coins, warn of shadow dreams"
+    due: 4
+    every: 30
+    priority: 4
+  - id: "kaelen_scout_prep"
+    debtor: "kaelen_the_trapper"
+    deed: "clean wolf snares, oil hunting bow, share tactical advice on wolf fire-weakness"
+    due: 4
+    every: 30
+    priority: 5
+  - id: "corvus_chronicle_study"
+    debtor: "elder_corvus"
+    deed: "study historical maps, recount Vaelith's failed ritual and hollow masonry"
+    due: 4
+    every: 30
+    priority: 5
