@@ -9,7 +9,7 @@ defmodule EngineCore.LoaderTest do
 
   test "loads the tower into a coherent world" do
     {:ok, w} = EngineCore.Loader.load(@yaml)
-    assert map_size(w.places) == 8
+    assert map_size(w.places) == 22
     assert w.starting_place == "maras_inn"
     assert w.places["maras_inn"].kind == :settlement
     assert w.tick == 0
@@ -129,15 +129,29 @@ defmodule EngineCore.LoaderTest do
   test "loads boundaries, hazards, commitments, groups, cadences" do
     {:ok, w} = EngineCore.Loader.load(@yaml)
 
-    assert MapSet.new(Map.keys(w.boundaries)) ==
-             MapSet.new([
-               "guard_room_zone",
-               "chiefs_room_zone",
-               "library_zone",
-               "wolf_pack",
-               "skeleton_sentinel",
-               "maras_inn_zone"
-             ])
+    expected_boundaries = [
+      "guard_room_zone",
+      "chiefs_room_zone",
+      "library_zone",
+      "wolf_pack",
+      "skeleton_sentinel",
+      "maras_inn_zone",
+      "town_green_zone",
+      "blacksmith_zone",
+      "general_store_zone",
+      "apothecary_zone",
+      "butcher_zone",
+      "pawn_shop_zone",
+      "temple_zone",
+      "town_hall_zone",
+      "town_jail_zone",
+      "town_treasury_zone",
+      "eriks_farm_zone",
+      "mordale_cottage_zone",
+      "trappers_cabin_zone",
+      "elders_study_zone"
+    ]
+    assert MapSet.new(Map.keys(w.boundaries)) == MapSet.new(expected_boundaries)
 
     gz = w.boundaries["guard_room_zone"]
     assert gz.scope_place_id == "guard_room" and gz.state == :dormant
