@@ -4,7 +4,7 @@ defmodule Referee.AcceptanceTest do
   checker against hand-built ledger fixtures with known structure, so a
   harness failure later means the run changed, not the checker.
   """
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   alias EngineCore.Types
   alias EngineCore.World
