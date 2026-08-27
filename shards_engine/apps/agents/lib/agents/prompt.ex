@@ -28,6 +28,8 @@ defmodule Agents.Prompt do
     verb must be one of your capabilities. target_id must come from your believed
     list — never invent one. Ordering a subordinate uses verb "order", the
     subordinate's id as target_id, and the spoken order as message.
+    If Recent speech shows someone just addressed YOU, reply in character:
+    verb "shout", their id as target_id, message = your spoken reply.
     """
 
     dossier = format_dossier(slice[:dossier])
@@ -38,6 +40,7 @@ defmodule Agents.Prompt do
         dossier,
         "Commitments: #{commitment_lines(slice.commitments)}",
         "Salient here: #{Enum.join(slice.salient, ", ")}",
+        speech_block(slice),
         "Believed here: #{Enum.join(slice.believed, ", ")}",
         "Exits: #{Enum.join(slice.place.exits, ", ")}",
         "Capabilities: #{Enum.join(slice.capabilities, ", ")}",
@@ -48,6 +51,23 @@ defmodule Agents.Prompt do
       |> Enum.join("\n")
 
     {system, user, schema}
+  end
+
+  # What has been said in earshot, addressed lines first-class: lets the
+  # brain answer the last person who spoke to it instead of broadcasting.
+  defp speech_block(slice) do
+    case Map.get(slice, :recent_speech, []) do
+      [] ->
+        nil
+
+      lines ->
+        "Recent speech:\n" <>
+          Enum.map_join(lines, "\n", fn l ->
+            if l[:addressed],
+              do: "  #{l[:from_name]} (#{l[:from_id]}) said to you: “#{l[:words]}”",
+              else: "  #{l[:from_name]} (#{l[:from_id]}) said: “#{l[:words]}”"
+          end)
+    end
   end
 
   defp format_dossier(nil), do: nil

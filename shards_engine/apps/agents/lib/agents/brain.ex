@@ -110,25 +110,57 @@ defmodule Agents.Brain do
   # PC in the room with a dossier line (rumors/knowledge, rotated by tick);
   # otherwise it holds. Facts stay engine-side — only phrasing is local.
   defp deliberate_heuristic(slice, agent_id, tick, req, audit, ctx2) do
-    pc = most_salient_pc(slice)
+    cond do
+      :shout not in Map.get(slice, :capabilities, []) ->
+        hold(req, ctx2, audit, agent_id)
 
-    if pc != nil and :shout in Map.get(slice, :capabilities, []) do
-      line = fallback_line(slice, pc, tick)
+      # Someone addressed this agent: answer THEM, not the room.
+      addresser = last_addresser(slice) ->
+        line = fallback_line(slice, %{id: addresser[:from_id], name: addresser[:from_name]}, tick)
 
-      {:ok, %{
-        action: struct!(EngineCore.Types.Action, actor_id: agent_id, verb: :shout, params: %{message: line}),
-        reason: "offline heuristic: addresses #{pc[:name]}",
-        request: req, ctx: ctx2,
-        audit: deliberate_fallback_audit(audit)
-      }}
-    else
-      {:ok, %{
-        action: struct!(EngineCore.Types.Action, actor_id: agent_id, verb: :wait, params: %{}),
-        reason: "offline heuristic: holds and watches",
-        request: req, ctx: ctx2,
-        audit: deliberate_fallback_audit(audit)
-      }}
+        {:ok, %{
+          action:
+            struct!(EngineCore.Types.Action,
+              actor_id: agent_id, verb: :shout, target_id: addresser[:from_id],
+              params: %{message: line}),
+          reason: "offline heuristic: replies to #{addresser[:from_name]}",
+          request: req, ctx: ctx2,
+          audit: deliberate_fallback_audit(audit)
+        }}
+
+      pc = most_salient_pc(slice) ->
+        line = fallback_line(slice, pc, tick)
+
+        {:ok, %{
+          action:
+            struct!(EngineCore.Types.Action,
+              actor_id: agent_id, verb: :shout, target_id: pc[:id],
+              params: %{message: line}),
+          reason: "offline heuristic: addresses #{pc[:name]}",
+          request: req, ctx: ctx2,
+          audit: deliberate_fallback_audit(audit)
+        }}
+
+      true ->
+        hold(req, ctx2, audit, agent_id)
     end
+  end
+
+  defp hold(req, ctx2, audit, agent_id) do
+    {:ok, %{
+      action: struct!(EngineCore.Types.Action, actor_id: agent_id, verb: :wait, params: %{}),
+      reason: "offline heuristic: holds and watches",
+      request: req, ctx: ctx2,
+      audit: deliberate_fallback_audit(audit)
+    }}
+  end
+
+  # The most recent agent whose words were aimed at this brain's agent.
+  defp last_addresser(slice) do
+    slice
+    |> Map.get(:recent_speech, [])
+    |> Enum.filter(& &1[:addressed])
+    |> Enum.max_by(& &1[:tick], fn -> nil end)
   end
 
   defp deliberate_fallback_audit(nil),
@@ -148,17 +180,19 @@ defmodule Agents.Brain do
       Enum.at(Map.values(pcs), 0)
   end
 
-  # Dossier comes straight from YAML: string keys.
+  # Dossier comes straight from YAML: string keys. Lines may already carry
+  # their own quote marks — strip them; the render layer adds the only
+  # quoting (single-wrap).
   defp fallback_line(slice, pc, tick) do
     dossier = Map.get(slice, :dossier, %{})
     lines = List.wrap(dossier["rumors"] || dossier["knowledge"] || [])
+
     if lines != [] do
-      "“#{Enum.at(lines, rem(tick, length(lines)))}”"
+      lines |> Enum.at(rem(tick, length(lines))) |> String.trim("“”\"' ")
     else
       "#{slice.agent[:name]} nods to #{pc[:name]} and keeps watching the room."
     end
   end
-
   defp bool(true), do: true
   defp bool(_), do: false
 

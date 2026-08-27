@@ -96,4 +96,18 @@ defmodule Referee.NarrateTest do
     assert is_binary(text) and text != ""
     assert audit.parse_verdict == :fallback and audit.adapter == :template
   end
+  test "shout narration distinguishes directed, wordless address, and ambient" do
+    directed = struct!(Types.Action, actor_id: "pc", verb: :shout, target_id: "gob", params: %{message: "hello"})
+    wordless = struct!(Types.Action, actor_id: "pc", verb: :shout, target_id: "gob", params: %{message: ""})
+    ambient = struct!(Types.Action, actor_id: "pc", verb: :shout, target_id: nil, params: %{message: "hello"})
+
+    {t1, _c, _a} = Narrate.action(ctx(), @prefs, "pc", directed, {:ok, []}, target_name: "Gob")
+    assert t1 =~ ~s(You say to Gob: "hello")
+
+    {t2, _c, _a} = Narrate.action(ctx(), @prefs, "pc", wordless, {:ok, []}, target_name: "Gob")
+    assert t2 =~ "You address Gob"
+
+    {t3, _c, _a} = Narrate.action(ctx(), @prefs, "pc", ambient, {:ok, []})
+    assert t3 =~ ~s(You shout: "hello")
+  end
 end

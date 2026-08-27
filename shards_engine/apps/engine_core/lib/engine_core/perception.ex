@@ -16,14 +16,22 @@ defmodule EngineCore.Perception do
         true -> 1
       end
 
-    tier
-    |> Kernel.-(if arrival.hops >= 1, do: 1, else: 0)
-    |> Kernel.-(if agent.attention == :dormant, do: 2, else: 0)
-    |> Kernel.+(if agent.statblock.int >= 16, do: 1, else: 0)
-    |> Kernel.-(if agent.statblock.int <= 6, do: 1, else: 0)
-    |> max(0)
-    |> then(fn f -> if arrival.intensity >= 9, do: max(f, 3), else: f end)
-    |> min(5)
+    f =
+      tier
+      |> Kernel.-(if arrival.hops >= 1, do: 1, else: 0)
+      |> Kernel.-(if agent.attention == :dormant, do: 2, else: 0)
+      |> Kernel.+(if agent.statblock.int >= 16, do: 1, else: 0)
+      |> Kernel.-(if agent.statblock.int <= 6, do: 1, else: 0)
+      |> max(0)
+      |> then(fn f -> if arrival.intensity >= 9, do: max(f, 3), else: f end)
+      |> min(5)
+
+    # Words aimed at this agent are not faint room noise: directed speech
+    # floors at F4 in the room and F3 across a hop (spec 6.1 — the
+    # addressee always hears the words; everyone else hears the murmur).
+    if addressed?(arrival, agent),
+      do: max(f, if(arrival.hops >= 1, do: 3, else: 4)),
+      else: f
   end
 
   @spec resolve_fidelity(non_neg_integer(), Types.Arrival.t(), :rand.state()) ::
@@ -83,7 +91,7 @@ defmodule EngineCore.Perception do
               signal_kind: arrival.kind,
               intensity: Float.round(arrival.intensity * 1.0, 4),
               fidelity: f,
-              salience: salience(arrival, a, world),
+              salience: addressed_boost(salience(arrival, a, world), arrival, a),
               roll: roll,
               content_core: arrival.content_core,
               content_nl: arrival.content_nl
@@ -95,6 +103,14 @@ defmodule EngineCore.Perception do
       end)
 
     {:ok, events, Fold.fold(world, events), rng2}
+  end
+
+  defp addressed?(arrival, agent),
+    do: (arrival.content_core || %{})[:to] == agent.id
+
+  # Being addressed pins attention: +3 salience, capped like threat noise.
+  defp addressed_boost(s, arrival, agent) when is_number(s) do
+    if addressed?(arrival, agent), do: min(s + 3, 10), else: s
   end
 
   # Footsteps (presence) and voices (shout) are emitted by their subject;

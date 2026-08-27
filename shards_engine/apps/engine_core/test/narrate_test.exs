@@ -64,4 +64,21 @@ defmodule EngineCore.NarrateTest do
     assert Narrate.direction(w, "entry_hall", "chiefs_room") == "somewhere nearby"
     assert Narrate.direction(w, "entry_hall", "entry_hall") == "very close"
   end
+  test "voiced speech renders attributed: addressee hears words, listener overhears" do
+    base = %{kind: :sound, content_core: %{class: :voices}, intensity: 6,
+             content_nl: "the ale is on me", speaker: "Mara"}
+
+    addressed = Narrate.render(Map.put(base, :addressed, true), 4)
+    assert addressed =~ "Mara says to you:"
+    assert addressed =~ "the ale is on me"
+
+    overheard = Narrate.render(base, 4)
+    assert overheard =~ "You hear Mara say:"
+    assert overheard =~ "the ale is on me"
+
+    # No usable words: generic ambient murmur, no attribution.
+    murmur = Narrate.render(%{kind: :sound, content_core: %{class: :voices}, intensity: 6, content_nl: nil}, 3)
+    assert murmur =~ "murmur-of-voices"
+    refute murmur =~ "Mara"
+  end
 end

@@ -60,6 +60,8 @@ defmodule Referee.Grammar do
     "chat" => :shout,
     "order" => :shout,
     "demand" => :shout,
+    "buy" => :buy,
+    "purchase" => :buy,
     "wait" => :wait,
     "stay" => :wait,
     "remain" => :wait,
@@ -118,7 +120,8 @@ defmodule Referee.Grammar do
             case action_verb do
               :move -> parse_move(world, actor_id, rest)
               :strike -> parse_strike(world, actor_id, text, rest)
-              :shout -> parse_shout(actor_id, text)
+              :shout -> parse_shout(world, actor_id, text)
+              :buy -> parse_buy(world, actor_id, text)
               :wait -> struct!(Types.Action, actor_id: actor_id, verb: :wait)
             end
 
@@ -231,21 +234,153 @@ defmodule Referee.Grammar do
     end
   end
 
-  defp parse_shout(actor_id, text) do
-    message =
-      case Regex.run(~r/['"](.*)['"]/, text) do
-        [_, msg] ->
-          msg
+  defp parse_shout(world, actor_id, text) do
+    {addressee, message} = split_speech(text)
+
+    case addressee && resolve_believed(world, actor_id, addressee) do
+      {:ok, id} ->
+        struct!(Types.Action, actor_id: actor_id, verb: :shout, target_id: id,
+          params: %{message: message || ""})
+
+      {:ambiguous, ids} ->
+        {:ambiguous, ids}
+
+      # An unresolvable addressee degrades to ambient speech — shouting
+      # into the room is always diegetic. Real ambiguity asks the player.
+      _ambient ->
+        struct!(Types.Action, actor_id: actor_id, verb: :shout,
+          params: %{message: message || ""})
+    end
+  end
+
+  # Buying is social speech aimed at a provider: "buy a drink from Mara"
+  # addresses Mara; a bare "buy a drink" addresses the most salient NPC in
+  # the room — the obvious provider. No order envelope, no reliability
+  # roll: the provider simply hears the request.
+  defp parse_buy(world, actor_id, text) do
+    body = String.replace(text, ~r/^\S+\s*/, "")
+
+    {seller_name, message} =
+      case Regex.run(~r/\s*\bfrom\s+([a-z0-9'’ -]+)$/i, body) do
+        [_, name] ->
+          {clean_name(name),
+           body |> String.replace(~r/\s*\bfrom\s+[a-z0-9'’ -]+$/i, "") |> String.trim()}
 
         nil ->
-          text
-          |> String.replace(~r/^\S+\s*/, "")
-          |> String.replace(~r/^(to|with|at)\s+/i, "")
-          |> String.trim()
+          {nil, String.trim(body)}
       end
 
-    struct!(Types.Action, actor_id: actor_id, verb: :shout, params: %{message: message})
+    case seller_name && resolve_believed(world, actor_id, seller_name) do
+      {:ok, id} ->
+        shout_to(actor_id, id, message)
+
+      {:ambiguous, ids} ->
+        {:ambiguous, ids}
+
+      :none ->
+        {:unclear, text}
+
+      _unspecified ->
+        case room_provider(world, actor_id) do
+          nil -> {:unclear, text}
+          id -> shout_to(actor_id, id, message)
+        end
+    end
   end
+
+  defp shout_to(actor_id, target_id, message) do
+    struct!(Types.Action, actor_id: actor_id, verb: :shout, target_id: target_id,
+      params: %{message: message || ""})
+  end
+
+  # Quoted words are the message; otherwise the message is the body minus
+  # the addressee phrase. The addressee is the name after to/at/toward/
+  # with/from, or the subject before "about": "talk to mayor grevik"
+  # addresses the mayor and says nothing; "ask grevik about the tower"
+  # addresses Grevik with the tower as the topic.
+  defp split_speech(text) do
+    quoted =
+      case Regex.run(~r/['"](.+)['"]/, text) do
+        [_, msg] -> String.trim(msg)
+        nil -> nil
+      end
+
+    rest =
+      if quoted,
+        do: String.replace(text, ~r/['"].*['"]/, " "),
+        else: String.replace(text, ~r/^\S+\s*/, "")
+
+    cond do
+      match = Regex.run(~r/\b(?:to|at|towards?|with|from)\s+([a-z0-9'’ -]+)$/i, rest) ->
+        [_, raw] = match
+        {name, topic} = split_about(raw)
+
+        words =
+          quoted || topic ||
+            (rest
+             |> String.replace(~r/\s*\b(?:to|at|towards?|with|from)\s+[a-z0-9'’ -]+$/i, "")
+             |> String.trim())
+
+        {clean_name(name), words}
+
+      match = Regex.run(~r/^([a-z0-9'’]+(?:\s+[a-z0-9'’]+)?)\s+about\s+(.+)$/i, rest) ->
+        [_, name, topic] = match
+        {clean_name(name), quoted || "about " <> String.trim(topic)}
+
+      true ->
+        {nil, quoted || String.trim(rest)}
+    end
+  end
+
+  defp split_about(raw) do
+    case Regex.split(~r/\s+about\s+/i, raw, parts: 2) do
+      [name, topic] -> {name, "about " <> String.trim(topic)}
+      [name] -> {name, nil}
+    end
+  end
+
+  defp clean_name(name) do
+    name
+    |> String.replace(~r/^(?:the\s+|a\s+|an\s+)+/i, "")
+    |> String.replace(~r/[.,!?;:]+$/, "")
+    |> String.trim()
+  end
+
+# A purchase with no named seller addresses the room's provider: a
+# believed NPC whose dossier role is a service role. Salience only
+# breaks ties among equals — "buy a drink" reaches the innkeeper, not
+# whoever happens to be loudest.
+@provider_roles ~w(innkeeper barkeep bartender merchant shopkeeper trader
+  vendor smith blacksmith herbalist apothecary brewer proprietor steward)
+
+defp room_provider(world, actor_id) do
+  actor = world.agents[actor_id]
+  believed = actor && Map.get(actor.beliefs, actor.place_id, %{})
+
+  believed
+  |> Enum.reject(fn {id, _b} -> id == actor_id end)
+  |> Enum.filter(fn {id, _b} ->
+    a = world.agents[id]
+    a != nil and is_map(a.dossier) and map_size(a.dossier) > 0
+  end)
+  |> Enum.map(fn {id, b} -> {id, provider_rank(world.agents[id]), b[:salience] || 0} end)
+  |> Enum.max_by(fn {_id, rank, sal} -> {rank, sal} end, fn -> nil end)
+  |> case do
+    {id, _rank, _sal} -> id
+    nil -> nil
+  end
+end
+
+defp provider_rank(agent) do
+  case agent && agent.dossier && agent.dossier["role"] do
+    role when is_binary(role) ->
+      r = String.downcase(role)
+      if Enum.any?(@provider_roles, &String.contains?(r, &1)), do: 1, else: 0
+
+    _ ->
+      0
+  end
+end
 
   # "attack the goblin guard" -> "goblin guard"; strips articles and the verb.
   defp object_phrase(text) do

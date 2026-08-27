@@ -113,4 +113,55 @@ defmodule Agents.DeliberateTest do
     assert d.request.user =~ "Goals: Serve ale"
     assert d.request.user =~ "Knowledge / Rumors: Vaelith's ghost haunts the tower"
   end
+  test "no-route deliberation replies to the last addresser with a dossier line" do
+    slice =
+      slice("mara", %{
+        tick: 1,
+        dossier: %{"rumors" => ["Green lights flicker from the tower."]},
+        recent_speech: [
+          %{from_id: "pc_thistle", from_name: "Thistle", words: "any news?", addressed: true, tick: 2}
+        ]
+      })
+
+    assert {:ok, d} = Agents.deliberate("mara", %{slice: slice, ctx: %Ctx{routing: %{}}})
+
+    assert %Types.Action{verb: :shout, target_id: "pc_thistle"} = d.action
+    assert d.action.params.message =~ "Green lights"
+    assert d.reason =~ "Thistle"
+    assert d.audit.parse_verdict == :fallback and d.audit.adapter == :heuristic
+  end
+
+  test "no-route deliberation without an addresser addresses the most salient PC" do
+    slice =
+      slice("mara", %{
+        tick: 1,
+        dossier: %{"rumors" => ["Green lights flicker from the tower."]},
+        recent_speech: [],
+        salient: ["pc_bramble", "pc_thistle"],
+        believed_agents: [
+          %{id: "pc_thistle", name: "Thistle", pc: true, salience: 0.4},
+          %{id: "pc_bramble", name: "Bramble", pc: true, salience: 0.9}
+        ]
+      })
+
+    assert {:ok, d} = Agents.deliberate("mara", %{slice: slice, ctx: %Ctx{routing: %{}}})
+
+    assert %Types.Action{verb: :shout, target_id: "pc_bramble"} = d.action
+  end
+
+  test "prompt carries overheard and addressed speech lines" do
+    slice =
+      slice("mara", %{
+        recent_speech: [
+          %{from_id: "pc_thistle", from_name: "Thistle", words: "any news?", addressed: true, tick: 3},
+          %{from_id: "pc_bramble", from_name: "Bramble", words: "pass the ale", addressed: false, tick: 2}
+        ]
+      })
+
+    entry = ~s({"verb":"wait","reason":"biding"})
+    {:ok, d} = Agents.deliberate("mara", %{slice: slice, ctx: ctx([entry])})
+
+    assert d.request.user =~ "any news?"
+    assert d.request.user =~ "pass the ale"
+  end
 end

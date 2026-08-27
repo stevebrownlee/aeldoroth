@@ -40,6 +40,9 @@ defmodule Referee.Validate do
       verb == :order ->
         check_order(actor, action)
 
+      verb == :shout ->
+        check_shout(actor, action)
+
       true ->
         :ok
     end
@@ -73,6 +76,19 @@ defmodule Referee.Validate do
       :ok
     else
       {:reject, "You see no such creature here."}
+    end
+  end
+
+  # Directed speech needs a believed addressee in earshot; ambient shouts
+  # pass untouched.
+  defp check_shout(_actor, %Types.Action{target_id: nil}),
+    do: :ok
+
+  defp check_shout(actor, %Types.Action{target_id: target_id}) do
+    if get_in(actor.beliefs, [actor.place_id, target_id]) != nil do
+      :ok
+    else
+      {:reject, "You see no one by that name here."}
     end
   end
 end

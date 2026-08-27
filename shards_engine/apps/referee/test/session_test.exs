@@ -297,4 +297,34 @@ defmodule Referee.SessionTest do
     scripts = %{interpret: interpret_scripts() |> Enum.drop(2), salt: System.unique_integer()}
     %{interpret: %{adapter: Scripted, scripts: scripts}}
   end
+
+  test "advance gives each PC an action-specific response: directed reply, ambient room, provider reply", ctx do
+    pcs = [
+      %{id: "pc_bram", name: "Bram", place_id: "maras_inn", int: 12, ac: 6, hd: 1, hp: 8, thac0: 19, damage: "1d6"},
+      %{id: "pc_kell", name: "Kell", place_id: "maras_inn", int: 12, ac: 6, hd: 1, hp: 8, thac0: 19, damage: "1d6"},
+      %{id: "pc_rowan", name: "Rowan", place_id: "maras_inn", int: 12, ac: 6, hd: 1, hp: 8, thac0: 19, damage: "1d6"}
+    ]
+
+    with_session(ctx.test, [pcs: pcs, routing: %{}], fn id, _dir, _pid ->
+      assert {:ok, _} = Session.declare(id, "pc_bram", "talk to mayor grevik")
+      assert {:ok, _} = Session.declare(id, "pc_kell", "listen to the patrons")
+      assert {:ok, _} = Session.declare(id, "pc_rowan", "buy a drink")
+
+      assert {:ok, texts} = Session.advance(id)
+
+      # P1 addressed the mayor: own action line plus a directed reply.
+      assert String.starts_with?(texts["pc_bram"], "You address Mayor Grevik")
+      assert texts["pc_bram"] =~ "Mayor Grevik says to you:"
+
+      # P3 bought from the provider: directed at Mara, answered by Mara.
+      assert texts["pc_rowan"] =~ "You say to Mara"
+      assert texts["pc_rowan"] =~ "Mara says to you:"
+
+      # P2 only listened: hears the room, no directed line, distinct text.
+      assert texts["pc_kell"] =~ "You hear"
+      refute texts["pc_kell"] =~ "says to you"
+      assert texts["pc_kell"] != texts["pc_bram"]
+      assert texts["pc_kell"] != texts["pc_rowan"]
+    end)
+  end
 end

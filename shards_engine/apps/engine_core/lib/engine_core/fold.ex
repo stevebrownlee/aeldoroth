@@ -90,6 +90,21 @@ defmodule EngineCore.Fold do
               seen: (current && current.seen) || p.signal_kind == :sight
             })
 
+          # Clear voiced words (fidelity >= 4) and being-addressed become
+          # belief facts, so slices and brains can answer who said what —
+          # beliefs are rebuildable views; this stays derived state.
+          words =
+            if p.fidelity >= 4 and p.signal_kind == :sound and
+                 get_in(p, [:content_core, :class]) == :voices,
+               do: p.content_nl
+
+          merged = if is_binary(words), do: Map.put(merged, :words, words), else: merged
+
+          merged =
+            if get_in(p, [:content_core, :to]) == p.agent_id,
+              do: Map.put(merged, :addressed_tick, tick),
+              else: merged
+
           place_map = Map.put(a.beliefs[p.place_id] || %{}, p.about, merged)
           %{a | beliefs: Map.put(a.beliefs, p.place_id, place_map)}
         end)

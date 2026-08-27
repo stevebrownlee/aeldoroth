@@ -120,9 +120,14 @@ defmodule Referee.Resolve do
     end
   end
 
-  defp act_shout(world, rng, %Types.Action{actor_id: actor_id, params: params}) do
+  defp act_shout(world, rng, %Types.Action{actor_id: actor_id, target_id: target_id, params: params}) do
     message = Map.get(params, :message, "")
     place = place_of(world, actor_id)
+
+    # Directed speech names its addressee in the content core: perception
+    # floors the addressee's fidelity and boosts salience off this field.
+    core = %{class: :voices, about: actor_id, count: 1}
+    core = if target_id, do: Map.put(core, :to, target_id), else: core
 
     {:ok, events, w2} =
       Signals.emit_at(
@@ -130,7 +135,7 @@ defmodule Referee.Resolve do
         actor_id,
         place,
         :sound,
-        %{class: :voices, about: actor_id, count: 1},
+        core,
         @shout_intensity,
         message
       )

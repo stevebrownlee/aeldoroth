@@ -110,4 +110,18 @@ defmodule Referee.ValidateTest do
     pc = w.agents["pc"]
     %{w | agents: Map.put(w.agents, "pc", %{pc | capabilities: [verb | pc.capabilities]})}
   end
+
+  test "directed shout at a believed present addressee passes; ambient passes" do
+    a = struct!(Types.Action, actor_id: "pc", verb: :shout, target_id: "gob", params: %{message: "hello"})
+    assert :ok = Validate.check(world(), a)
+
+    ambient = struct!(Types.Action, actor_id: "pc", verb: :shout, target_id: nil, params: %{message: "hello"})
+    assert :ok = Validate.check(world(), ambient)
+  end
+
+  test "directed shout at an unbelieved addressee is diegetically rejected" do
+    a = struct!(Types.Action, actor_id: "pc", verb: :shout, target_id: "rat_1", params: %{message: "hello"})
+    assert {:reject, msg} = Validate.check(world(), a)
+    assert msg =~ "no one by that name"
+  end
 end

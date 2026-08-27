@@ -88,4 +88,36 @@ defmodule EngineCore.PerceptionTest do
     assert Fold.fold(w, events) == w2
     assert w2.agents["g1"].beliefs["guard_room"]["pc1"].count == 1
   end
+  test "directed speech floors fidelity at F4 and pins addressee salience" do
+    voice = fn to, intensity ->
+      struct!(Types.Arrival,
+        ref: 2, place_id: "guard_room", tick: 5, kind: :sound,
+        intensity: intensity, about: "pc1", hops: 0, origin_place_id: "entry_hall",
+        content_core: %{class: :voices, count: 1, about: "pc1", to: to},
+        content_nl: "the road is closed"
+      )
+    end
+
+
+    # Faint words are not faint room noise for the agent they aim at.
+    assert Perception.base_fidelity(voice.("g1", 1.5), agent(10)) == 4
+    assert Perception.base_fidelity(voice.("g2", 1.5), agent(10)) == 1
+
+    g2 = %{agent(10) | id: "g2"}
+
+    w = %EngineCore.World{
+      agents: %{"g1" => agent(10), "g2" => g2},
+      places: %{"guard_room" => %{}},
+      tick: 5
+    }
+
+    {:ok, events, w2, _rng} = Perception.receive_arrival(w, Dice.new(7), voice.("g1", 5))
+    sal = Map.new(events, &{&1.payload.agent_id, &1.payload.salience})
+    assert sal["g1"] > sal["g2"]
+
+    # Fold: the addressee keeps the words and the addressed fact as beliefs.
+    assert get_in(w2.agents["g1"].beliefs, ["guard_room", "pc1", :words]) == "the road is closed"
+    assert get_in(w2.agents["g1"].beliefs, ["guard_room", "pc1", :addressed_tick]) == 5
+    assert get_in(w2.agents["g2"].beliefs, ["guard_room", "pc1", :words]) == nil
+  end
 end

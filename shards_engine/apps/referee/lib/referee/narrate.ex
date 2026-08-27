@@ -51,7 +51,7 @@ defmodule Referee.Narrate do
       {:error, _reason, _audit, ctx2} ->
         lines =
           payloads
-          |> Enum.map(&template_line/1)
+          |> Enum.map(&template_line(&1, pc_id))
           |> Enum.uniq()
           |> Enum.reject(&(&1 == ""))
 
@@ -94,7 +94,7 @@ defmodule Referee.Narrate do
 
     """
     Actor: #{actor_id}
-    Action: #{describe(action)}
+    Action: #{describe(action, opts)}
     Outcome: #{outcome_word(resolution)}
     Events: #{inspect(Enum.map(events, & &1.payload))}
     Assumptions: #{inspect(assumptions)}
@@ -121,6 +121,16 @@ defmodule Referee.Narrate do
   defp template(%Types.Action{verb: :move, params: params}, _resolution, _opts),
     do: "You go #{Map.get(params, :direction, "on")}."
 
+  defp template(%Types.Action{verb: :shout, target_id: tid} = action, _resolution, opts)
+       when is_binary(tid) do
+    who = Keyword.get(opts, :target_name, tid)
+
+    case Map.get(action.params, :message, "") do
+      "" -> "You address #{who}."
+      msg -> "You say to #{who}: \"#{msg}\""
+    end
+  end
+
   defp template(%Types.Action{verb: :shout, params: params}, _resolution, _opts),
     do: "You shout: \"#{Map.get(params, :message, "")}\""
 
@@ -146,18 +156,38 @@ defmodule Referee.Narrate do
   defp template(_action, _resolution, _opts),
     do: "The moment passes."
 
-  defp hit_phrase(nil), do: "You land a blow."
+  defp describe(%Types.Action{verb: verb, target_id: target, params: params}, opts) do
+    base = to_string(verb)
 
+    base =
+      if target,
+        do: base <> " at #{target}" <> name_note(opts),
+        else: base
+
+    if params != [], do: base <> " #{inspect(params)}", else: base
+  end
+
+  defp name_note(opts) do
+    case Keyword.get(opts, :target_name) do
+      nil -> ""
+      name -> " (#{name})"
+    end
+  end
+
+
+  defp hit_phrase(nil), do: "You land a blow."
   defp hit_phrase(%Ledger.Event{payload: %{amount: amount, target_id: target}}),
     do: "You strike #{target} for #{amount} damage."
 
-  defp template_line(p) do
+  defp template_line(p, pc_id) do
     view = %{
       kind: p[:signal_kind],
       intensity: p[:intensity],
       content_core: p[:content_core] || %{class: :voices},
       about: p[:about],
-      content_nl: p[:content_nl]
+      content_nl: p[:content_nl],
+      speaker: p[:speaker_name] || p[:about],
+      addressed: get_in(p, [:content_core, :to]) == pc_id
     }
 
     Narrate.render(view, p[:fidelity] || 1, nil)
@@ -174,11 +204,6 @@ defmodule Referee.Narrate do
 
   defp rich?(prefs), do: prefs[:narration_style] == "rich"
 
-  defp describe(%Types.Action{verb: verb, target_id: target, params: params}) do
-    base = to_string(verb)
-    base = if target, do: base <> " at #{target}", else: base
-    if params != [], do: base <> " #{inspect(params)}", else: base
-  end
 
   defp outcome_word({:ok, _}), do: "succeeds"
   defp outcome_word({:diegetic_fail, _}), do: "fails in the fiction"

@@ -32,6 +32,35 @@ defmodule Referee.GrammarTest do
     }
   end
 
+  defp inn_world do
+    beliefs = %{
+      "common_room" => %{
+        "mara" => %{count: 1, last_tick: 2, last_fidelity: 4, seen: true, salience: 0.5},
+        "patron_erik" => %{count: 3, last_tick: 2, last_fidelity: 3, seen: true, salience: 0.9}
+      }
+    }
+
+    pc =
+      struct!(Types.Agent, id: "pc", name: "PC", tier: 3, place_id: "common_room", beliefs: beliefs)
+
+    mk = fn id, name, role ->
+      a = struct!(Types.Agent, id: id, name: name, tier: 3, place_id: "common_room")
+      if role, do: Map.put(a, :dossier, %{"role" => role}), else: a
+    end
+
+    %World{
+      places: %{
+        "common_room" => %Types.Place{id: "common_room", name: "Common Room", kind: :room, connections: []}
+      },
+      edges: [],
+      agents: %{
+        "pc" => pc,
+        "mara" => mk.("mara", "Mara", "innkeeper"),
+        "patron_erik" => mk.("patron_erik", "Erik the Shepherd", "patron")
+      }
+    }
+  end
+
   test "go <direction> parses to a move action" do
     assert %Types.Action{actor_id: "pc", verb: :move, target_id: nil, params: %{direction: "north"}} =
              Grammar.parse(world(), "pc", "go north")
@@ -85,5 +114,28 @@ defmodule Referee.GrammarTest do
 
   test "strike with no believed match is unclear" do
     assert {:unclear, "attack the dragon"} = Grammar.parse(world(), "pc", "attack the dragon")
+  end
+
+  test "talk/ask/say to an addressee parse to directed shouts" do
+    assert %Types.Action{actor_id: "pc", verb: :shout, target_id: "goblin_king", params: %{message: ""}} =
+             Grammar.parse(world(), "pc", "talk to goblin king")
+
+    assert %Types.Action{actor_id: "pc", verb: :shout, target_id: "goblin_king", params: %{message: "about the tower"}} =
+             Grammar.parse(world(), "pc", "ask goblin king about the tower")
+
+    # quoted speech without an addressee stays ambient broadcast
+    assert %Types.Action{actor_id: "pc", verb: :shout, target_id: nil, params: %{message: "hello there"}} =
+             Grammar.parse(world(), "pc", ~s(say "hello there"))
+  end
+
+  test "buy addresses the room's service provider, never a guess" do
+    assert %Types.Action{actor_id: "pc", verb: :shout, target_id: "mara", params: %{message: "a drink"}} =
+             Grammar.parse(inn_world(), "pc", "buy a drink")
+
+    assert %Types.Action{actor_id: "pc", verb: :shout, target_id: "mara", params: %{message: "an ale"}} =
+             Grammar.parse(inn_world(), "pc", "buy an ale from mara")
+
+    # no believed provider in the room is unclear, not a salience pick
+    assert {:unclear, "buy a drink"} = Grammar.parse(world(), "pc", "buy a drink")
   end
 end

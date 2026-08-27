@@ -322,7 +322,12 @@ defmodule Referee.Run.Session do
       end)
 
     {:ok, advance_texts, run_final} = Run.advance(run_after_declares)
-    merged_texts = Map.merge(player_texts, advance_texts)
+    # Each PC's own action outcome comes first; what they newly perceived
+    # (including replies aimed at them) is appended — neither clobbers.
+    merged_texts =
+      Map.merge(player_texts, advance_texts, fn _pc_id, own, perceived ->
+        String.trim(own <> " " <> perceived)
+      end)
     st2 = %{st | run: run_final, last_intents: %{}}
     {:reply, {:ok, merged_texts}, hold(st2, run_final)}
   end

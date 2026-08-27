@@ -58,6 +58,7 @@ defmodule Referee.Slice do
           commitments: [map()],
           capabilities: [atom()],
           dossier: map(),
+          recent_speech: [map()],
           summary: String.t()
         }
   def for_actor(%World{} = world, agent_id) do
@@ -95,8 +96,39 @@ defmodule Referee.Slice do
       commitments: commitments(agent),
       capabilities: agent.capabilities,
       dossier: Map.get(agent, :dossier) || %{},
+      recent_speech: recent_speech(world, agent),
       summary: summarize(place, believed, world, agent.id)
     }
+  end
+
+  # Voiced words still held in beliefs: who spoke, what they said, and
+  # whether it was aimed at this agent (addressed_tick set by the fold).
+  defp recent_speech(world, agent) do
+    believed = Map.get(agent.beliefs, agent.place_id, %{})
+
+    Enum.flat_map(believed, fn {about, b} ->
+      words = if is_binary(b[:words]), do: b[:words], else: ""
+
+      # A wordless address (e.g. "talk to mayor grevik" carries no
+      # utterance) is still speech this agent must answer: keep the line
+      # whenever it was aimed here, even without words.
+      if words != "" or b[:addressed_tick] != nil do
+        speaker = world.agents[about]
+
+        [
+          %{
+            from_id: about,
+            from_name: if(speaker, do: speaker.name, else: about),
+            words: if(words == "", do: "(no words — seeks your attention)", else: words),
+            addressed: b[:addressed_tick] != nil,
+            tick: b[:addressed_tick] || b[:last_tick]
+          }
+        ]
+      else
+        []
+      end
+    end)
+    |> Enum.sort_by(&{-&1.tick, &1.from_id})
   end
 
   defp sheet(agent) do

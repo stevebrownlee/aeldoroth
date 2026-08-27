@@ -34,6 +34,30 @@ defmodule EngineCore.Narrate do
   def render(view, fidelity, direction \\ nil)
   def render(_view, 0, _dir), do: ""
 
+  # Voiced speech with usable words renders attributed, not as ambient
+  # noise: the addressee gets the words plainly; a listener gets an
+  # overheard line. Callers supply `speaker` / `addressed` on the view.
+  def render(%{kind: :sound, content_core: %{class: :voices}} = view, fidelity, _dir)
+      when fidelity >= 4 do
+    case view do
+      %{content_nl: nl, speaker: speaker}
+      when is_binary(nl) and nl != "" and is_binary(speaker) and speaker != "" ->
+        if Map.get(view, :addressed),
+          do: "#{speaker} says to you: “#{nl}”",
+          else: "You hear #{speaker} say: “#{nl}”"
+
+      %{content_nl: nl} when is_binary(nl) and nl != "" ->
+        if Map.get(view, :addressed),
+          do: "Someone says to you: “#{nl}”",
+          else: "You hear #{nl} nearby."
+
+      _ ->
+        if Map.get(view, :addressed),
+          do: "#{Map.get(view, :speaker) || "Someone"} turns to speak with you.",
+          else: "You hear a #{intensity_word(view.intensity)} murmur-of-voices nearby."
+    end
+  end
+
   def render(view, fidelity, direction) do
     kind = view.kind
     dir = dir_phrase(direction)

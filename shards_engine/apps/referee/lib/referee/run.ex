@@ -144,13 +144,18 @@ defmodule Referee.Run do
   """
   @spec advance(t()) :: {:ok, %{String.t() => String.t()}, t()}
   def advance(run) do
-    seq0 = run.seq
-
     run = roll_initiative(run)
 
     {:ok, events, w2, r2} = Scheduler.advance(run.world, run.rng)
     {:ok, reaction, w3, r3} = Scheduler.react(w2, r2, events)
     all = events ++ reaction
+
+    # Narration window starts where this advance began: the deferred path
+    # (Run.Session) resolves declared intents inside advance, so those
+    # receipts land inside the window; the pure path resolved them at
+    # declare time and already narrated them there. Both legs then narrate
+    # the identical set — the byte-identical e2e depends on it.
+    seq0 = run.seq
 
     run =
       run
@@ -411,8 +416,15 @@ defmodule Referee.Run do
         if mine == [] and my_damage == [] do
           {texts, acc}
         else
+          payloads =
+            Enum.map(mine, fn ev ->
+              p = ev.payload
+              speaker = acc.world.agents[p[:about]]
+              Map.put(p, :speaker_name, speaker && speaker.name)
+            end)
+
           {text, ctx2, _audit} =
-            Narrate.received(acc.ctx, acc.prefs, pc_map.id, Enum.map(mine, & &1.payload))
+            Narrate.received(acc.ctx, acc.prefs, pc_map.id, payloads)
 
           text = String.trim(String.trim_trailing(text) <> " " <> damage_lines(my_damage))
 
@@ -466,7 +478,8 @@ defmodule Referee.Run do
 
         {text, ctx2, naudit} =
           Narrate.action(run.ctx, run.prefs, pc_id, action, {verdict, world_events},
-            assumptions: assumptions
+            assumptions: assumptions,
+            target_name: target_name(run.world, action.target_id)
           )
 
         # Hazard/combat damage this PC suffered during resolution (e.g. a
@@ -489,6 +502,15 @@ defmodule Referee.Run do
           |> push(:narration, w3.tick, %{kind: :narration, agent_id: pc_id, text: text})
 
         {:ok, text, run}
+    end
+  end
+
+  defp target_name(_world, nil), do: nil
+
+  defp target_name(world, target_id) do
+    case World.agent(world, target_id) do
+      nil -> target_id
+      agent -> agent.name || target_id
     end
   end
 
