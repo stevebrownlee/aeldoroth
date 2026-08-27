@@ -1488,6 +1488,135 @@ initial_treasure:
     effect: "No mechanical benefit but valuable for sale (75 gp) or magical research. Connects to campaign lore and Vaelith's story."
     is_collected: false
 
+  mutilated_sheep_fleece:
+    id: "mutilated_sheep_fleece"
+    name: "Mutilated Sheep Fleece"
+    description: "A torn sheep hide showing jagged claw tears and dark necrotic bruising around puncture marks from trained war-wolves."
+    value: 0
+    type: "clue_item"
+    location_room_id: "eriks_farm"
+    location_description: "draped over the splintered rail of Erik's sheepfold"
+    weight: 1.0
+    is_hidden: false
+    is_magical: false
+    effect: "Exhibits trained wolf bite marks and foul blackened residue."
+    is_collected: false
+
+  goblin_javelin_scrap:
+    id: "goblin_javelin_scrap"
+    name: "Goblin Javelin Tip"
+    description: "A crude fire-hardened wooden javelin tip bound with sinew, coated in distinctive grey clay from the north slope of the tower hill."
+    value: 0
+    type: "clue_item"
+    location_room_id: "eriks_farm"
+    location_description: "embedded in the split-rail fence post"
+    weight: 0.5
+    is_hidden: false
+    is_magical: false
+    effect: "Confirms goblin raiders approached from the north hill path."
+    is_collected: false
+
+  willems_scouting_sketch:
+    id: "willems_scouting_sketch"
+    name: "Willem's Scouting Sketch"
+    description: "A charcoal sketch on parchment drawn by Willem three days ago before he was captured. Notes: 'Arch is crumbling—loud noise will bring the ceiling down! Goblin tripwires strung low across doorways in the dark. Willem.'"
+    value: 0
+    type: "quest_item"
+    location_room_id: "mordale_cottage"
+    location_description: "on the farmer's writing desk in Anna's cottage"
+    weight: 0.0
+    is_hidden: false
+    is_magical: false
+    effect: "Tactical warning of crumbling entry ceiling and doorway tripwire traps."
+    is_collected: false
+
+  violet_crystal_shard:
+    id: "violet_crystal_shard"
+    name: "Violet Crystal Shard"
+    description: "A fingernail-sized crystal fragment found by Willem along the hill path. Cold to the touch, it pulses with faint purple luminescence in deep shadows."
+    value: 10
+    type: "quest_item"
+    location_room_id: "mordale_cottage"
+    location_description: "tucked in a small clay dish on the writing desk"
+    weight: 0.1
+    is_hidden: false
+    is_magical: true
+    effect: "Resonates faintly with shadow magic and Vaelith's ritual circle."
+    is_collected: false
+
+  goblin_wolf_collar:
+    id: "goblin_wolf_collar"
+    name: "Goblin Wolf-Taming Collar"
+    description: "A crude iron-and-leather beast collar salvaged from a snared scout wolf, inscribed with jagged goblin runes and smelling strongly of pine pitch and wild game."
+    value: 1
+    type: "clue_item"
+    location_room_id: "trappers_cabin"
+    location_description: "hanging on a wooden peg beside Kaelen's workbench"
+    weight: 1.0
+    is_hidden: false
+    is_magical: false
+    effect: "Confirms goblins in the tower keep captive wolves."
+    is_collected: false
+
+  trappers_beast_notes:
+    id: "trappers_beast_notes"
+    name: "Kaelen's Beast Notes"
+    description: "Handwritten field notes observing the wolves in the ruins: 'The wolves in the ruins are chained and starved into fury. They fear open fire intensely—a waved torch will hold them back, and a chunk of fresh meat will break their focus immediately.'"
+    value: 0
+    type: "clue_item"
+    location_room_id: "trappers_cabin"
+    location_description: "resting on the log table in Kaelen's cabin"
+    weight: 0.0
+    is_hidden: false
+    is_magical: false
+    effect: "Tactical clue for handling chained wolves in Room 6."
+    is_collected: false
+
+  vaeliths_chronicle_excerpt:
+    id: "vaeliths_chronicle_excerpt"
+    name: "Excerpt from the Fall of Vaelith"
+    description: "Elder Corvus's handwritten historical account from 30 years ago: 'A purple blast shook the valley as Vaelith's tower fell. He was heard crying out that his apprentice Talven was trapped in the unsealed circle before the wizard fled into the wilds.'"
+    value: 5
+    type: "clue_item"
+    location_room_id: "elders_study"
+    location_description: "laid out open on Elder Corvus's reading desk"
+    weight: 0.5
+    is_hidden: false
+    is_magical: false
+    effect: "Campaign lore tying the tower collapse to Vaelith's apprentice Talven."
+    is_collected: false
+
+  archival_estate_receipt:
+    id: "archival_estate_receipt"
+    name: "Archival Masonry Receipt"
+    description: "A 40-year-old construction ledger receipt from the building of Vaelith's tower: 'Double-walled hollow stonecraft ordered for master storage room; Vaelith insisted on secret recessed masonry.'"
+    value: 5
+    type: "clue_item"
+    location_room_id: "elders_study"
+    location_description: "filed inside a leather folio on the study bookshelf"
+    weight: 0.2
+    is_hidden: false
+    is_magical: false
+    effect: "Subtle architectural hint regarding hollow walls in the tower storage room."
+    is_collected: false
+
+  town_treasury_vault:
+    id: "town_treasury_vault"
+    name: "Municipal Treasury Vault Chest"
+    description: "A heavy iron-banded chest secured with dual dwarven-forged locks. Holds Thornhollow's municipal reserves and the 100 gp adventurer reward bounty bag."
+    value: 167
+    coins:
+      gp: 120
+      sp: 350
+      cp: 1200
+    type: "currency"
+    location_room_id: "town_treasury"
+    location_description: "in the center of the reinforced stone vault cellar"
+    weight: 50.0
+    is_hidden: false
+    is_magical: false
+    is_collected: false
+
 # --- Agent engine seed data (spec sections 4.2, 5.4; decisions 25, 30) ---
 boundaries:
   - id: "guard_room_zone"
