@@ -101,9 +101,22 @@ defmodule Referee.Narrate do
     """
   end
 
+  # Words are quotable only at fidelity >= 4 (spec 6.1); below that the PC
+  # heard noise, and the narrator must be told so — it cannot invent dialogue.
   defp received_prompt(payloads) do
     Enum.map_join(payloads, "\n", fn p ->
-      "perceived: kind=#{p[:signal_kind]} intensity=#{p[:intensity]} fidelity=#{p[:fidelity]} about=#{p[:about]}"
+      base =
+        "perceived: kind=#{p[:signal_kind]} intensity=#{p[:intensity]} fidelity=#{p[:fidelity]} about=#{p[:about]}"
+
+      base = if p[:speaker_name], do: "#{base} speaker=#{p[:speaker_name]}", else: base
+
+      if p[:fidelity] >= 4 and p[:content_nl] not in [nil, ""] do
+        to = get_in(p, [:content_core, :to])
+        addressed = if to, do: " addressed_to=#{to}", else: ""
+        "#{base}#{addressed} words=\"#{p[:content_nl]}\""
+      else
+        "#{base} words=unintelligible"
+      end
     end)
   end
 

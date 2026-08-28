@@ -69,7 +69,9 @@ defmodule LLMGateway.Adapters.OpenAICompat do
 
     case :httpc.request(
            :post,
-           {~c"#{url}", charlist_headers, ~c"application/json", String.to_charlist(json_body)},
+           # Binary body: byte-accurate UTF-8 (String.to_charlist yields
+           # codepoints — multibyte chars desync Content-Length → server hang).
+           {~c"#{url}", charlist_headers, ~c"application/json", json_body},
            http_opts,
            []
          ) do

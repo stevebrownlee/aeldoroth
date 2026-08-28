@@ -120,4 +120,33 @@ defmodule EngineCore.PerceptionTest do
     assert get_in(w2.agents["g1"].beliefs, ["guard_room", "pc1", :addressed_tick]) == 5
     assert get_in(w2.agents["g2"].beliefs, ["guard_room", "pc1", :words]) == nil
   end
+
+  test "a later undirected utterance clears the stale addressed fact" do
+    voice = fn to, intensity, tick, nl ->
+      struct!(Types.Arrival,
+        ref: 2, place_id: "guard_room", tick: tick, kind: :sound,
+        intensity: intensity, about: "pc1", hops: 0, origin_place_id: "entry_hall",
+        content_core: %{class: :voices, count: 1, about: "pc1", to: to},
+        content_nl: nl
+      )
+    end
+
+    w = %EngineCore.World{
+      agents: %{"g1" => agent(10)},
+      places: %{"guard_room" => %{}},
+      tick: 5
+    }
+
+    # pc1 addresses g1, then later speaks to the room at large.
+    {:ok, _, w2, _rng} = Perception.receive_arrival(w, Dice.new(7), voice.("g1", 5, 5, "the road is closed"))
+    assert get_in(w2.agents["g1"].beliefs, ["guard_room", "pc1", :addressed_tick]) == 5
+
+    {:ok, _, w3, _rng} =
+      Perception.receive_arrival(%{w2 | tick: 7}, Dice.new(7), voice.(nil, 8, 7, "anyone want a drink"))
+
+    # The new words landed, and the fresh line — not aimed at g1 — released
+    # the stale reply obligation instead of faking "said to you".
+    assert get_in(w3.agents["g1"].beliefs, ["guard_room", "pc1", :words]) == "anyone want a drink"
+    assert get_in(w3.agents["g1"].beliefs, ["guard_room", "pc1", :addressed_tick]) == nil
+  end
 end

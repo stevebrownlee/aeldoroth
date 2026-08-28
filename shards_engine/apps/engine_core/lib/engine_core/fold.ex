@@ -98,12 +98,24 @@ defmodule EngineCore.Fold do
                  get_in(p, [:content_core, :class]) == :voices,
                do: p.content_nl
 
-          merged = if is_binary(words), do: Map.put(merged, :words, words), else: merged
-
           merged =
-            if get_in(p, [:content_core, :to]) == p.agent_id,
-              do: Map.put(merged, :addressed_tick, tick),
-              else: merged
+            cond do
+              # A fresh utterance owns the address flag: words heard now are
+              # aimed at this agent only when THIS line says so. A stale flag
+              # from an earlier line would fake a reply obligation forever.
+              is_binary(words) ->
+                if get_in(p, [:content_core, :to]) == p.agent_id,
+                  do: merged |> Map.put(:words, words) |> Map.put(:addressed_tick, tick),
+                  else: merged |> Map.put(:words, words) |> Map.delete(:addressed_tick)
+
+              # A wordless address ("go talk to X") carries no utterance but
+              # still demands an answer.
+              get_in(p, [:content_core, :to]) == p.agent_id ->
+                Map.put(merged, :addressed_tick, tick)
+
+              true ->
+                merged
+            end
 
           place_map = Map.put(a.beliefs[p.place_id] || %{}, p.about, merged)
           %{a | beliefs: Map.put(a.beliefs, p.place_id, place_map)}

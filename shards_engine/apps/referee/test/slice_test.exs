@@ -191,4 +191,28 @@ defmodule Referee.SliceTest do
     assert s.place.items == [%{id: "sword", name: "Sword"}]
   end
 
+  test "recent_speech keeps only the last few ticks of speech" do
+    beliefs = %{
+      "hall" => %{
+        "goblin_guard_1" =>
+          %{count: 2, last_tick: 4, last_fidelity: 4, seen: true, salience: 0.8,
+            words: "fresh line", addressed_tick: 9},
+        "ghost" =>
+          %{count: 1, last_tick: 2, last_fidelity: 2, seen: false, salience: 0.3,
+            words: "old line"}
+      }
+    }
+
+    w =
+      world()
+      |> put_in([Access.key!(:agents), "pc", Access.key!(:beliefs)], beliefs)
+      |> then(&%{&1 | tick: 9})
+
+    speech = Slice.for_actor(w, "pc").recent_speech
+
+    # The addressed line from tick 9 is live; the ghost's words from tick 2
+    # expired out of the window.
+    assert [%{from_id: "goblin_guard_1", words: "fresh line", addressed: true, tick: 9}] = speech
+  end
+
 end

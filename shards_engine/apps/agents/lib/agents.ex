@@ -61,19 +61,36 @@ defmodule Agents do
           {:ok, map()} | {:hesitate, map()} | {:error, :brain_unavailable}
   def deliberate(agent_id, msg) do
     case ensure_brain(agent_id) do
-      :ok -> call_brain(agent_id, {:deliberate, msg})
+      :ok -> call_brain(agent_id, :deliberate, msg)
       {:error, _reason} -> {:error, :brain_unavailable}
     end
   end
 
-  defp call_brain(agent_id, call) do
+  @doc """
+  GenServer call budget for a brain RPC of `class`: the route's adapter
+  timeout plus margin. A hardcoded 5s call fires mid-request on live LLM
+  calls (haiku deliberation alone can exceed it), turning every live round
+  into "brain unavailable" while the brain is still working. Offline paths
+  (scripted adapters, no-route heuristics) return instantly either way.
+  """
+  @default_call_timeout 30_000
+  @call_margin 5_000
+  @spec call_timeout(:deliberate | :adopt, LLMGateway.Ctx.t()) :: pos_integer()
+  def call_timeout(class, %LLMGateway.Ctx{} = ctx) do
+    case ctx.routing do
+      %{^class => %{timeout: t}} when is_integer(t) and t > 0 -> t + @call_margin
+      _ -> @default_call_timeout
+    end
+  end
+
+  defp call_brain(agent_id, class, msg) do
     case whereis(agent_id) do
       nil ->
         {:error, :brain_unavailable}
 
       pid ->
         try do
-          GenServer.call(pid, call, 5000)
+          GenServer.call(pid, {class, msg}, call_timeout(class, msg.ctx))
         catch
           :exit, _ -> {:error, :brain_unavailable}
         end
@@ -89,7 +106,7 @@ defmodule Agents do
   @spec adopt(String.t(), map()) :: {:ok, map()} | {:error, :brain_unavailable}
   def adopt(agent_id, msg) do
     case ensure_brain(agent_id) do
-      :ok -> call_brain(agent_id, {:adopt, msg})
+      :ok -> call_brain(agent_id, :adopt, msg)
       {:error, _reason} -> {:error, :brain_unavailable}
     end
   end

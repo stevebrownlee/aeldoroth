@@ -423,12 +423,16 @@ defmodule Referee.Run do
               Map.put(p, :speaker_name, speaker && speaker.name)
             end)
 
-          {text, ctx2, _audit} =
+          {text, ctx2, audit} =
             Narrate.received(acc.ctx, acc.prefs, pc_map.id, payloads)
 
           text = String.trim(String.trim_trailing(text) <> " " <> damage_lines(my_damage))
 
-          acc = push(acc, :narration, acc.world.tick, %{kind: :narration, agent_id: pc_map.id, text: text})
+          acc =
+            acc
+            |> push(:narration, acc.world.tick, %{kind: :narration, agent_id: pc_map.id, text: text})
+            |> append_audit(audit)
+
           {Map.put(texts, pc_map.id, text), %{acc | ctx: ctx2}}
         end
       end)

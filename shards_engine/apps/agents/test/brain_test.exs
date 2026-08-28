@@ -25,4 +25,17 @@ defmodule Agents.BrainTest do
     Agents.ensure_brain("goblin_guard_2")
     refute Agents.whereis("goblin_guard_1") == Agents.whereis("goblin_guard_2")
   end
+
+  test "call_timeout tracks the route's adapter timeout plus margin" do
+    ctx = %LLMGateway.Ctx{routing: %{deliberate: %{timeout: 10_000},
+                                     adopt: %{timeout: 20_000}}}
+
+    assert Agents.call_timeout(:deliberate, ctx) == 15_000
+    assert Agents.call_timeout(:adopt, ctx) == 25_000
+  end
+
+  test "call_timeout falls back to the default when unrouted or malformed" do
+    assert Agents.call_timeout(:deliberate, %LLMGateway.Ctx{routing: %{}}) == 30_000
+    assert Agents.call_timeout(:adopt, %LLMGateway.Ctx{routing: %{adopt: %{}}}) == 30_000
+  end
 end

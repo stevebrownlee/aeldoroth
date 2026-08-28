@@ -96,6 +96,25 @@ defmodule Referee.NarrateTest do
     assert is_binary(text) and text != ""
     assert audit.parse_verdict == :fallback and audit.adapter == :template
   end
+
+  test "received prompt quotes F4 words with speaker and addressee; low fidelity marked unintelligible" do
+    payloads = [
+      %{kind: :signal_received, agent_id: "pc", place_id: "hall", about: "anna", signal_kind: :sound,
+        intensity: 7.0, fidelity: 4, salience: 0.9, roll: 11, speaker_name: "Anna Mordale",
+        content_nl: "Please, find my Willem.", content_core: %{class: :voices, to: "pc"}},
+      %{kind: :signal_received, agent_id: "pc", place_id: "hall", about: "gob", signal_kind: :sound,
+        intensity: 3.0, fidelity: 2, salience: 0.5, roll: 9, speaker_name: "Goblin",
+        content_nl: "skree", content_core: %{}}
+    ]
+
+    Narrate.received(ctx(%{narrate: ["You hear Anna."]}), @prefs, "pc", payloads)
+
+    [req | _] = Scripted.take_requests()
+    assert req.user =~ "speaker=Anna Mordale"
+    assert req.user =~ "addressed_to=pc"
+    assert req.user =~ ~s(words="Please, find my Willem.")
+    assert req.user =~ "words=unintelligible"
+  end
   test "shout narration distinguishes directed, wordless address, and ambient" do
     directed = struct!(Types.Action, actor_id: "pc", verb: :shout, target_id: "gob", params: %{message: "hello"})
     wordless = struct!(Types.Action, actor_id: "pc", verb: :shout, target_id: "gob", params: %{message: ""})

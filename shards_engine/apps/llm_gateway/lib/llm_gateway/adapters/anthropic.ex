@@ -44,6 +44,7 @@ defmodule LLMGateway.Adapters.Anthropic do
   end
 
   def parse_response(401, _body), do: {:error, :unauthorized}
+  def parse_response(404, _body), do: {:error, :model_not_found}
   def parse_response(429, _body), do: {:error, :rate_limited}
   def parse_response(_status, _body), do: {:error, :server_error}
 
@@ -69,7 +70,10 @@ defmodule LLMGateway.Adapters.Anthropic do
 
     case :httpc.request(
            :post,
-           {~c"#{url}", charlist_headers, ~c"application/json", String.to_charlist(json_body)},
+           # Binary body: byte-accurate UTF-8 with a matching Content-Length.
+           # String.to_charlist/1 yields codepoints — multibyte chars desync
+           # the length (server waits for bytes that never arrive → hang).
+           {~c"#{url}", charlist_headers, ~c"application/json", json_body},
            http_opts,
            []
          ) do

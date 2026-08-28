@@ -2,7 +2,7 @@ import Config
 
 if config_env() != :test do
   anthropic_key = System.get_env("ANTHROPIC_API_KEY")
-  anthropic_model = System.get_env("ANTHROPIC_MODEL", "claude-3-5-haiku-20241022")
+  anthropic_model = System.get_env("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")
   anthropic_timeout =
     case System.get_env("ANTHROPIC_TIMEOUT") do
       nil -> 10_000

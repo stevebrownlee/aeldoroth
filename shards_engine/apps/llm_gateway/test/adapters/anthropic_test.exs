@@ -63,6 +63,7 @@ defmodule LLMGateway.Adapters.AnthropicTest do
   test "parse_response maps vendor error statuses" do
     assert {:error, :unauthorized} = Anthropic.parse_response(401, ~s({}))
     assert {:error, :rate_limited} = Anthropic.parse_response(429, ~s({}))
+    assert {:error, :model_not_found} = Anthropic.parse_response(404, ~s({"type":"error","error":{"type":"not_found_error","message":"model: nope"}}))
     assert {:error, :server_error} = Anthropic.parse_response(500, "")
   end
 

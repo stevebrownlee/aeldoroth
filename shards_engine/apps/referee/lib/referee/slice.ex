@@ -103,6 +103,10 @@ defmodule Referee.Slice do
 
   # Voiced words still held in beliefs: who spoke, what they said, and
   # whether it was aimed at this agent (addressed_tick set by the fold).
+  # Speech is fleeting — only the last few ticks reach the slice, so a
+  # reply obligation expires instead of being re-answered every tick
+  # forever (belief history persists; only deliberation forgets).
+  @speech_fresh_ticks 3
   defp recent_speech(world, agent) do
     believed = Map.get(agent.beliefs, agent.place_id, %{})
 
@@ -128,6 +132,7 @@ defmodule Referee.Slice do
         []
       end
     end)
+    |> Enum.filter(&(&1.tick > world.tick - @speech_fresh_ticks))
     |> Enum.sort_by(&{-&1.tick, &1.from_id})
   end
 
