@@ -262,4 +262,65 @@ defmodule Agents.DeliberateTest do
     assert d.request.user =~ "any news?"
     assert d.request.user =~ "pass the ale"
   end
+
+  test "prompt introduces perceived people by name with ids and marks PCs" do
+    slice =
+      slice("mara", %{
+        agent: %{id: "mara", name: "Mara", place_id: "chiefs_room"},
+        believed_agents: [
+          %{id: "pc_thistle", name: "Thistle", pc: true, salience: 0.4},
+          %{id: "npc_grevik", name: "Mayor Grevik", pc: false, salience: 0.2}
+        ]
+      })
+
+    {_system, user, _schema} = Agents.Prompt.deliberate(slice)
+
+    assert user =~ "Mara (mara) in Chief's Room"
+    assert user =~ "Thistle (pc_thistle) — an adventurer here"
+    assert user =~ "Mayor Grevik (npc_grevik) — someone here"
+  end
+
+  test "prompt renders addressed ask, hearsay overheard, and the moment" do
+    slice =
+      slice("mara", %{
+        recent_speech: [
+          %{
+            from_id: "pc_bramble",
+            from_name: "Bramble",
+            words: "pass the ale",
+            addressed: false,
+            tick: 2
+          },
+          %{
+            from_id: "pc_thistle",
+            from_name: "Thistle",
+            words: "how is your flock?",
+            addressed: true,
+            tick: 3
+          }
+        ]
+      })
+
+    {_system, user, _schema} = Agents.Prompt.deliberate(slice)
+
+    assert user =~ ~s(Thistle says to YOU: "how is your flock?")
+    assert user =~ "You overhear Bramble: \"pass the ale\" (hearsay"
+    assert user =~ "secondhand, may be wrong"
+    assert user =~ ~s(you were just asked, by Thistle: "how is your flock?")
+  end
+
+  test "system prompt carries the organic reply rules and decision-88 contract verbatim" do
+    {system, _user, _schema} = Agents.Prompt.deliberate(slice("mara"))
+
+    assert system =~
+             ~s(If someone just addressed you: verb "shout", their id as target_id, message = your spoken reply, aimed at that person alone.)
+
+    assert system =~
+             "If nobody addressed you and no active commitment demands speaking: verb \"wait\". Do not volunteer speech unprompted."
+
+    assert system =~ "first person"
+    assert system =~ "1-4 sentences"
+    assert system =~ "you may ask a question back"
+    assert system =~ "Never invent world facts"
+  end
 end

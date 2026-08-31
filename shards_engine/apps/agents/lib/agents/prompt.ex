@@ -28,21 +28,29 @@ defmodule Agents.Prompt do
     verb must be one of your capabilities. target_id must come from your believed
     list — never invent one. Ordering a subordinate uses verb "order", the
     subordinate's id as target_id, and the spoken order as message.
-    If Recent speech shows someone just addressed YOU, reply in character:
-    verb "shout", their id as target_id, message = your spoken reply.
-    If nobody addressed you and no active commitment demands speaking,
-    hold: verb "wait". Do not volunteer speech unprompted.
+    Reply rules:
+    - Answer the actual question you were asked, in first person, in your own
+      voice; 1-4 sentences; you may ask a question back.
+    - Speak only from your persona, what you have perceived, and general
+      common-sense life experience of your station. Never invent world facts
+      (names, places, magic) beyond them.
+    - If someone just addressed you: verb "shout", their id as target_id, message = your spoken reply, aimed at that person alone.
+    - If nobody addressed you and no active commitment demands speaking: verb "wait". Do not volunteer speech unprompted.
     """
 
     dossier = format_dossier(slice[:dossier])
+    speech = speech_block(slice)
+    the_moment = the_moment_block(Map.get(slice, :recent_speech, []))
 
     user =
       [
-        "You are #{slice.agent.name} in #{slice.place.name}.",
+        "You are #{slice.agent.name} (#{slice.agent.id}) in #{slice.place.name}.",
         dossier,
+        people_block(Map.get(slice, :believed_agents, [])),
+        speech,
+        the_moment,
         "Commitments: #{commitment_lines(slice.commitments)}",
         "Salient here: #{Enum.join(slice.salient, ", ")}",
-        speech_block(slice),
         "Believed here: #{Enum.join(slice.believed, ", ")}",
         "Exits: #{Enum.join(slice.place.exits, ", ")}",
         "Capabilities: #{Enum.join(slice.capabilities, ", ")}",
@@ -55,8 +63,8 @@ defmodule Agents.Prompt do
     {system, user, schema}
   end
 
-  # What has been said in earshot, addressed lines first-class: lets the
-  # brain answer the last person who spoke to it instead of broadcasting.
+  # What has been said in earshot. Addressed lines are first-class and name
+  # the speaker; overheard lines are explicitly hearsay the brain may doubt.
   defp speech_block(slice) do
     case Map.get(slice, :recent_speech, []) do
       [] ->
@@ -65,10 +73,36 @@ defmodule Agents.Prompt do
       lines ->
         "Recent speech:\n" <>
           Enum.map_join(lines, "\n", fn l ->
-            if l[:addressed],
-              do: "  #{l[:from_name]} (#{l[:from_id]}) said to you: “#{l[:words]}”",
-              else: "  #{l[:from_name]} (#{l[:from_id]}) said: “#{l[:words]}”"
+            if l[:addressed] do
+              ~s(  #{l[:from_name]} says to YOU: "#{l[:words]}")
+            else
+              ~s{  You overhear #{l[:from_name]}: "#{l[:words]}" (hearsay — secondhand, may be wrong)}
+            end
           end)
+    end
+  end
+
+  # Names make the conversation personal; ids keep target_id legal. PCs are
+  # labelled adventurers; beliefs carry no role for other agents.
+  defp people_block([]), do: nil
+
+  defp people_block(agents) do
+    "People you can perceive:\n" <>
+      Enum.map_join(agents, "\n", fn a ->
+        role = if a[:pc], do: "an adventurer here", else: "someone here"
+        "  #{a[:name]} (#{a[:id]}) — #{role}"
+      end)
+  end
+
+  # The last person to address the brain drives answer-the-question instead
+  # of topic rotation.
+  defp the_moment_block(recent_speech) do
+    case Enum.find(Enum.reverse(recent_speech), & &1[:addressed]) do
+      nil ->
+        nil
+
+      line ->
+        ~s(The moment: you were just asked, by #{line[:from_name]}: "#{line[:words]}")
     end
   end
 
