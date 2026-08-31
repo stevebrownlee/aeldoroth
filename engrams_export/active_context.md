@@ -1,15 +1,15 @@
 ---
 identifier: active_context
 title: Active Context
-created: 2026-08-30T23:47:39Z
+created: 2026-08-31T03:49:02Z
 ---
 # Active Context
 
 ```json
 {
   "content": {
-    "current_focus": "Decision 88: directed speech addressee-private (Perception receiver filter) + unaddressed NPCs hold (heuristic + LLM prompt). Cross-talk repro fixed at session layer, verified by live replay",
-    "current_plan": "User should re-verify in web app: GM + 3 player tabs, each addressing a different NPC; expect exactly one private reply each, others silent. Then commit code + engams_export",
+    "current_focus": "Organic NPC conversation live in web play (decision 89): lobby gate + .env activation verified, inn smoke PASS with attributed first-person NPC replies",
+    "current_plan": "Next: run The Ruined Tower with real players; watch cadence deliberate cost (spec 2026-08-30 sec 6) and declare latency",
     "decisions": [
       47,
       48,
@@ -78,7 +78,7 @@ created: 2026-08-30T23:47:39Z
     "watch": "Party's choice for the Shadow-Crystal (keep/sell/study/destroy) is the Act 1 pacing lever"
   },
   "name": "default",
-  "updated_at": "2026-08-30T23:47:39Z",
-  "version": 32
+  "updated_at": "2026-08-31T03:49:02Z",
+  "version": 33
 }
 ```
