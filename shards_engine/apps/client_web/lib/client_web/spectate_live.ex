@@ -17,6 +17,7 @@ defmodule ClientWeb.SpectateLive do
 
   alias ClientTUI.Conn
   alias EngineCore.World.Server
+  alias LLMGateway.Config
   alias Referee.Run.Session
   alias Wire.JSONSafe
 
@@ -51,7 +52,9 @@ defmodule ClientWeb.SpectateLive do
         spend: nil,
         auto_note: nil,
         gm_chat_draft: "",
-        ooc_log: []
+        ooc_log: [],
+        live: Config.live?(),
+        model: Config.model()
       )
 
     if connected?(socket) && wire_url() do
@@ -241,6 +244,9 @@ defmodule ClientWeb.SpectateLive do
   def render(assigns) do
     ~H"""
     <h1>GM console — run <%= @run_id %></h1>
+    <p class="llm-badge" data-testid="llm-badge">
+      <%= if @live do %>LIVE · <%= @model %><% else %>OFFLINE<% end %>
+    </p>
 
     <p :if={@error} class="error">spectate: <%= @error %></p>
 

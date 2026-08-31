@@ -449,4 +449,36 @@ defmodule ClientWeb.SpectateLiveTest do
       eventually(fun, tries - 1)
     end
   end
+
+  test "renders OFFLINE badge when server routing is offline", %{conn: conn, run_id: id} do
+    old_routing = Application.get_env(:llm_gateway, :routing)
+    Application.delete_env(:llm_gateway, :routing)
+
+    on_exit(fn ->
+      if old_routing,
+        do: Application.put_env(:llm_gateway, :routing, old_routing),
+        else: Application.delete_env(:llm_gateway, :routing)
+    end)
+
+    {:ok, _view, html} = live(conn, "/runs/#{id}/gm")
+    assert html =~ ~s(data-testid="llm-badge")
+    assert html =~ "OFFLINE"
+  end
+
+  test "renders LIVE badge with model when server routing is live", %{conn: conn, run_id: id} do
+    old_routing = Application.get_env(:llm_gateway, :routing)
+    stub = %{adapter: ClientWeb.TestSupport.StubAdapter, model: "stub-1"}
+
+    Application.put_env(:llm_gateway, :routing, %{deliberate: stub, interpret: stub})
+
+    on_exit(fn ->
+      if old_routing,
+        do: Application.put_env(:llm_gateway, :routing, old_routing),
+        else: Application.delete_env(:llm_gateway, :routing)
+    end)
+
+    {:ok, _view, html} = live(conn, "/runs/#{id}/gm")
+    assert html =~ ~s(data-testid="llm-badge")
+    assert html =~ "LIVE · stub-1"
+  end
 end
