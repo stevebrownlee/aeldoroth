@@ -1,5 +1,5 @@
 defmodule Referee.NarrateTest do
-  @moduledoc "Narration stage: LLM-first, deterministic template fallback (plan Task 9)."
+  @moduledoc "Narration stage: LLM for action outcomes, deterministic templates for received-speech delivery (decision 31)."
   use ExUnit.Case, async: true
   alias EngineCore.{Ledger, Types}
   alias LLMGateway.{Ctx, Adapters.Scripted}
@@ -74,47 +74,43 @@ defmodule Referee.NarrateTest do
     assert rich_text =~ "taking 'north'"
   end
 
-  test "received uses routed LLM text when available" do
+  test "received never calls the LLM: attribution templates render even with a live route" do
     payloads = [
-      %{kind: :signal_received, agent_id: "pc", place_id: "hall", about: "gob", signal_kind: :sound,
-        intensity: 7.0, fidelity: 3, salience: 0.9, roll: 11}
+      %{kind: :signal_received, agent_id: "pc", place_id: "hall", about: "erik", signal_kind: :sound,
+        intensity: 7.0, fidelity: 4, salience: 1.0, roll: nil, speaker_name: "Erik the Shepherd",
+        content_nl: "Goblins took three sheep.", content_core: %{class: :voices, to: "pc"}},
+      %{kind: :signal_received, agent_id: "pc", place_id: "hall", about: "grevik", signal_kind: :sound,
+        intensity: 7.0, fidelity: 4, salience: 0.9, roll: nil, speaker_name: "Mayor Grevik",
+        content_nl: "One hundred gold to whoever ends the raids.", content_core: %{class: :voices}}
     ]
 
-    {text, _ctx2, audit} = Narrate.received(ctx(%{narrate: ["You hear claws scraping stone."]}), @prefs, "pc", payloads)
-    assert text == "You hear claws scraping stone."
-    assert audit.parse_verdict == :ok
+    {text, _ctx2, audit} =
+      Narrate.received(ctx(%{narrate: ["garbage that must never surface"]}), @prefs, "pc", payloads)
+
+    # A directed reply is attributed to this PC alone; room chatter is overheard.
+    assert text =~ "Erik the Shepherd says to you:"
+    assert text =~ "Goblins took three sheep."
+    assert text =~ "You hear Mayor Grevik"
+    assert text =~ "One hundred gold to whoever ends the raids."
+
+    # Delivery is mechanical formatting of already-organic words: zero LLM traffic.
+    assert Scripted.take_requests() == []
+    assert audit.adapter == :template
   end
 
-  test "received falls back to engine template when routing is degraded" do
+  test "received with no route still renders attributed templates" do
     payloads = [
-      %{kind: :signal_received, agent_id: "pc", place_id: "hall", about: "gob", signal_kind: :sound,
-        intensity: 7.0, fidelity: 3, salience: 0.9, roll: 11}
+      %{kind: :signal_received, agent_id: "pc", place_id: "hall", about: "erik", signal_kind: :sound,
+        intensity: 7.0, fidelity: 4, salience: 1.0, roll: nil, speaker_name: "Erik the Shepherd",
+        content_nl: "Aye.", content_core: %{class: :voices, to: "pc"}}
     ]
 
-    degraded = %Ctx{ctx() | budget: %{cap: 10, spent: 1_000}}
-    {text, _ctx2, audit} = Narrate.received(degraded, @prefs, "pc", payloads)
-    assert is_binary(text) and text != ""
-    assert audit.parse_verdict == :fallback and audit.adapter == :template
+    {text, _ctx2, audit} = Narrate.received(%Ctx{}, @prefs, "pc", payloads)
+
+    assert text =~ "Erik the Shepherd says to you:"
+    assert audit.parse_verdict == :skipped and audit.adapter == :template and audit.ok
   end
 
-  test "received prompt quotes F4 words with speaker and addressee; low fidelity marked unintelligible" do
-    payloads = [
-      %{kind: :signal_received, agent_id: "pc", place_id: "hall", about: "anna", signal_kind: :sound,
-        intensity: 7.0, fidelity: 4, salience: 0.9, roll: 11, speaker_name: "Anna Mordale",
-        content_nl: "Please, find my Willem.", content_core: %{class: :voices, to: "pc"}},
-      %{kind: :signal_received, agent_id: "pc", place_id: "hall", about: "gob", signal_kind: :sound,
-        intensity: 3.0, fidelity: 2, salience: 0.5, roll: 9, speaker_name: "Goblin",
-        content_nl: "skree", content_core: %{}}
-    ]
-
-    Narrate.received(ctx(%{narrate: ["You hear Anna."]}), @prefs, "pc", payloads)
-
-    [req | _] = Scripted.take_requests()
-    assert req.user =~ "speaker=Anna Mordale"
-    assert req.user =~ "addressed_to=pc"
-    assert req.user =~ ~s(words="Please, find my Willem.")
-    assert req.user =~ "words=unintelligible"
-  end
   test "shout narration distinguishes directed, wordless address, and ambient" do
     directed = struct!(Types.Action, actor_id: "pc", verb: :shout, target_id: "gob", params: %{message: "hello"})
     wordless = struct!(Types.Action, actor_id: "pc", verb: :shout, target_id: "gob", params: %{message: ""})

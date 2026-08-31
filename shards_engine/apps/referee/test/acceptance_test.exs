@@ -692,11 +692,15 @@ defmodule Referee.AcceptanceTest do
   defp llm_payloads(evs),
     do: for(ev <- evs, ev.class == :llm and ev.payload[:kind] == :llm_call, do: ev.payload)
 
+  # Classify narrate rows by parse_verdict, mirroring Acceptance.capped_consistency:
+  # received-speech delivery is template by design (`:skipped`), never a
+  # degradation; only `:fallback` rows mean the LLM route failed or was
+  # budget-degraded.
   defp narrate_served(evs),
-    do: Enum.count(llm_payloads(evs), &(&1[:class] == :narrate and &1[:adapter] != :template))
+    do: Enum.count(llm_payloads(evs), &(&1[:class] == :narrate and &1[:parse_verdict] in [:ok, :retry_ok]))
 
   defp narrate_fallbacks(evs),
-    do: Enum.count(llm_payloads(evs), &(&1[:class] == :narrate and &1[:adapter] == :template))
+    do: Enum.count(llm_payloads(evs), &(&1[:class] == :narrate and &1[:parse_verdict] == :fallback))
 
   defp material_state(run, evs) do
     hp = run.world.agents["pc_thistle"].body.hp

@@ -1,9 +1,10 @@
 defmodule Referee.Narrate do
   @moduledoc """
-  Stage 5 of the referee pipeline: outcome → prose. LLM-first through the
-  `:narrate` class; the engine's deterministic templates (decision 31) catch
-  every failure — no route, budget-degraded narrate, circuit open, adapter
-  error. Facts never come from the LLM; only phrasing does.
+  Stage 5 of the referee pipeline: outcome → prose. Action outcomes are
+  LLM-first through the `:narrate` class, with the engine's deterministic
+  templates (decision 31) catching every failure. Received-speech delivery
+  is template-only (see `received/4`). Facts never come from the LLM; only
+  phrasing does.
 
   Narration style comes from the referee preference stack: `rich` appends the
   interpret stage's assumptions; `terse` (core default) stays lean.
@@ -33,30 +34,21 @@ defmodule Referee.Narrate do
 
   @doc """
   Narrate what one PC newly perceived this tick (`:signal_received` payloads).
-  Template fallback renders through the engine's fidelity ladder.
+  Deterministic by design: the words are already organic output of the
+  speaking brain's deliberation, so delivery is pure formatting — fidelity-
+  gated verbatim quotes through the engine template (decision 31). Never an
+  LLM call: re-narration only drops attribution and mangles person.
   """
   @spec received(Ctx.t(), map(), String.t(), [map()]) :: {String.t(), Ctx.t(), Audit.t()}
-  def received(ctx, prefs, pc_id, payloads) do
-    req = %Request{
-      class: :narrate,
-      agent_id: pc_id,
-      system: system_prompt(prefs),
-      user: received_prompt(payloads)
-    }
+  def received(ctx, _prefs, pc_id, payloads) do
+    lines =
+      payloads
+      |> Enum.map(&template_line(&1, pc_id))
+      |> Enum.uniq()
+      |> Enum.reject(&(&1 == ""))
 
-    case Router.complete(ctx, req) do
-      {:ok, res, audit, ctx2} ->
-        {res.content, ctx2, audit}
-
-      {:error, _reason, _audit, ctx2} ->
-        lines =
-          payloads
-          |> Enum.map(&template_line(&1, pc_id))
-          |> Enum.uniq()
-          |> Enum.reject(&(&1 == ""))
-
-        {Enum.join(lines, " "), ctx2, %{@fallback_audit | agent_id: pc_id}}
-    end
+    {Enum.join(lines, " "), ctx,
+     %Audit{class: :narrate, adapter: :template, parse_verdict: :skipped, ok: true, agent_id: pc_id}}
   end
 
   ## LLM path
@@ -101,24 +93,6 @@ defmodule Referee.Narrate do
     """
   end
 
-  # Words are quotable only at fidelity >= 4 (spec 6.1); below that the PC
-  # heard noise, and the narrator must be told so — it cannot invent dialogue.
-  defp received_prompt(payloads) do
-    Enum.map_join(payloads, "\n", fn p ->
-      base =
-        "perceived: kind=#{p[:signal_kind]} intensity=#{p[:intensity]} fidelity=#{p[:fidelity]} about=#{p[:about]}"
-
-      base = if p[:speaker_name], do: "#{base} speaker=#{p[:speaker_name]}", else: base
-
-      if p[:fidelity] >= 4 and p[:content_nl] not in [nil, ""] do
-        to = get_in(p, [:content_core, :to])
-        addressed = if to, do: " addressed_to=#{to}", else: ""
-        "#{base}#{addressed} words=\"#{p[:content_nl]}\""
-      else
-        "#{base} words=unintelligible"
-      end
-    end)
-  end
 
   ## Deterministic templates (decision 31)
 
