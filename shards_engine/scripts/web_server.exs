@@ -63,13 +63,13 @@ source_env_file = fn path ->
   :ok
 end
 
-# LLM activation (spec 2026-08-30 §4.2): source shards_engine/.env (per-var,
+# LLM activation (spec 2026-08-30 §4.2): source the repo-root .env (per-var,
 # explicit shell env wins), then apply live routing — Run.new reads
 # Application config lazily per run creation, so sessions created after this
-# point go live with no server restart. `../.env` is anchored on __DIR__
+# point go live with no server restart. `../../.env` is anchored on __DIR__
 # (this script's directory) so the documented `cd shards_engine` command
-# sources shards_engine/.env regardless of the invoking shell's cwd.
-source_env_file.(Path.expand("../.env", __DIR__))
+# sources the campaign repo's .env regardless of the invoking shell's cwd.
+source_env_file.(Path.expand("../../.env", __DIR__))
 LLMGateway.Config.apply_env_routing()
 
 routing_state =
