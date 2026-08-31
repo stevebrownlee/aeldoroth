@@ -54,8 +54,10 @@ defmodule ClientWeb.TestSupport.StubAdapter do
   @moduledoc """
   Non-Scripted adapter stand-in: enough for `LLMGateway.Config.live?/0` to
   see live-shaped routing in tests. Never called — tests that configure it
-  never drive an LLM round.
+  never drive an LLM round. Return shape matches the `LLMGateway.Adapter`
+  callback contract so a future routed round degrades gracefully instead of
+  raising a CaseClauseError in the Router.
   """
 
-  def complete(_request, _cfg), do: {:error, :stub, %LLMGateway.Audit{}, nil}
+  def complete(_request, _cfg), do: {:error, :stub}
 end
