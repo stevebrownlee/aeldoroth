@@ -3,7 +3,9 @@ defmodule ClientWeb.HomeLiveTest do
   Home surface: split GM launch desk + adventurer portal + active-runs registry.
   """
 
-  use ClientWeb.ConnCase, async: true
+  # async: false — the gate reads global Application env; setup below
+  # installs live-shaped routing and restoring it must not race siblings.
+  use ClientWeb.ConnCase, async: false
 
   alias Referee.Run.Session
 
@@ -20,6 +22,34 @@ defmodule ClientWeb.HomeLiveTest do
     %{id: "pc_bramble", name: "Bramble", place_id: "entry_hall",
       int: 12, hd: 1, hp: 8, ac: 6, thac0: 19, damage: "1d6"}
   ]
+
+  setup do
+    old_routing = Application.get_env(:llm_gateway, :routing)
+    old_keys = Application.get_env(:llm_gateway, :keys)
+
+    stub = %{adapter: ClientWeb.TestSupport.StubAdapter, model: "stub-1"}
+
+    Application.put_env(:llm_gateway, :keys, %{anthropic_main: "stub-key"})
+    Application.put_env(:llm_gateway, :routing, %{
+      deliberate: stub,
+      adopt: stub,
+      interpret: stub,
+      narrate: stub,
+      summarize: stub
+    })
+
+    on_exit(fn ->
+      if old_routing,
+        do: Application.put_env(:llm_gateway, :routing, old_routing),
+        else: Application.delete_env(:llm_gateway, :routing)
+
+      if old_keys,
+        do: Application.put_env(:llm_gateway, :keys, old_keys),
+        else: Application.delete_env(:llm_gateway, :keys)
+    end)
+
+    :ok
+  end
 
   test "renders split GM and Player portals with scenario info and advanced options", %{conn: conn} do
     {:ok, _view, html} = live(conn, "/")
@@ -92,5 +122,35 @@ defmodule ClientWeb.HomeLiveTest do
     assert html =~ "Tick"
     assert html =~ ~s|href="/runs/#{slug}"|
     assert html =~ ~s|href="/runs/#{slug}/gm"|
+  end
+
+  test "GM launch is refused while LLM routing is offline", %{conn: conn} do
+    Application.delete_env(:llm_gateway, :routing)
+    slug = "web-offline_#{:erlang.unique_integer([:positive])}"
+
+    {:ok, view, _html} = live(conn, "/")
+
+    html =
+      view
+      |> form("#gm_launch", run: %{run_id: slug, seed: "42", yaml: @yaml})
+      |> render_submit()
+
+    assert html =~ "LLM routing is offline"
+    assert html =~ "ANTHROPIC_API_KEY"
+    refute match?(%{status: :running}, Session.state(slug))
+  end
+
+  test "GM launch passes when routing is live-shaped and the session runs", %{conn: conn} do
+    slug = "web-live_#{:erlang.unique_integer([:positive])}"
+    on_exit(fn -> ClientWeb.TestSupport.stop_run(slug) end)
+
+    {:ok, view, _html} = live(conn, "/")
+
+    view
+    |> form("#gm_launch", run: %{run_id: slug, seed: "42", yaml: @yaml})
+    |> render_submit()
+
+    assert_redirect(view, "/runs/#{slug}/gm")
+    assert %{status: :running} = Session.state(slug)
   end
 end

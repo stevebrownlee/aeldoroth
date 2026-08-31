@@ -10,6 +10,7 @@ defmodule ClientWeb.HomeLive do
 
   alias EngineCore.Loader
   alias Referee.Run.Session
+  alias LLMGateway.Config
 
   @impl true
   def mount(_params, _session, socket) do
@@ -49,6 +50,7 @@ defmodule ClientWeb.HomeLive do
          {:seed, {:ok, seed}} <- {:seed, seed_result},
          {:yaml, true} <- {:yaml, File.exists?(yaml)},
          {:roster, true} <- {:roster, pcs != :error},
+         {:live, true} <- {:live, Config.live?()},
          {:start, {:ok, _pid}} <- {:start, Session.start_link(run_id, yaml, seed, pcs)} do
       {:noreply, push_navigate(socket, to: "/runs/#{run_id}/gm")}
     else
@@ -63,6 +65,14 @@ defmodule ClientWeb.HomeLive do
 
       {:roster, false} ->
         {:noreply, put_flash(socket, :error, "Roster override is malformed")}
+
+      {:live, false} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           "LLM routing is offline. Set ANTHROPIC_API_KEY (see shards_engine/.env) and restart the server to enable live NPC brains."
+         )}
 
       {:start, {:error, {:already_started, _pid}}} ->
         {:noreply, put_flash(socket, :error, "A run with that id already exists")}

@@ -49,3 +49,13 @@ defmodule ClientWeb.TestSupport do
     RunSup.stop_run(run_id)
   end
 end
+
+defmodule ClientWeb.TestSupport.StubAdapter do
+  @moduledoc """
+  Non-Scripted adapter stand-in: enough for `LLMGateway.Config.live?/0` to
+  see live-shaped routing in tests. Never called — tests that configure it
+  never drive an LLM round.
+  """
+
+  def complete(_request, _cfg), do: {:error, :stub, %LLMGateway.Audit{}, nil}
+end
