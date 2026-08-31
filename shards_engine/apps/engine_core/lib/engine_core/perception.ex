@@ -27,8 +27,9 @@ defmodule EngineCore.Perception do
       |> min(5)
 
     # Words aimed at this agent are not faint room noise: directed speech
-    # floors at F4 in the room and F3 across a hop (spec 6.1 — the
-    # addressee always hears the words; everyone else hears the murmur).
+    # floors at F4 in the room and F3 across a hop (spec 6.1). Only the
+    # addressee is in the receiver set at all; this floor covers the
+    # faint-signal d6 path so the addressee never misses the words.
     if addressed?(arrival, agent),
       do: max(f, if(arrival.hops >= 1, do: 3, else: 4)),
       else: f
@@ -69,7 +70,15 @@ defmodule EngineCore.Perception do
       # noise is about its VICTIM, who must perceive it.
       |> Enum.reject(&(&1.id == arrival.about and emitter_subject?(arrival)))
       |> Enum.reject(&(&1.body.hp == 0 or :dead in (&1.body.conditions || [])))
+      # Directed speech is a private exchange: only its addressee (the
+      # content_core.to id) perceives it. Undirected shouts stay public to
+      # everyone present, gated by fidelity as before.
+      |> Enum.filter(fn a ->
+        to = (arrival.content_core || %{})[:to]
+        is_nil(to) or to == a.id
+      end)
       |> Enum.sort_by(& &1.id)
+
     {events, rng2} =
       Enum.flat_map_reduce(receivers, rng, fn a, r ->
         base = base_fidelity(arrival, a)

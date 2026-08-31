@@ -88,16 +88,22 @@ defmodule EngineCore.PerceptionTest do
     assert Fold.fold(w, events) == w2
     assert w2.agents["g1"].beliefs["guard_room"]["pc1"].count == 1
   end
-  test "directed speech floors fidelity at F4 and pins addressee salience" do
+
+  test "directed speech floors addressee fidelity and is perceived only by them" do
     voice = fn to, intensity ->
       struct!(Types.Arrival,
-        ref: 2, place_id: "guard_room", tick: 5, kind: :sound,
-        intensity: intensity, about: "pc1", hops: 0, origin_place_id: "entry_hall",
+        ref: 2,
+        place_id: "guard_room",
+        tick: 5,
+        kind: :sound,
+        intensity: intensity,
+        about: "pc1",
+        hops: 0,
+        origin_place_id: "entry_hall",
         content_core: %{class: :voices, count: 1, about: "pc1", to: to},
         content_nl: "the road is closed"
       )
     end
-
 
     # Faint words are not faint room noise for the agent they aim at.
     assert Perception.base_fidelity(voice.("g1", 1.5), agent(10)) == 4
@@ -111,9 +117,10 @@ defmodule EngineCore.PerceptionTest do
       tick: 5
     }
 
+    # Directed speech is a private exchange: only the addressee perceives it.
     {:ok, events, w2, _rng} = Perception.receive_arrival(w, Dice.new(7), voice.("g1", 5))
-    sal = Map.new(events, &{&1.payload.agent_id, &1.payload.salience})
-    assert sal["g1"] > sal["g2"]
+    receivers = Enum.map(events, & &1.payload.agent_id)
+    assert receivers == ["g1"]
 
     # Fold: the addressee keeps the words and the addressed fact as beliefs.
     assert get_in(w2.agents["g1"].beliefs, ["guard_room", "pc1", :words]) == "the road is closed"
@@ -124,8 +131,14 @@ defmodule EngineCore.PerceptionTest do
   test "a later undirected utterance clears the stale addressed fact" do
     voice = fn to, intensity, tick, nl ->
       struct!(Types.Arrival,
-        ref: 2, place_id: "guard_room", tick: tick, kind: :sound,
-        intensity: intensity, about: "pc1", hops: 0, origin_place_id: "entry_hall",
+        ref: 2,
+        place_id: "guard_room",
+        tick: tick,
+        kind: :sound,
+        intensity: intensity,
+        about: "pc1",
+        hops: 0,
+        origin_place_id: "entry_hall",
         content_core: %{class: :voices, count: 1, about: "pc1", to: to},
         content_nl: nl
       )
@@ -138,11 +151,17 @@ defmodule EngineCore.PerceptionTest do
     }
 
     # pc1 addresses g1, then later speaks to the room at large.
-    {:ok, _, w2, _rng} = Perception.receive_arrival(w, Dice.new(7), voice.("g1", 5, 5, "the road is closed"))
+    {:ok, _, w2, _rng} =
+      Perception.receive_arrival(w, Dice.new(7), voice.("g1", 5, 5, "the road is closed"))
+
     assert get_in(w2.agents["g1"].beliefs, ["guard_room", "pc1", :addressed_tick]) == 5
 
     {:ok, _, w3, _rng} =
-      Perception.receive_arrival(%{w2 | tick: 7}, Dice.new(7), voice.(nil, 8, 7, "anyone want a drink"))
+      Perception.receive_arrival(
+        %{w2 | tick: 7},
+        Dice.new(7),
+        voice.(nil, 8, 7, "anyone want a drink")
+      )
 
     # The new words landed, and the fresh line — not aimed at g1 — released
     # the stale reply obligation instead of faking "said to you".

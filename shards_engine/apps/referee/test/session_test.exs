@@ -14,10 +14,28 @@ defmodule Referee.SessionTest do
   @yaml Path.expand("../../../../the-ruined-tower/ruined_tower.yaml", __DIR__)
 
   @pcs [
-    %{id: "pc_thistle", name: "Thistle", place_id: "entry_hall",
-      int: 13, ac: 5, hd: 1, hp: 12, thac0: 20, damage: "1d8"},
-    %{id: "pc_bramble", name: "Bramble", place_id: "entry_hall",
-      int: 12, ac: 6, hd: 1, hp: 8, thac0: 19, damage: "1d6"}
+    %{
+      id: "pc_thistle",
+      name: "Thistle",
+      place_id: "entry_hall",
+      int: 13,
+      ac: 5,
+      hd: 1,
+      hp: 12,
+      thac0: 20,
+      damage: "1d8"
+    },
+    %{
+      id: "pc_bramble",
+      name: "Bramble",
+      place_id: "entry_hall",
+      int: 12,
+      ac: 6,
+      hd: 1,
+      hp: 8,
+      thac0: 19,
+      damage: "1d6"
+    }
   ]
 
   @moves ~w(east south north east)
@@ -52,7 +70,11 @@ defmodule Referee.SessionTest do
     opts = Keyword.delete(opts, :pcs)
 
     {:ok, pid} =
-      Session.start_link(id, @yaml, 42, pcs,
+      Session.start_link(
+        id,
+        @yaml,
+        42,
+        pcs,
         Keyword.merge([routing: routing(), data_dir: dir], opts)
       )
 
@@ -86,6 +108,7 @@ defmodule Referee.SessionTest do
       assert kinds == [:paused, :resumed]
     end)
   end
+
   test "awaiting reports last intents and outstanding clarify prompts", ctx do
     # garbage interpret scripts: every scripted parse fails, so every
     # declare falls back to the deterministic grammar — no LLM dice in play.
@@ -101,12 +124,39 @@ defmodule Referee.SessionTest do
     # grammar sees "twin" — a lethal-verb tie -> clarify, never a guess
     # (decision 21).
     twins = [
-      %{id: "pc_thistle", name: "Thistle", place_id: "entry_hall",
-        int: 13, ac: 5, hd: 1, hp: 12, thac0: 20, damage: "1d8"},
-      %{id: "pc_twin_a", name: "Twin", place_id: "entry_hall",
-        int: 12, ac: 6, hd: 1, hp: 8, thac0: 19, damage: "1d6"},
-      %{id: "pc_twin_b", name: "Twin", place_id: "entry_hall",
-        int: 12, ac: 6, hd: 1, hp: 8, thac0: 19, damage: "1d6"}
+      %{
+        id: "pc_thistle",
+        name: "Thistle",
+        place_id: "entry_hall",
+        int: 13,
+        ac: 5,
+        hd: 1,
+        hp: 12,
+        thac0: 20,
+        damage: "1d8"
+      },
+      %{
+        id: "pc_twin_a",
+        name: "Twin",
+        place_id: "entry_hall",
+        int: 12,
+        ac: 6,
+        hd: 1,
+        hp: 8,
+        thac0: 19,
+        damage: "1d6"
+      },
+      %{
+        id: "pc_twin_b",
+        name: "Twin",
+        place_id: "entry_hall",
+        int: 12,
+        ac: 6,
+        hd: 1,
+        hp: 8,
+        thac0: 19,
+        damage: "1d6"
+      }
     ]
 
     with_session(ctx.test, [routing: grammar_only, pcs: twins], fn id, _dir, _pid ->
@@ -136,7 +186,6 @@ defmodule Referee.SessionTest do
       assert Enum.find(rows2, &(&1.id == "pc_thistle")).prompt == nil
     end)
   end
-
 
   test "declare through session registers intent and advance resolves it", ctx do
     with_session(ctx.test, fn id, _dir, _pid ->
@@ -231,15 +280,18 @@ defmodule Referee.SessionTest do
 
       # Block the GenServer temporarily
       caller = self()
-      task = Task.async(fn ->
-        :sys.suspend(pid)
-        send(caller, :suspended)
-        receive do
-          :resume -> :sys.resume(pid)
-        after
-          5000 -> :sys.resume(pid)
-        end
-      end)
+
+      task =
+        Task.async(fn ->
+          :sys.suspend(pid)
+          send(caller, :suspended)
+
+          receive do
+            :resume -> :sys.resume(pid)
+          after
+            5000 -> :sys.resume(pid)
+          end
+        end)
 
       assert_receive :suspended, 1000
 
@@ -298,11 +350,42 @@ defmodule Referee.SessionTest do
     %{interpret: %{adapter: Scripted, scripts: scripts}}
   end
 
-  test "advance gives each PC an action-specific response: directed reply, ambient room, provider reply", ctx do
+  test "advance gives each PC an action-specific response: directed reply, ambient room, provider reply",
+       ctx do
     pcs = [
-      %{id: "pc_bram", name: "Bram", place_id: "maras_inn", int: 12, ac: 6, hd: 1, hp: 8, thac0: 19, damage: "1d6"},
-      %{id: "pc_kell", name: "Kell", place_id: "maras_inn", int: 12, ac: 6, hd: 1, hp: 8, thac0: 19, damage: "1d6"},
-      %{id: "pc_rowan", name: "Rowan", place_id: "maras_inn", int: 12, ac: 6, hd: 1, hp: 8, thac0: 19, damage: "1d6"}
+      %{
+        id: "pc_bram",
+        name: "Bram",
+        place_id: "maras_inn",
+        int: 12,
+        ac: 6,
+        hd: 1,
+        hp: 8,
+        thac0: 19,
+        damage: "1d6"
+      },
+      %{
+        id: "pc_kell",
+        name: "Kell",
+        place_id: "maras_inn",
+        int: 12,
+        ac: 6,
+        hd: 1,
+        hp: 8,
+        thac0: 19,
+        damage: "1d6"
+      },
+      %{
+        id: "pc_rowan",
+        name: "Rowan",
+        place_id: "maras_inn",
+        int: 12,
+        ac: 6,
+        hd: 1,
+        hp: 8,
+        thac0: 19,
+        damage: "1d6"
+      }
     ]
 
     with_session(ctx.test, [pcs: pcs, routing: %{}], fn id, _dir, _pid ->
@@ -320,9 +403,20 @@ defmodule Referee.SessionTest do
       assert texts["pc_rowan"] =~ "You say to Mara"
       assert texts["pc_rowan"] =~ "Mara says to you:"
 
-      # P2 only listened: hears the room, no directed line, distinct text.
-      assert texts["pc_kell"] =~ "You hear"
+      # P2 only listened: directed replies are private, so Kell's text is
+      # his own action line only — no overheard words, distinct from others.
       refute texts["pc_kell"] =~ "says to you"
+
+      # Cross-talk is gone: each PC sees only their own directed exchange.
+      refute texts["pc_bram"] =~ "Mara says to you"
+      refute texts["pc_rowan"] =~ "Grevik says to you"
+
+      # NPCs nobody addressed (Erik, Anna) never volunteer a line anywhere.
+      Enum.each(texts, fn {_pc, text} ->
+        refute text =~ "Erik the Shepherd"
+        refute text =~ "Anna Mordale"
+      end)
+
       assert texts["pc_kell"] != texts["pc_bram"]
       assert texts["pc_kell"] != texts["pc_rowan"]
     end)

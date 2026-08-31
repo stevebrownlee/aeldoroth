@@ -1,15 +1,15 @@
 ---
 identifier: active_context
 title: Active Context
-created: 2026-08-28T03:52:34Z
+created: 2026-08-30T23:47:39Z
 ---
 # Active Context
 
 ```json
 {
   "content": {
-    "current_focus": "Live LLM mode verified end-to-end in web play (run web-9): interpret 2s, 4/4 NPCs deliberate live, player chronicle quotes NPC dialogue",
-    "current_plan": "Next: LLM-live full-session trial (multi-round, 2+ players); parley/hide/obey/flee resolvers; consider committing engine fixes",
+    "current_focus": "Decision 88: directed speech addressee-private (Perception receiver filter) + unaddressed NPCs hold (heuristic + LLM prompt). Cross-talk repro fixed at session layer, verified by live replay",
+    "current_plan": "User should re-verify in web app: GM + 3 player tabs, each addressing a different NPC; expect exactly one private reply each, others silent. Then commit code + engams_export",
     "decisions": [
       47,
       48,
@@ -78,7 +78,7 @@ created: 2026-08-28T03:52:34Z
     "watch": "Party's choice for the Shadow-Crystal (keep/sell/study/destroy) is the Act 1 pacing lever"
   },
   "name": "default",
-  "updated_at": "2026-08-28T03:52:34Z",
-  "version": 31
+  "updated_at": "2026-08-30T23:47:39Z",
+  "version": 32
 }
 ```

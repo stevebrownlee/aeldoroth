@@ -23,20 +23,36 @@ defmodule Agents.Brain do
   def handle_call({:deliberate, %{slice: slice, ctx: ctx} = msg}, _from, agent_id) do
     {system, user, schema} = Agents.Prompt.deliberate(slice)
 
-    req = %LLMGateway.Request{class: :deliberate, agent_id: agent_id,
-      system: system, user: user, schema: schema}
+    req = %LLMGateway.Request{
+      class: :deliberate,
+      agent_id: agent_id,
+      system: system,
+      user: user,
+      schema: schema
+    }
 
     reply =
       case LLMGateway.Router.complete(ctx, req) do
         {:ok, %LLMGateway.Result{parsed: %{} = parsed}, audit, ctx2} ->
           case verb_from(parsed["verb"], slice.capabilities) do
             nil ->
-              {:hesitate, %{reason: "proposed verb outside the capability set",
-                            request: req, ctx: ctx2, audit: audit}}
+              {:hesitate,
+               %{
+                 reason: "proposed verb outside the capability set",
+                 request: req,
+                 ctx: ctx2,
+                 audit: audit
+               }}
 
             verb ->
-              {:ok, %{action: action_of(parsed, agent_id, verb), reason: parsed["reason"],
-                      request: req, ctx: ctx2, audit: audit}}
+              {:ok,
+               %{
+                 action: action_of(parsed, agent_id, verb),
+                 reason: parsed["reason"],
+                 request: req,
+                 ctx: ctx2,
+                 audit: audit
+               }}
           end
 
         {:ok, _result, audit, ctx2} ->
@@ -50,7 +66,8 @@ defmodule Agents.Brain do
           deliberate_heuristic(slice, agent_id, Map.get(msg, :tick, 0), req, audit, ctx2)
 
         {:error, _reason, audit, ctx2} ->
-          {:hesitate, %{reason: "deliberation unavailable", request: req, ctx: ctx2, audit: audit}}
+          {:hesitate,
+           %{reason: "deliberation unavailable", request: req, ctx: ctx2, audit: audit}}
       end
 
     {:reply, reply, agent_id}
@@ -62,16 +79,28 @@ defmodule Agents.Brain do
 
     {system, user, schema} = Agents.Prompt.adopt(slice, envelope)
 
-    req = %LLMGateway.Request{class: :adopt, agent_id: agent_id,
-      system: system, user: user, schema: schema}
+    req = %LLMGateway.Request{
+      class: :adopt,
+      agent_id: agent_id,
+      system: system,
+      user: user,
+      schema: schema
+    }
 
     reply =
       case LLMGateway.Router.complete(ctx, req) do
         {:ok, %LLMGateway.Result{parsed: %{} = parsed}, audit, ctx2} ->
-          {:ok, %{adopted: bool(parsed["adopted"]),
-                  deed: parsed["deed"], deceive: bool(parsed["deceive"]),
-                  inform: parsed["inform"], reason: parsed["reason"],
-                  request: req, ctx: ctx2, audit: audit}}
+          {:ok,
+           %{
+             adopted: bool(parsed["adopted"]),
+             deed: parsed["deed"],
+             deceive: bool(parsed["deceive"]),
+             inform: parsed["inform"],
+             reason: parsed["reason"],
+             request: req,
+             ctx: ctx2,
+             audit: audit
+           }}
 
         {_ok_or_error, _reason, audit, ctx2} ->
           {:ok, heuristic_reply(msg, req, audit, ctx2)}
@@ -88,27 +117,48 @@ defmodule Agents.Brain do
 
     case Agents.Adopt.decide(roll, target) do
       :adopt ->
-        %{adopted: true, deed: msg.envelope.payload_nl, deceive: false,
-          inform: nil, reason: "heuristic adoption: reliability #{target} held at roll #{roll}",
-          request: req, ctx: ctx2, audit: fallback_audit(audit)}
+        %{
+          adopted: true,
+          deed: msg.envelope.payload_nl,
+          deceive: false,
+          inform: nil,
+          reason: "heuristic adoption: reliability #{target} held at roll #{roll}",
+          request: req,
+          ctx: ctx2,
+          audit: fallback_audit(audit)
+        }
 
       :reject ->
-        %{adopted: false, deed: nil, deceive: false,
-          inform: nil, reason: "heuristic rejection: reliability #{target} failed at roll #{roll}",
-          request: req, ctx: ctx2, audit: fallback_audit(audit)}
+        %{
+          adopted: false,
+          deed: nil,
+          deceive: false,
+          inform: nil,
+          reason: "heuristic rejection: reliability #{target} failed at roll #{roll}",
+          request: req,
+          ctx: ctx2,
+          audit: fallback_audit(audit)
+        }
     end
   end
+
   defp fallback_audit(nil),
     do: %LLMGateway.Audit{class: :adopt, adapter: :heuristic, parse_verdict: :fallback, ok: true}
 
   defp fallback_audit(%LLMGateway.Audit{} = a),
-    do: %LLMGateway.Audit{a | class: :adopt, adapter: :heuristic, parse_verdict: :fallback, ok: true}
+    do: %LLMGateway.Audit{
+      a
+      | class: :adopt,
+        adapter: :heuristic,
+        parse_verdict: :fallback,
+        ok: true
+    }
 
   # Deterministic deliberate fallback (decision 30 pattern): with no LLM
   # route the world must still react. Restricted to verbs Resolve.act
-  # actually implements. An NPC who can speak addresses the most salient
-  # PC in the room with a dossier line (rumors/knowledge, rotated by tick);
-  # otherwise it holds. Facts stay engine-side — only phrasing is local.
+  # actually implements. An NPC speaks only when someone just addressed
+  # it — the reply goes to that person alone; otherwise it holds and
+  # watches. Facts stay engine-side — only phrasing is local.
   defp deliberate_heuristic(slice, agent_id, tick, req, audit, ctx2) do
     cond do
       :shout not in Map.get(slice, :capabilities, []) ->
@@ -118,28 +168,20 @@ defmodule Agents.Brain do
       addresser = last_addresser(slice) ->
         line = fallback_line(slice, %{id: addresser[:from_id], name: addresser[:from_name]}, tick)
 
-        {:ok, %{
-          action:
-            struct!(EngineCore.Types.Action,
-              actor_id: agent_id, verb: :shout, target_id: addresser[:from_id],
-              params: %{message: line}),
-          reason: "offline heuristic: replies to #{addresser[:from_name]}",
-          request: req, ctx: ctx2,
-          audit: deliberate_fallback_audit(audit)
-        }}
-
-      pc = most_salient_pc(slice) ->
-        line = fallback_line(slice, pc, tick)
-
-        {:ok, %{
-          action:
-            struct!(EngineCore.Types.Action,
-              actor_id: agent_id, verb: :shout, target_id: pc[:id],
-              params: %{message: line}),
-          reason: "offline heuristic: addresses #{pc[:name]}",
-          request: req, ctx: ctx2,
-          audit: deliberate_fallback_audit(audit)
-        }}
+        {:ok,
+         %{
+           action:
+             struct!(EngineCore.Types.Action,
+               actor_id: agent_id,
+               verb: :shout,
+               target_id: addresser[:from_id],
+               params: %{message: line}
+             ),
+           reason: "offline heuristic: replies to #{addresser[:from_name]}",
+           request: req,
+           ctx: ctx2,
+           audit: deliberate_fallback_audit(audit)
+         }}
 
       true ->
         hold(req, ctx2, audit, agent_id)
@@ -147,12 +189,14 @@ defmodule Agents.Brain do
   end
 
   defp hold(req, ctx2, audit, agent_id) do
-    {:ok, %{
-      action: struct!(EngineCore.Types.Action, actor_id: agent_id, verb: :wait, params: %{}),
-      reason: "offline heuristic: holds and watches",
-      request: req, ctx: ctx2,
-      audit: deliberate_fallback_audit(audit)
-    }}
+    {:ok,
+     %{
+       action: struct!(EngineCore.Types.Action, actor_id: agent_id, verb: :wait, params: %{}),
+       reason: "offline heuristic: holds and watches",
+       request: req,
+       ctx: ctx2,
+       audit: deliberate_fallback_audit(audit)
+     }}
   end
 
   # The most recent agent whose words were aimed at this brain's agent.
@@ -164,21 +208,21 @@ defmodule Agents.Brain do
   end
 
   defp deliberate_fallback_audit(nil),
-    do: %LLMGateway.Audit{class: :deliberate, adapter: :heuristic, parse_verdict: :fallback, ok: true}
+    do: %LLMGateway.Audit{
+      class: :deliberate,
+      adapter: :heuristic,
+      parse_verdict: :fallback,
+      ok: true
+    }
 
   defp deliberate_fallback_audit(%LLMGateway.Audit{} = a),
-    do: %LLMGateway.Audit{a | class: :deliberate, adapter: :heuristic, parse_verdict: :fallback, ok: true}
-
-  defp most_salient_pc(slice) do
-    pcs =
-      slice
-      |> Map.get(:believed_agents, [])
-      |> Enum.filter(& &1[:pc])
-      |> Map.new(&{&1[:id], &1})
-
-    Enum.find_value(Map.get(slice, :salient, []), fn id -> pcs[id] end) ||
-      Enum.at(Map.values(pcs), 0)
-  end
+    do: %LLMGateway.Audit{
+      a
+      | class: :deliberate,
+        adapter: :heuristic,
+        parse_verdict: :fallback,
+        ok: true
+    }
 
   # Dossier comes straight from YAML: string keys. Lines may already carry
   # their own quote marks — strip them; the render layer adds the only
@@ -193,11 +237,13 @@ defmodule Agents.Brain do
       "#{slice.agent[:name]} nods to #{pc[:name]} and keeps watching the room."
     end
   end
+
   defp bool(true), do: true
   defp bool(_), do: false
 
   defp verb_from(verb, caps) when is_binary(verb),
     do: Enum.find(caps, &(Atom.to_string(&1) == verb))
+
   defp verb_from(_verb, _caps), do: nil
 
   defp action_of(parsed, agent_id, verb) do
@@ -207,7 +253,11 @@ defmodule Agents.Brain do
       |> maybe_put(:message, parsed["message"])
 
     struct!(EngineCore.Types.Action,
-      actor_id: agent_id, verb: verb, target_id: parsed["target_id"], params: params)
+      actor_id: agent_id,
+      verb: verb,
+      target_id: parsed["target_id"],
+      params: params
+    )
   end
 
   defp maybe_put(map, _key, nil), do: map

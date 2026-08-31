@@ -30,6 +30,8 @@ defmodule Agents.Prompt do
     subordinate's id as target_id, and the spoken order as message.
     If Recent speech shows someone just addressed YOU, reply in character:
     verb "shout", their id as target_id, message = your spoken reply.
+    If nobody addressed you and no active commitment demands speaking,
+    hold: verb "wait". Do not volunteer speech unprompted.
     """
 
     dossier = format_dossier(slice[:dossier])
@@ -72,6 +74,7 @@ defmodule Agents.Prompt do
 
   defp format_dossier(nil), do: nil
   defp format_dossier(%{} = d) when map_size(d) == 0, do: nil
+
   defp format_dossier(dossier) do
     lines =
       []
@@ -79,6 +82,7 @@ defmodule Agents.Prompt do
       |> maybe_dossier_line("Personality", dossier_field(dossier, :personality))
       |> maybe_dossier_line("Goals", dossier_field(dossier, :goals))
       |> maybe_dossier_line("Knowledge / Rumors", combined_knowledge_rumors(dossier))
+
     if Enum.empty?(lines), do: nil, else: Enum.join(lines, "\n")
   end
 
@@ -89,12 +93,15 @@ defmodule Agents.Prompt do
   defp maybe_dossier_line(lines, _label, nil), do: lines
   defp maybe_dossier_line(lines, _label, []), do: lines
   defp maybe_dossier_line(lines, _label, ""), do: lines
+
   defp maybe_dossier_line(lines, label, value) when is_list(value) do
     lines ++ ["#{label}: #{Enum.join(value, "; ")}"]
   end
+
   defp maybe_dossier_line(lines, label, value) do
     lines ++ ["#{label}: #{value}"]
   end
+
   defp combined_knowledge_rumors(dossier) do
     k = dossier_field(dossier, :knowledge)
     r = dossier_field(dossier, :rumors)
@@ -149,9 +156,10 @@ defmodule Agents.Prompt do
     """
 
     {system, user, schema}
-end
+  end
 
   defp commitment_lines([]), do: "none"
+
   defp commitment_lines(cs) do
     Enum.map_join(cs, "; ", &"#{&1.deed} (#{&1.status}, priority #{&1.priority})")
   end
