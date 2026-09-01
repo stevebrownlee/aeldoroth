@@ -12,7 +12,7 @@ defmodule Referee.Run do
 
   alias Agents
   alias Agents.{Adopt, Salience}
-  alias EngineCore.{Boundaries, Commitments, Dice, Envelopes, Fold, Ledger, Loader, Scheduler, World}
+  alias EngineCore.{Boundaries, Commitments, Dice, Envelopes, Fold, Ledger, Loader, Scheduler, Types, World}
   alias LLMGateway.{Audit, Ctx}
   alias Referee.{Interpret, Narrate, PC, Preferences, Resolve, Slice, Spend, Validate}
 
@@ -321,7 +321,7 @@ defmodule Referee.Run do
       if agent == nil or agent.tier != 3 or dead?(agent) do
         acc
       else
-        unless Salience.escalate?(agent, acc.world.tick) do
+        unless Salience.escalate?(agent, acc.world.tick, acc.world) do
           push(acc, :deliberation, acc.world.tick, %{
             agent_id: ev.payload.agent_id,
             decision: :skipped,
@@ -362,7 +362,7 @@ defmodule Referee.Run do
               verb: d.action.verb,
               reason: d.reason
             })
-            |> resolve_action(d.action)
+            |> resolve_action(d.action, d.action.params[:commitment_id])
         end
 
       {:hesitate, h} ->
@@ -389,15 +389,60 @@ defmodule Referee.Run do
   # One validated action through the engine rules, world + rng carried
   # forward. Called only after the decision row is ledgered, so effects
   # always follow their decision in seq order.
-  defp resolve_action(run, action) do
+  defp resolve_action(run, action, claimed_id) do
     case Resolve.act(run.world, run.rng, action) do
       {verdict, world_events, w2, r2} when verdict in [:ok, :diegetic_fail] ->
         {:ok, reaction, w3, r3} = Scheduler.react(w2, r2, world_events)
 
+        run2 =
+          run
+          |> Map.put(:world, w3)
+          |> Map.put(:rng, r3)
+          |> append_world(world_events ++ reaction)
+
+        maybe_keep_commitment(run2, action, verdict, claimed_id)
+
+    end
+  end
+
+  # A performed deed resolves its commitment: the brain's claim (decision 91)
+  # audits against the ledger and only the debtor's own due/pending id keeps.
+  # Rearm via keep/2's rearm_due puts the next occurrence on the every-window.
+  defp maybe_keep_commitment(run, %Types.Action{actor_id: actor_id} = action, verdict, claimed_id) do
+    agent = World.agent(run.world, actor_id)
+    committed = Enum.find(agent.commitments, &(&1.id == claimed_id))
+
+    cond do
+      is_nil(claimed_id) or agent.id != actor_id or committed == nil ->
         run
-        |> Map.put(:world, w3)
-        |> Map.put(:rng, r3)
-        |> append_world(world_events ++ reaction)
+
+      committed.status not in [:due, :pending] ->
+        push(run, :deliberation, run.world.tick, %{
+          agent_id: actor_id,
+          decision: :commitment_claim_rejected,
+          commitment_id: claimed_id,
+          reason: "not due or pending (status #{committed.status})"
+        })
+
+      true ->
+        claimed = Map.get(action.params || %{}, :message)
+
+        case Commitments.keep(run.world, claimed_id) do
+          {:ok, [ev], w2} ->
+            run
+            |> Map.put(:world, w2)
+            |> append_world([ev])
+
+          _ ->
+            push(run, :deliberation, run.world.tick, %{
+              agent_id: actor_id,
+              decision: :commitment_claim_rejected,
+              commitment_id: claimed_id,
+              verdict: Atom.to_string(verdict),
+              claimed: claimed,
+              reason: "commitment no longer keepable"
+            })
+        end
     end
   end
 

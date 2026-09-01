@@ -305,6 +305,106 @@ defmodule Referee.RunTest do
     assert ev.payload.hit == (ev.payload.roll >= ev.payload.thac0 - ev.payload.target_ac)
   end
 
+  test "performing a due commitment keeps it: rearm to the every-window, no cadence re-demand" do
+    grevik =
+      ~s({"verb":"shout","target_id":null,"message":"A hundred gold pieces to whoever investigates the tower.","commitment_id":"grevik_quest_offer","reason":"my due offer"})
+
+    waits = List.duplicate(~s({"verb":"wait","reason":"nothing due"}), 3)
+    pcs = [%{id: "pc_thistle", name: "Thistle", place_id: "maras_inn", int: 13, ac: 5, hd: 1, hp: 7, thac0: 20, damage: "1d8"}]
+    scripts = %{interpret: [], narrate: [], deliberate: [grevik | waits], salt: System.unique_integer()}
+
+    routing =
+      for class <- [:interpret, :narrate, :deliberate], into: %{} do
+        {class, %{adapter: Scripted, scripts: scripts}}
+      end
+
+    {:ok, run} = Run.new(@yaml, 42, pcs, routing: routing)
+
+    # Tick 1: grevik_quest_offer is due; his brain claims and performs the deed.
+    {:ok, _t1, run1} = Run.advance(run)
+
+    assert %{status: :pending, due: 26} =
+             Enum.find(run1.world.agents["mayor_grevik"].commitments, &(&1.id == "grevik_quest_offer"))
+
+    assert Enum.any?(Run.events(run1), fn e ->
+             e.class == :commitment and e.payload[:kind] == :commitment_kept and
+               e.payload[:id] == "grevik_quest_offer" and e.payload[:rearm_due] == 26
+           end)
+
+    # Ticks 2-10: nobody's cadence is due (rearm moved grevik to 26).
+    run_mid = Enum.reduce(2..10, run1, fn _t, acc ->
+      {:ok, _texts, acc2} = Run.advance(acc)
+      acc2
+    end)
+
+    # Tick 11: Thistle is still in the inn, so a perceived-player is
+    # standing pressure — Grevik deliberates again (accepted per-window
+    # cost, spec 2026-08-30 §6). The engine guarantee is different: his
+    # rearmed commitment is context, not demand — the tick must NOT
+    # re-perform the deed (no second keep, due still 26).
+    {:ok, _t11, run11} = Run.advance(run_mid)
+
+    at_tick = fn evs, tick -> Enum.filter(evs, &(&1.tick == tick)) end
+
+    grevik_row =
+      run11
+      |> Run.events()
+      |> then(&at_tick.(&1, 11))
+      |> Enum.find(&(&1.class == :deliberation and &1.payload[:agent_id] == "mayor_grevik"))
+
+    assert grevik_row.payload[:decision] in [:proposed, :hesitated, :rejected]
+
+    assert %{status: :pending, due: 26} =
+             Enum.find(run11.world.agents["mayor_grevik"].commitments, &(&1.id == "grevik_quest_offer"))
+
+    anna_row =
+      run11
+      |> Run.events()
+      |> then(&at_tick.(&1, 11))
+      |> Enum.find(&(&1.class == :deliberation and &1.payload[:agent_id] == "anna_mordale"))
+
+    assert anna_row.payload[:decision] == :proposed
+
+    kept =
+      Enum.count(Run.events(run11), &(&1.class == :commitment and &1.payload[:kind] == :commitment_kept and
+                                         &1.payload[:id] == "grevik_quest_offer"))
+
+    assert kept == 1
+  end
+
+  test "a brain cannot keep another agent's commitment by claiming its id" do
+    bogus =
+      ~s({"verb":"shout","target_id":null,"message":"Plea!","commitment_id":"anna_rescue_plea","reason":"foreign claim"})
+
+    anna_wait = ~s({"verb":"wait","reason":"nothing due"})
+    waits = List.duplicate(anna_wait, 3)
+
+    pcs = [
+      %{id: "pc_thistle", name: "Thistle", place_id: "maras_inn", int: 13, ac: 5, hd: 1, hp: 7, thac0: 20, damage: "1d8"}
+    ]
+    # Scripted queues are per-brain (each process pops from index 0): key
+    # Anna's entry to her agent so a NON-debtor consumes the bogus claim.
+    scripts = %{
+      interpret: [],
+      narrate: [],
+      deliberate: [%{agent_id: "anna_mordale", content: anna_wait}, bogus | waits],
+      salt: System.unique_integer()
+    }
+
+    routing =
+      for class <- [:interpret, :narrate, :deliberate], into: %{} do
+        {class, %{adapter: Scripted, scripts: scripts}}
+      end
+
+    {:ok, run} = Run.new(@yaml, 42, pcs, routing: routing)
+    {:ok, _t1, run1} = Run.advance(run)
+
+    anna_c = Enum.find(run1.world.agents["anna_mordale"].commitments, &(&1.id == "anna_rescue_plea"))
+    assert %{status: :pending, due: 2} = anna_c
+
+    refute Enum.any?(Run.events(run1), &(&1.payload[:kind] == :commitment_kept))
+  end
+
   defp advance_until_believed(run, place, about, n \\ 20) do
     pc = run.world.agents["pc_thistle"]
 

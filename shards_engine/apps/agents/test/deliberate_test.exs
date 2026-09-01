@@ -25,6 +25,7 @@ defmodule Agents.DeliberateTest do
             id: "c1",
             deed: "relocate_treasure_if_alarmed",
             status: :pending,
+            due: 120,
             priority: 8,
             creditor: nil
           }
@@ -146,6 +147,33 @@ defmodule Agents.DeliberateTest do
     [head, _summary] = String.split(d.request.user, "Summary:", parts: 2)
     assert head =~ "Commitments:"
     assert head =~ "Salient here:"
+  end
+
+  test "prompt renders commitment id and due tick; system carries the claim contract" do
+    entry = ~s({"verb":"wait","reason":"biding"})
+
+    {:ok, d} =
+      Agents.deliberate("grisk_the_snatcher", %{
+        slice: slice("grisk_the_snatcher"),
+        ctx: ctx([entry])
+      })
+
+    assert d.request.user =~ "[id: c1]"
+    assert d.request.user =~ "due tick 120"
+    assert d.request.system =~ "commitment_id"
+  end
+
+  test "a claimed commitment_id rides the action params for the engine to audit" do
+    entry =
+      ~s({"verb":"shout","target_id":null,"message":"Bounty!","commitment_id":"c1","reason":"deed due"})
+
+    {:ok, d} =
+      Agents.deliberate("grisk_the_snatcher", %{
+        slice: slice("grisk_the_snatcher"),
+        ctx: ctx([entry])
+      })
+
+    assert d.action.params[:commitment_id] == "c1"
   end
 
   test "prompt includes formatted dossier lines" do

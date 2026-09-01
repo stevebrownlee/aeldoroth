@@ -251,6 +251,7 @@ defmodule Agents.Brain do
       %{}
       |> maybe_put(:direction, parsed["direction"])
       |> maybe_put(:message, parsed["message"])
+      |> maybe_put(:commitment_id, parsed["commitment_id"])
 
     struct!(EngineCore.Types.Action,
       actor_id: agent_id,

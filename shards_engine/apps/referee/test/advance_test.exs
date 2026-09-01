@@ -26,8 +26,9 @@ defmodule Referee.AdvanceTest do
           ~s({"verb":"wait"})
         ],
         narrate: [],
-        # bodyguard_1's first escalated tick (t=13, via the adopted
-        # commitment) must strike; the other tier-3s only ever wait.
+        # bodyguard_1 strikes on his first escalation — with perceived-player
+        # presence in his place (decision 91 gate) that may precede grisk's
+        # order; the other tier-3s only ever wait.
         deliberate: [
           %{agent_id: "goblin_bodyguard_1",
             content: ~s({"verb":"strike","target_id":"pc_thistle","reason":"obeying orders"})},
@@ -173,13 +174,12 @@ defmodule Referee.AdvanceTest do
   end
 
   test "the bodyguard strikes the PC on a later cadence; the PC is narrated to" do
-    {run0, _} = new_run() |> enter_chiefs_room() |> advance_until(&order_sent?/1, 15)
+    run0 = new_run() |> enter_chiefs_room()
 
-    {run1, _} =
-      advance_until(run0, fn r -> events_of(r, :envelope_adopted) != [] end, 3)
-
-    {run, all_texts} =
-      advance_until(run1, fn r -> strike?(r) end, 12)
+    # Perceived-player presence escalates the bodyguard on his own cadence,
+    # so the strike may legitimately land before or after the adoption chain;
+    # only the strike + PC narration contract is under test here.
+    {run, _all_texts} = advance_until(run0, &strike?/1, 15)
 
     evs = Run.events(run)
 
@@ -204,7 +204,12 @@ defmodule Referee.AdvanceTest do
     assert attack_ev.payload[:target_ac] != nil
     assert attack_ev.payload[:hit] == (attack_ev.payload[:roll] >= attack_ev.payload[:thac0] - attack_ev.payload[:target_ac])
 
-    assert Enum.any?(all_texts, fn texts -> texts["pc_thistle"] not in [nil, ""] end)
+    # The strike may land inside enter_chiefs_room's setup advances; the
+    # narration contract is ledger-visible regardless of which tick carried it.
+    assert Enum.any?(evs, fn ev ->
+             ev.class == :narration and ev.payload[:agent_id] == "pc_thistle" and
+               ev.payload[:text] =~ "goblin_bodyguard_1"
+           end)
   end
 
   defp strike?(run) do
@@ -249,7 +254,7 @@ defmodule Referee.AdvanceTest do
               ev.seq > ct.seq and (next_ct == nil or ev.seq < next_ct.seq)
           end)
 
-        if Salience.escalate?(agent, ct.tick) do
+        if Salience.escalate?(agent, ct.tick, world_at) do
           assert row.payload[:decision] in [:proposed, :hesitated, :rejected]
         else
           assert row.payload[:decision] == :skipped,

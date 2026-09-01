@@ -182,7 +182,7 @@ defmodule Referee.Slice do
   defp commitments(agent) do
     agent.commitments
     |> Enum.map(fn c ->
-      %{id: c.id, deed: c.deed, status: c.status, priority: c.priority, creditor: c.creditor}
+      %{id: c.id, deed: c.deed, status: c.status, due: c.due, priority: c.priority, creditor: c.creditor}
     end)
     |> Enum.sort_by(& &1.id)
   end

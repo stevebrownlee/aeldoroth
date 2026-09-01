@@ -125,7 +125,7 @@ defmodule Referee.SliceTest do
 
   @yaml Path.expand("../../../../the-ruined-tower/ruined_tower.yaml", __DIR__)
 
-  test "slice carries commitments (5-field maps, id-sorted) and capabilities" do
+  test "slice carries commitments (6-field maps, id-sorted) and capabilities" do
     {:ok, w} = EngineCore.Loader.load(@yaml)
 
     grisk = EngineCore.World.agent(w, "grisk_the_snatcher")
@@ -133,14 +133,14 @@ defmodule Referee.SliceTest do
     assert s.commitments ==
              Enum.sort_by(
                Enum.map(grisk.commitments, fn c ->
-                 %{id: c.id, deed: c.deed, status: c.status, priority: c.priority, creditor: c.creditor}
+                %{id: c.id, deed: c.deed, status: c.status, due: c.due, priority: c.priority, creditor: c.creditor}
                end),
                & &1.id
              )
     assert "grisk_relocation_deadline" in Enum.map(s.commitments, & &1.id)
 
     for c <- s.commitments do
-      assert Map.keys(c) |> Enum.sort() == [:creditor, :deed, :id, :priority, :status]
+      assert Map.keys(c) |> Enum.sort() == [:creditor, :deed, :due, :id, :priority, :status]
     end
 
     assert s.capabilities == grisk.capabilities

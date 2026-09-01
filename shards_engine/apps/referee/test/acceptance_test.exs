@@ -420,6 +420,11 @@ defmodule Referee.AcceptanceTest do
   @deliberate [
     %{agent_id: "goblin_bodyguard_1",
       content: ~s({"verb":"strike","target_id":"pc_thistle","reason":"obeying orders"})},
+    # A second strike: with perceived-player presence (decision 91) the first
+    # strike may fire on the bodyguard's own cadence before grisk's order
+    # arrives; the order chain still needs a post-adoption proposed → attack.
+    %{agent_id: "goblin_bodyguard_1",
+      content: ~s({"verb":"strike","target_id":"pc_thistle","reason":"obeying orders"})},
     %{agent_id: "goblin_bodyguard_2", content: ~s({"verb":"wait","reason":"guarding the chief"})},
     %{agent_id: "goblin_bodyguard_2", content: ~s({"verb":"wait","reason":"still guarding"})},
     %{agent_id: "grisk_the_snatcher",
@@ -557,8 +562,9 @@ defmodule Referee.AcceptanceTest do
     assert dec_b.payload[:verb] == :wait
     assert dec_b.payload[:reason] == "cautious persona"
 
-    # Material split: the attack (and its dice) exists only in A.
-    assert attack_count(evs_a) == 1
+    # Player-presence lets the bodyguard strike on his own cadence before the
+    # order lands; the persona fork only needs "A attacks, B never does".
+    assert attack_count(evs_a) >= 1
     assert attack_count(evs_b) == 0
   end
 

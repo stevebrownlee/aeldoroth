@@ -14,6 +14,7 @@ defmodule Agents.Prompt do
         target_id: %{type: :string, nullable: true},
         direction: %{type: :string, nullable: true},
         message: %{type: :string, nullable: true},
+        commitment_id: %{type: :string, nullable: true},
         reason: %{type: :string}
       },
       required: [:verb, :reason]
@@ -24,7 +25,7 @@ defmodule Agents.Prompt do
     tabletop RPG world. You act ONLY on your beliefs, never on hidden truth.
     Choose exactly one action for this moment. Respond ONLY with a JSON object:
     {"verb": string, "target_id": string | null, "direction": string | null,
-    "message": string | null, "reason": string}.
+    "message": string | null, "commitment_id": string | null, "reason": string}.
     verb must be one of your capabilities. target_id must come from your believed
     list — never invent one. Ordering a subordinate uses verb "order", the
     subordinate's id as target_id, and the spoken order as message.
@@ -36,6 +37,9 @@ defmodule Agents.Prompt do
       (names, places, magic) beyond them.
     - If someone just addressed you: verb "shout", their id as target_id, message = your spoken reply, aimed at that person alone.
     - If nobody addressed you and no active commitment demands speaking: verb "wait". Do not volunteer speech unprompted.
+    - When your action this turn performs one of your own commitments whose due
+      tick has arrived, include "commitment_id": "<its id from Commitments>" so
+      the world records the deed as kept. Claim only your own commitments.
     """
 
     dossier = format_dossier(slice[:dossier])
@@ -194,7 +198,18 @@ defmodule Agents.Prompt do
 
   defp commitment_lines([]), do: "none"
 
+  # Ids are first-class: the brain claims a deed by its commitment_id so the
+  # engine can audit the performance (decision 91). The due tick shows when a
+  # scheduled obligation ripens; adopted orders simply have none.
   defp commitment_lines(cs) do
-    Enum.map_join(cs, "; ", &"#{&1.deed} (#{&1.status}, priority #{&1.priority})")
+    Enum.map_join(cs, "; ", fn c ->
+      due =
+        case Map.get(c, :due) do
+          nil -> ""
+          d -> ", due tick #{d}"
+        end
+
+      "#{c.deed} [id: #{c.id}] (#{c.status}#{due}, priority #{c.priority})"
+    end)
   end
 end
