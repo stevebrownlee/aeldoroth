@@ -1,15 +1,15 @@
 ---
 identifier: active_context
 title: Active Context
-created: 2026-08-31T03:49:02Z
+created: 2026-09-01T10:21:29Z
 ---
 # Active Context
 
 ```json
 {
   "content": {
-    "current_focus": "Organic NPC conversation live in web play (decision 89): lobby gate + .env activation verified, inn smoke PASS with attributed first-person NPC replies",
-    "current_plan": "Next: run The Ruined Tower with real players; watch cadence deliberate cost (spec 2026-08-30 sec 6) and declare latency",
+    "current_focus": "Commitment lifecycle closed (decision 91): NPC hooks keep+rearm when performed, salience due-gates; live smoke shows private directed replies and single broadcasts",
+    "current_plan": "Await user 4-tab verification of decision 91, then push; next watch items: cadence LLM cost and declare latency",
     "decisions": [
       47,
       48,
@@ -78,7 +78,7 @@ created: 2026-08-31T03:49:02Z
     "watch": "Party's choice for the Shadow-Crystal (keep/sell/study/destroy) is the Act 1 pacing lever"
   },
   "name": "default",
-  "updated_at": "2026-08-31T03:49:02Z",
-  "version": 33
+  "updated_at": "2026-09-01T10:21:29Z",
+  "version": 34
 }
 ```
