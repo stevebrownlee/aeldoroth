@@ -118,7 +118,7 @@ defmodule EngineCore.Fold do
             end
 
           place_map = Map.put(a.beliefs[p.place_id] || %{}, p.about, merged)
-          %{a | beliefs: Map.put(a.beliefs, p.place_id, place_map)}
+          a |> Map.put(:beliefs, Map.put(a.beliefs, p.place_id, place_map)) |> pull_cadence(p, tick)
         end)
 
       :commitment_created ->
@@ -286,6 +286,20 @@ defmodule EngineCore.Fold do
       a -> %{world | agents: Map.put(world.agents, id, fun.(a))}
     end
   end
+
+  # Being addressed is conversation, not background noise: the brain's next
+  # cadence pulls forward to the very next tick so a reply does not wait on
+  # the every-window (decision 92). Pure and replay-safe — part of the fold.
+  # Idempotent within a tick (min), and the tick's own cadence fire rearms
+  # next_due outward again, so speech cannot buy more than one deliberation.
+  defp pull_cadence(%EngineCore.Types.Agent{cadence: %{next_due: due} = cadence} = a, p, tick)
+       when is_integer(due) and due > tick + 1 do
+    if get_in(p, [:content_core, :to]) == p.agent_id,
+      do: %{a | cadence: %{cadence | next_due: tick + 1}},
+      else: a
+  end
+
+  defp pull_cadence(a, _p, _tick), do: a
 
   @spec envelope_by_id(World.t(), String.t()) :: EngineCore.Types.Envelope.t() | nil
   def envelope_by_id(world, id), do: Enum.find(world.envelopes, &(&1.id == id))

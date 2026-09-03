@@ -405,6 +405,70 @@ defmodule Referee.RunTest do
     refute Enum.any?(Run.events(run1), &(&1.payload[:kind] == :commitment_kept))
   end
 
+  test "a fresh address pulls the addressee's cadence: round 2 reply lands next tick" do
+    # Round 1 works only because every inn hook is due at tick 1. Round 2 is
+    # the real conversational contract: a player addresses the same NPC again
+    # between cadence windows and the reply must still arrive one tick later.
+    erik_r1 =
+      %{agent_id: "erik_the_shepherd",
+        content: ~s({"verb":"shout","target_id":"pc_thistle","message":"Aye, the flock's thin.","reason":"addressed"})}
+
+    erik_r2 =
+      %{agent_id: "erik_the_shepherd",
+        content: ~s({"verb":"shout","target_id":"pc_thistle","message":"Three sheep gone to the green devils.","reason":"addressed again"})}
+
+    others =
+      for id <- ["anna_mordale", "mara", "mayor_grevik"] do
+        %{agent_id: id, content: ~s({"verb":"wait","reason":"not addressed"})}
+      end
+
+    interpret = [
+      ~s({"verb":"shout","target_id":"erik_the_shepherd","params":{"message":"how is your flock?"},"assumptions":[]}),
+      ~s({"verb":"shout","target_id":"erik_the_shepherd","params":{"message":"how bad is it really?"},"assumptions":[]})
+    ]
+
+    pcs = [
+      %{id: "pc_thistle", name: "Thistle", place_id: "maras_inn", int: 13, ac: 5, hd: 1, hp: 7, thac0: 20, damage: "1d8"}
+    ]
+
+    scripts = %{
+      interpret: interpret,
+      narrate: [],
+      deliberate: [erik_r1, erik_r2 | others],
+      salt: System.unique_integer()
+    }
+
+    routing =
+      for class <- [:interpret, :narrate, :deliberate], into: %{} do
+        {class, %{adapter: Scripted, scripts: scripts}}
+      end
+
+    {:ok, run} = Run.new(@yaml, 42, pcs, routing: routing)
+    {:ok, _reply, run1} = Run.declare(run, "pc_thistle", "Erik, how is your flock?")
+    {:ok, _r1_texts, run2} = Run.advance(run1)
+
+    # Round 2: address Erik again while every cadence is parked at its
+    # rearmed window — the reply must still land one tick later.
+    {:ok, _reply, run3} = Run.declare(run2, "pc_thistle", "Erik, how bad is it really?")
+    {:ok, texts, run3} = Run.advance(run3)
+    t = run3.world.tick
+
+    row =
+      Run.events(run3)
+      |> Enum.find(&(&1.tick == t and &1.class == :deliberation and
+                       &1.payload[:agent_id] == "erik_the_shepherd"))
+
+    assert row.payload[:decision] == :proposed
+
+    # Nobody else was addressed; their brains stay parked until their window.
+    refute Enum.any?(Run.events(run3), fn ev ->
+      ev.tick == t and ev.class == :deliberation and
+        ev.payload[:agent_id] in ["anna_mordale", "mara", "mayor_grevik"]
+    end)
+
+    assert texts["pc_thistle"] =~ "Three sheep gone"
+  end
+
   defp advance_until_believed(run, place, about, n \\ 20) do
     pc = run.world.agents["pc_thistle"]
 

@@ -168,4 +168,44 @@ defmodule EngineCore.PerceptionTest do
     assert get_in(w3.agents["g1"].beliefs, ["guard_room", "pc1", :words]) == "anyone want a drink"
     assert get_in(w3.agents["g1"].beliefs, ["guard_room", "pc1", :addressed_tick]) == nil
   end
+
+  test "being addressed pulls the addressee's cadence to the very next tick" do
+    voice = fn to ->
+      struct!(Types.Arrival,
+        ref: 2,
+        place_id: "guard_room",
+        tick: 5,
+        kind: :sound,
+        intensity: 5,
+        about: "pc1",
+        hops: 0,
+        origin_place_id: "entry_hall",
+        content_core: %{class: :voices, count: 1, about: "pc1", to: to},
+        content_nl: "the road is closed"
+      )
+    end
+
+    cadenced = %{agent(10) | cadence: %{every: 10, next_due: 11}}
+    bystander = %{agent(10) | id: "g2", cadence: %{every: 10, next_due: 11}}
+
+    w = %EngineCore.World{
+      agents: %{"g1" => cadenced, "g2" => bystander, "g3" => agent(10)},
+      places: %{"guard_room" => %{}},
+      tick: 5
+    }
+
+    # Shout aimed at g1: only g1's brain wakes next tick — bystanders and
+    # cadence-less agents (PCs, fauna) are untouched.
+    {:ok, events, w2, _rng} = Perception.receive_arrival(w, Dice.new(7), voice.("g1"))
+    assert Fold.fold(w, events) == w2
+    assert w2.agents["g1"].cadence.next_due == 6
+    assert w2.agents["g2"].cadence.next_due == 11
+    assert w2.agents["g3"].cadence == nil
+
+    # Room chatter at the same tick wakes nobody: overheard speech is not
+    # an address (decision 88).
+    {:ok, _events, w3, _rng} = Perception.receive_arrival(w, Dice.new(7), voice.(nil))
+    assert w3.agents["g1"].cadence.next_due == 11
+    assert w3.agents["g2"].cadence.next_due == 11
+  end
 end
