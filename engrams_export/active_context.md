@@ -1,15 +1,15 @@
 ---
 identifier: active_context
 title: Active Context
-created: 2026-09-01T10:21:29Z
+created: 2026-09-03T22:03:51Z
 ---
 # Active Context
 
 ```json
 {
   "content": {
-    "current_focus": "Commitment lifecycle closed (decision 91): NPC hooks keep+rearm when performed, salience due-gates; live smoke shows private directed replies and single broadcasts",
-    "current_plan": "Await user 4-tab verification of decision 91, then push; next watch items: cadence LLM cost and declare latency",
+    "current_focus": "Round-2 conversational cadence fixed and live-verified; commitment lifecycle + cadence pull both shipped",
+    "current_plan": "Next: user re-verifies multi-round web play (4 tabs); watch cadence LLM cost and declare latency",
     "decisions": [
       47,
       48,
@@ -78,7 +78,7 @@ created: 2026-09-01T10:21:29Z
     "watch": "Party's choice for the Shadow-Crystal (keep/sell/study/destroy) is the Act 1 pacing lever"
   },
   "name": "default",
-  "updated_at": "2026-09-01T10:21:29Z",
-  "version": 34
+  "updated_at": "2026-09-03T22:03:51Z",
+  "version": 35
 }
 ```
