@@ -1,15 +1,15 @@
 ---
 identifier: active_context
 title: Active Context
-created: 2026-09-03T22:03:51Z
+created: 2026-09-04T17:54:31Z
 ---
 # Active Context
 
 ```json
 {
   "content": {
-    "current_focus": "Round-2 conversational cadence fixed and live-verified; commitment lifecycle + cadence pull both shipped",
-    "current_plan": "Next: user re-verifies multi-round web play (4 tabs); watch cadence LLM cost and declare latency",
+    "current_focus": "Speech registers split: speak (room-local conversation) vs shout (area broadcast); round-2 cadence pull verified; awaiting user multi-round + conversational verification in web app",
+    "current_plan": "Next: user verifies speak verb in live play; watch narrate prose register for speak (should stay room-scale) and cadence-pull latency on directed replies",
     "decisions": [
       47,
       48,
@@ -78,7 +78,7 @@ created: 2026-09-03T22:03:51Z
     "watch": "Party's choice for the Shadow-Crystal (keep/sell/study/destroy) is the Act 1 pacing lever"
   },
   "name": "default",
-  "updated_at": "2026-09-03T22:03:51Z",
-  "version": 35
+  "updated_at": "2026-09-04T17:54:31Z",
+  "version": 36
 }
 ```
