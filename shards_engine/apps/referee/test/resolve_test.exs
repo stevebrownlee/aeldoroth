@@ -104,6 +104,35 @@ defmodule Referee.ResolveTest do
            end)
   end
 
+  test "speak emits a room-local directed signal at the actor's place" do
+    a =
+      struct!(Types.Action,
+        actor_id: "pc",
+        verb: :speak,
+        target_id: "gob",
+        params: %{message: "hello there"}
+      )
+
+    {:ok, events, _w2, _r2} = Resolve.act(world(), rng(), a)
+
+    # 1.2 dies at the first attenuation hop (0.7x, floor 1.0): the words
+    # cannot leave the room, unlike a 7.0 shout.
+    assert Enum.any?(events, fn ev ->
+             ev.payload[:kind] == :signal_emitted and ev.payload[:origin_place_id] == "hall" and
+               ev.payload[:intensity] == 1.2 and ev.payload[:content_core][:to] == "gob"
+           end)
+  end
+
+  test "speak without an addressee is a quiet room broadcast" do
+    a = struct!(Types.Action, actor_id: "pc", verb: :speak, params: %{message: "hello?"})
+    {:ok, events, _w, _r} = Resolve.act(world(), rng(), a)
+
+    assert Enum.any?(events, fn ev ->
+             ev.payload[:kind] == :signal_emitted and ev.payload[:intensity] == 1.2 and
+               ev.payload[:content_core][:to] == nil
+           end)
+  end
+
   test "wait resolves to no events, world unchanged" do
     a = struct!(Types.Action, actor_id: "pc", verb: :wait)
     assert {:ok, [], w, _r} = Resolve.act(world(), rng(), a)

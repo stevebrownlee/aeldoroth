@@ -11,16 +11,26 @@ defmodule Referee.Grammar do
   alias EngineCore.{Types, World}
 
   @directions %{
-    "north" => "north", "n" => "north",
-    "south" => "south", "s" => "south",
-    "east" => "east", "e" => "east",
-    "west" => "west", "w" => "west",
-    "up" => "up", "u" => "up",
-    "down" => "down", "d" => "down",
-    "northeast" => "northeast", "ne" => "northeast",
-    "northwest" => "northwest", "nw" => "northwest",
-    "southeast" => "southeast", "se" => "southeast",
-    "southwest" => "southwest", "sw" => "southwest"
+    "north" => "north",
+    "n" => "north",
+    "south" => "south",
+    "s" => "south",
+    "east" => "east",
+    "e" => "east",
+    "west" => "west",
+    "w" => "west",
+    "up" => "up",
+    "u" => "up",
+    "down" => "down",
+    "d" => "down",
+    "northeast" => "northeast",
+    "ne" => "northeast",
+    "northwest" => "northwest",
+    "nw" => "northwest",
+    "southeast" => "southeast",
+    "se" => "southeast",
+    "southwest" => "southwest",
+    "sw" => "southwest"
   }
 
   @verbs %{
@@ -49,15 +59,15 @@ defmodule Referee.Grammar do
     "yell" => :shout,
     "scream" => :shout,
     "call" => :shout,
-    "say" => :shout,
-    "speak" => :shout,
-    "tell" => :shout,
-    "talk" => :shout,
-    "ask" => :shout,
-    "inquire" => :shout,
-    "question" => :shout,
-    "greet" => :shout,
-    "chat" => :shout,
+    "say" => :speak,
+    "speak" => :speak,
+    "tell" => :speak,
+    "talk" => :speak,
+    "ask" => :speak,
+    "inquire" => :speak,
+    "question" => :speak,
+    "greet" => :speak,
+    "chat" => :speak,
     "order" => :shout,
     "demand" => :shout,
     "buy" => :buy,
@@ -109,7 +119,12 @@ defmodule Referee.Grammar do
           # 1. Bare direction (e.g. "north", "east", "n", "down")
           Map.has_key?(@directions, verb_lower) ->
             canonical = Map.fetch!(@directions, verb_lower)
-            struct!(Types.Action, actor_id: actor_id, verb: :move, params: %{direction: canonical})
+
+            struct!(Types.Action,
+              actor_id: actor_id,
+              verb: :move,
+              params: %{direction: canonical}
+            )
 
           # 2. Bare room or exit name (e.g. "library", "guard_room")
           is_map_key(world.places, verb_lower) ->
@@ -121,6 +136,7 @@ defmodule Referee.Grammar do
               :move -> parse_move(world, actor_id, rest)
               :strike -> parse_strike(world, actor_id, text, rest)
               :shout -> parse_shout(world, actor_id, text)
+              :speak -> parse_speak(world, actor_id, text)
               :buy -> parse_buy(world, actor_id, text)
               :wait -> struct!(Types.Action, actor_id: actor_id, verb: :wait)
             end
@@ -181,7 +197,6 @@ defmodule Referee.Grammar do
   end
 
   defp parse_move_target(world, actor_id, filtered) do
-
     case filtered do
       [first | _] ->
         dir_candidate = String.downcase(first)
@@ -234,22 +249,43 @@ defmodule Referee.Grammar do
     end
   end
 
+  # Loud register: always diegetic, an unresolvable addressee degrades to
+  # an ambient broadcast.
   defp parse_shout(world, actor_id, text) do
     {addressee, message} = split_speech(text)
 
     case addressee && resolve_believed(world, actor_id, addressee) do
       {:ok, id} ->
-        struct!(Types.Action, actor_id: actor_id, verb: :shout, target_id: id,
-          params: %{message: message || ""})
+        struct!(Types.Action,
+          actor_id: actor_id,
+          verb: :shout,
+          target_id: id,
+          params: %{message: message || ""}
+        )
 
       {:ambiguous, ids} ->
         {:ambiguous, ids}
 
-      # An unresolvable addressee degrades to ambient speech — shouting
-      # into the room is always diegetic. Real ambiguity asks the player.
       _ambient ->
-        struct!(Types.Action, actor_id: actor_id, verb: :shout,
-          params: %{message: message || ""})
+        struct!(Types.Action, actor_id: actor_id, verb: :shout, params: %{message: message || ""})
+    end
+  end
+
+  # Conversational register: aimed at one believed listener. Without a
+  # resolvable addressee, bare quoted words degrade to an ambient shout —
+  # saying something to no one in particular is a room broadcast.
+  defp parse_speak(world, actor_id, text) do
+    {addressee, message} = split_speech(text)
+
+    case addressee && resolve_believed(world, actor_id, addressee) do
+      {:ok, id} ->
+        speak_to(actor_id, id, message)
+
+      {:ambiguous, ids} ->
+        {:ambiguous, ids}
+
+      _broadcast ->
+        struct!(Types.Action, actor_id: actor_id, verb: :speak, params: %{message: message || ""})
     end
   end
 
@@ -272,7 +308,7 @@ defmodule Referee.Grammar do
 
     case seller_name && resolve_believed(world, actor_id, seller_name) do
       {:ok, id} ->
-        shout_to(actor_id, id, message)
+        speak_to(actor_id, id, message)
 
       {:ambiguous, ids} ->
         {:ambiguous, ids}
@@ -283,14 +319,18 @@ defmodule Referee.Grammar do
       _unspecified ->
         case room_provider(world, actor_id) do
           nil -> {:unclear, text}
-          id -> shout_to(actor_id, id, message)
+          id -> speak_to(actor_id, id, message)
         end
     end
   end
 
-  defp shout_to(actor_id, target_id, message) do
-    struct!(Types.Action, actor_id: actor_id, verb: :shout, target_id: target_id,
-      params: %{message: message || ""})
+  defp speak_to(actor_id, target_id, message) do
+    struct!(Types.Action,
+      actor_id: actor_id,
+      verb: :speak,
+      target_id: target_id,
+      params: %{message: message || ""}
+    )
   end
 
   # Quoted words are the message; otherwise the message is the body minus
@@ -317,9 +357,9 @@ defmodule Referee.Grammar do
 
         words =
           quoted || topic ||
-            (rest
-             |> String.replace(~r/\s*\b(?:to|at|towards?|with|from)\s+[a-z0-9'’ -]+$/i, "")
-             |> String.trim())
+            rest
+            |> String.replace(~r/\s*\b(?:to|at|towards?|with|from)\s+[a-z0-9'’ -]+$/i, "")
+            |> String.trim()
 
         {clean_name(name), words}
 
@@ -346,41 +386,41 @@ defmodule Referee.Grammar do
     |> String.trim()
   end
 
-# A purchase with no named seller addresses the room's provider: a
-# believed NPC whose dossier role is a service role. Salience only
-# breaks ties among equals — "buy a drink" reaches the innkeeper, not
-# whoever happens to be loudest.
-@provider_roles ~w(innkeeper barkeep bartender merchant shopkeeper trader
+  # A purchase with no named seller addresses the room's provider: a
+  # believed NPC whose dossier role is a service role. Salience only
+  # breaks ties among equals — "buy a drink" reaches the innkeeper, not
+  # whoever happens to be loudest.
+  @provider_roles ~w(innkeeper barkeep bartender merchant shopkeeper trader
   vendor smith blacksmith herbalist apothecary brewer proprietor steward)
 
-defp room_provider(world, actor_id) do
-  actor = world.agents[actor_id]
-  believed = actor && Map.get(actor.beliefs, actor.place_id, %{})
+  defp room_provider(world, actor_id) do
+    actor = world.agents[actor_id]
+    believed = actor && Map.get(actor.beliefs, actor.place_id, %{})
 
-  believed
-  |> Enum.reject(fn {id, _b} -> id == actor_id end)
-  |> Enum.filter(fn {id, _b} ->
-    a = world.agents[id]
-    a != nil and is_map(a.dossier) and map_size(a.dossier) > 0
-  end)
-  |> Enum.map(fn {id, b} -> {id, provider_rank(world.agents[id]), b[:salience] || 0} end)
-  |> Enum.max_by(fn {_id, rank, sal} -> {rank, sal} end, fn -> nil end)
-  |> case do
-    {id, _rank, _sal} -> id
-    nil -> nil
+    believed
+    |> Enum.reject(fn {id, _b} -> id == actor_id end)
+    |> Enum.filter(fn {id, _b} ->
+      a = world.agents[id]
+      a != nil and is_map(a.dossier) and map_size(a.dossier) > 0
+    end)
+    |> Enum.map(fn {id, b} -> {id, provider_rank(world.agents[id]), b[:salience] || 0} end)
+    |> Enum.max_by(fn {_id, rank, sal} -> {rank, sal} end, fn -> nil end)
+    |> case do
+      {id, _rank, _sal} -> id
+      nil -> nil
+    end
   end
-end
 
-defp provider_rank(agent) do
-  case agent && agent.dossier && agent.dossier["role"] do
-    role when is_binary(role) ->
-      r = String.downcase(role)
-      if Enum.any?(@provider_roles, &String.contains?(r, &1)), do: 1, else: 0
+  defp provider_rank(agent) do
+    case agent && agent.dossier && agent.dossier["role"] do
+      role when is_binary(role) ->
+        r = String.downcase(role)
+        if Enum.any?(@provider_roles, &String.contains?(r, &1)), do: 1, else: 0
 
-    _ ->
-      0
+      _ ->
+        0
+    end
   end
-end
 
   # "attack the goblin guard" -> "goblin guard"; strips articles and the verb.
   defp object_phrase(text) do

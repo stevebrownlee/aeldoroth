@@ -68,6 +68,22 @@ defmodule Referee.InterpretTest do
     assert audit.ok
   end
 
+  test "conversational question interprets to speak, not shout" do
+    json =
+      Jason.encode!(%{
+        "verb" => "speak",
+        "target_id" => "mara",
+        "params" => %{"message" => "who is Vaelith?"},
+        "assumptions" => []
+      })
+
+    {:ok, action, _assumptions, _ctx2, audit} =
+      Interpret.nl_to_action(ctx(%{interpret: [json]}), world(), "pc", "ask Mara about Vaelith")
+
+    assert %Types.Action{verb: :speak, target_id: "mara", params: %{message: "who is Vaelith?"}} = action
+    assert audit.class == :interpret and audit.parse_verdict == :ok
+  end
+
   test "grammar ambiguity becomes a lethal-ambiguity clarification" do
     {:clarify, msg, _ctx2, audit} = Interpret.nl_to_action(ctx(), world(), "pc", "attack the goblin")
 

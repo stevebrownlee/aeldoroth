@@ -5,7 +5,7 @@ defmodule Agents.DeliberateTest do
   alias EngineCore.Types
   alias LLMGateway.{Adapters.Scripted, Ctx, Request}
 
-  @caps [:move, :strike, :wait, :shout, :hide, :parley, :obey, :flee, :order]
+  @caps [:move, :strike, :wait, :shout, :speak, :hide, :parley, :obey, :flee, :order]
 
   defp slice(agent_id, over \\ %{}) do
     Map.merge(
@@ -239,7 +239,7 @@ defmodule Agents.DeliberateTest do
 
     assert {:ok, d} = Agents.deliberate("mara", %{slice: slice, ctx: %Ctx{routing: %{}}})
 
-    assert %Types.Action{verb: :shout, target_id: "pc_thistle"} = d.action
+    assert %Types.Action{verb: :speak, target_id: "pc_thistle"} = d.action
     assert d.action.params.message =~ "Green lights"
     assert d.reason =~ "Thistle"
     assert d.audit.parse_verdict == :fallback and d.audit.adapter == :heuristic
@@ -339,9 +339,11 @@ defmodule Agents.DeliberateTest do
 
   test "system prompt carries the organic reply rules and decision-88 contract verbatim" do
     {system, _user, _schema} = Agents.Prompt.deliberate(slice("mara"))
+    assert system =~
+             ~s(If someone just addressed you: verb "speak", their id as target_id, message = your spoken reply, aimed at that person alone.)
 
     assert system =~
-             ~s(If someone just addressed you: verb "shout", their id as target_id, message = your spoken reply, aimed at that person alone.)
+             ~s(Use verb "shout" only when the words must leave the room)
 
     assert system =~
              "If nobody addressed you and no active commitment demands speaking: verb \"wait\". Do not volunteer speech unprompted."

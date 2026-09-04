@@ -125,4 +125,19 @@ defmodule Referee.NarrateTest do
     {t3, _c, _a} = Narrate.action(ctx(), @prefs, "pc", ambient, {:ok, []})
     assert t3 =~ ~s(You shout: "hello")
   end
+
+  test "speak narration matches the shout delivery contract, quiet register" do
+    directed = struct!(Types.Action, actor_id: "pc", verb: :speak, target_id: "gob", params: %{message: "hello"})
+    wordless = struct!(Types.Action, actor_id: "pc", verb: :speak, target_id: "gob", params: %{message: ""})
+    ambient = struct!(Types.Action, actor_id: "pc", verb: :speak, target_id: nil, params: %{message: "hello"})
+
+    {t1, _c, _a} = Narrate.action(ctx(), @prefs, "pc", directed, {:ok, []}, target_name: "Gob")
+    assert t1 =~ ~s(You say to Gob: "hello")
+
+    {t2, _c, _a} = Narrate.action(ctx(), @prefs, "pc", wordless, {:ok, []}, target_name: "Gob")
+    assert t2 =~ "You address Gob"
+
+    {t3, _c, _a} = Narrate.action(ctx(), @prefs, "pc", ambient, {:ok, []})
+    assert t3 =~ ~s(You say: "hello")
+  end
 end

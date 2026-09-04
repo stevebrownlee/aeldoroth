@@ -10,7 +10,7 @@ defmodule Referee.PC do
 
   alias EngineCore.{Ledger, Types}
 
-  @pc_capabilities [:move, :strike, :wait, :shout]
+  @pc_capabilities [:move, :strike, :wait, :shout, :speak]
 
   @spec build(map()) :: Types.Agent.t()
   def build(pc_map) do

@@ -118,6 +118,19 @@ defmodule Referee.ValidateTest do
     ambient = struct!(Types.Action, actor_id: "pc", verb: :shout, target_id: nil, params: %{message: "hello"})
     assert :ok = Validate.check(world(), ambient)
   end
+  test "speak: unaddressed broadcast passes, unknown addressee rejects, believed passes" do
+    w = world()
+
+    no_target = struct!(Types.Action, actor_id: "pc", verb: :speak, params: %{message: "hello?"})
+    assert :ok = Validate.check(w, no_target)
+
+    unknown = struct!(Types.Action, actor_id: "pc", verb: :speak, target_id: "rat_1", params: %{message: "hi"})
+    assert {:reject, msg2} = Validate.check(w, unknown)
+    assert msg2 =~ "no one by that name"
+
+    believed = struct!(Types.Action, actor_id: "pc", verb: :speak, target_id: "gob", params: %{message: "hi"})
+    assert :ok = Validate.check(w, believed)
+  end
 
   test "directed shout at an unbelieved addressee is diegetically rejected" do
     a = struct!(Types.Action, actor_id: "pc", verb: :shout, target_id: "rat_1", params: %{message: "hello"})

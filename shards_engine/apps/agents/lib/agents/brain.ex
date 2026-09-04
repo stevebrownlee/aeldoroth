@@ -161,7 +161,7 @@ defmodule Agents.Brain do
   # watches. Facts stay engine-side — only phrasing is local.
   defp deliberate_heuristic(slice, agent_id, tick, req, audit, ctx2) do
     cond do
-      :shout not in Map.get(slice, :capabilities, []) ->
+      :speak not in Map.get(slice, :capabilities, []) ->
         hold(req, ctx2, audit, agent_id)
 
       # Someone addressed this agent: answer THEM, not the room.
@@ -173,7 +173,7 @@ defmodule Agents.Brain do
            action:
              struct!(EngineCore.Types.Action,
                actor_id: agent_id,
-               verb: :shout,
+               verb: :speak,
                target_id: addresser[:from_id],
                params: %{message: line}
              ),

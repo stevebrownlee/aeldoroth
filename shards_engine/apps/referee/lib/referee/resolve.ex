@@ -13,6 +13,10 @@ defmodule Referee.Resolve do
 
   alias EngineCore.{Dice, Envelopes, Fold, Ledger, Rules, Signals, Types, World}
 
+  # 1.2 stays under the propagation floor at the first hop (1.2 * 0.7 = 0.84
+  # < 1.0): a conversation is inaudible outside its own room. Shout at 7.0
+  # fans across the settlement (decision 76).
+  @speak_intensity 1.2
   @shout_intensity 7.0
 
   @doc """
@@ -25,7 +29,8 @@ defmodule Referee.Resolve do
     cond do
       target = action.target_id ->
         cond do
-          not is_map_key(world.places, target) -> {:error, :no_place}
+          not is_map_key(world.places, target) ->
+            {:error, :no_place}
 
           edge = find_edge(world, from_place, target, nil) ->
             if edge.sealed, do: {:error, :sealed}, else: {:ok, target}
@@ -60,8 +65,9 @@ defmodule Referee.Resolve do
       :wait -> {:ok, [], world, rng}
       :move -> act_move(world, rng, action)
       :strike -> act_strike(world, rng, action)
-      :shout -> act_shout(world, rng, action)
-:order -> act_order(world, rng, action)
+      :shout -> act_voiced(world, rng, action, @shout_intensity)
+      :speak -> act_speak(world, rng, action)
+      :order -> act_order(world, rng, action)
       # Capability-gated verbs without a resolver yet (:parley, :hide, :obey,
       # :flee are in tier-3 caps): the caller already ledgered the decision
       # row, so the moment is spent — never a crash into the owning Session.
@@ -97,7 +103,12 @@ defmodule Referee.Resolve do
           seq: 0,
           tick: world.tick,
           class: :world,
-          payload: %{kind: :belief_corrected, agent_id: actor_id, place_id: actor.place_id, about: target_id}
+          payload: %{
+            kind: :belief_corrected,
+            agent_id: actor_id,
+            place_id: actor.place_id,
+            about: target_id
+          }
         }
 
       {roll, rng2} = Dice.roll(rng, 20)
@@ -119,8 +130,19 @@ defmodule Referee.Resolve do
       end
     end
   end
+# Conversational speech: room-local volume. Directed words name their
+# addressee; unaddressed speech is a quiet room broadcast (same contract
+# as ambient shout, low intensity).
+defp act_speak(world, rng, action), do: act_voiced(world, rng, action, @speak_intensity)
 
-  defp act_shout(world, rng, %Types.Action{actor_id: actor_id, target_id: target_id, params: params}) do
+
+
+  defp act_voiced(
+         world,
+         rng,
+         %Types.Action{actor_id: actor_id, target_id: target_id, params: params},
+         intensity
+       ) do
     message = Map.get(params, :message, "")
     place = place_of(world, actor_id)
 
@@ -136,14 +158,18 @@ defmodule Referee.Resolve do
         place,
         :sound,
         core,
-        @shout_intensity,
+        intensity,
         message
       )
 
     {:ok, events, w2, rng}
   end
 
-  defp act_order(world, rng, %Types.Action{actor_id: actor_id, target_id: target_id, params: params}) do
+  defp act_order(world, rng, %Types.Action{
+         actor_id: actor_id,
+         target_id: target_id,
+         params: params
+       }) do
     message = Map.get(params, :message, "")
 
     {:ok, events, w2} =

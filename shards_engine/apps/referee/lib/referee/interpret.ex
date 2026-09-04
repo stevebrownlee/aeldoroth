@@ -15,7 +15,7 @@ defmodule Referee.Interpret do
   @schema %{
     type: :object,
     properties: %{
-      verb: %{type: :string, enum: ~w(move strike shout wait)},
+      verb: %{type: :string, enum: ~w(move strike speak shout wait)},
       target_id: %{type: :string, nullable: true},
       params: %{type: :object},
       assumptions: %{type: :array, items: %{type: :string}}
@@ -67,7 +67,9 @@ defmodule Referee.Interpret do
 
   # The interpretation stage succeeded via grammar; the audit records the
   # fallback verdict while keeping any tokens the failed LLM attempt spent.
-  defp fallback_audit(nil), do: %Audit{class: :interpret, adapter: :grammar, parse_verdict: :fallback, ok: true}
+  defp fallback_audit(nil),
+    do: %Audit{class: :interpret, adapter: :grammar, parse_verdict: :fallback, ok: true}
+
   defp fallback_audit(%Audit{} = a), do: %Audit{a | parse_verdict: :fallback, ok: true}
 
   defp to_action(parsed, actor_id) do
@@ -93,13 +95,14 @@ defmodule Referee.Interpret do
     """
     You are the referee's intent interpreter for a tabletop RPG. Convert the
     player's utterance into one action. Respond ONLY with a JSON object:
-    {"verb": "move" | "strike" | "shout" | "wait", "target_id": string | null,
+    {"verb": "move" | "strike" | "speak" | "shout" | "wait", "target_id": string | null,
     "params": {"direction": string | null, "message": string | null},
     "assumptions": [string]}.
     Verbs:
     - "move": moving, walking, exploring in a direction (params.direction: "north", "south", "east", "west", "up", "down", etc.) or heading toward an exit/room
     - "strike": attacking, fighting, or striking a target (target_id must be from believed list)
-    - "shout": speaking, saying, asking, talking, calling out, greeting, questioning, or addressing someone (params.message: the spoken text or inquiry, target_id: target agent id if addressing someone specific, or null)
+    - "speak": talking WITH someone in the room — asking, questioning, telling, answering, greeting, conversing, addressing someone (target_id: the person's id from the believed list; params.message: the spoken text or question). This is the normal register for conversation: only people in the same room hear it.
+    - "shout": yelling or proclaiming so the whole area hears — calling out, demanding attention, making an announcement (params.message: the spoken text; target_id only when directed at one specific person)
     - "wait": waiting, pausing, resting, examining, searching, or looking around (params: {})
     target_id must be an id from the believed list you are given — never invent one.
     """

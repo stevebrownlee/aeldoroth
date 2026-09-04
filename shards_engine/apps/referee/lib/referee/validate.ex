@@ -12,10 +12,11 @@ defmodule Referee.Validate do
   alias Referee.Resolve
 
   @doc """
-  Speech is not capability-gated: any living agent can shout. Physical verbs
-  (`:move`, `:strike`, …) must appear in the actor's capabilities.
+  Speech is not capability-gated: any living agent can speak or shout.
+  Physical verbs (`:move`, `:strike`, …) must appear in the actor's
+  capabilities.
   """
-  @universal ~w(shout)a
+  @universal ~w(shout speak)a
 
   @spec check(World.t(), Types.Action.t()) :: :ok | {:reject, String.t()}
   def check(world, %Types.Action{actor_id: actor_id, verb: verb} = action) do
@@ -40,7 +41,7 @@ defmodule Referee.Validate do
       verb == :order ->
         check_order(actor, action)
 
-      verb == :shout ->
+      verb in [:shout, :speak] ->
         check_shout(actor, action)
 
       true ->

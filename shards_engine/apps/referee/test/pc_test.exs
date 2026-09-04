@@ -20,7 +20,7 @@ defmodule Referee.PCTest do
 
     assert pc.id == "pc_thistle"
     assert pc.tier == 3
-    assert pc.capabilities == [:move, :strike, :wait, :shout]
+    assert pc.capabilities == [:move, :strike, :wait, :shout, :speak]
     assert pc.beliefs == %{}
     assert pc.cadence == nil
     assert pc.attention == :alert

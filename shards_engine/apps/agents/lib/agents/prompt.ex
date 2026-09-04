@@ -35,7 +35,8 @@ defmodule Agents.Prompt do
     - Speak only from your persona, what you have perceived, and general
       common-sense life experience of your station. Never invent world facts
       (names, places, magic) beyond them.
-    - If someone just addressed you: verb "shout", their id as target_id, message = your spoken reply, aimed at that person alone.
+    - If someone just addressed you: verb "speak", their id as target_id, message = your spoken reply, aimed at that person alone.
+    - Use verb "shout" only when the words must leave the room — a warning, a cry for help, an announcement to the area.
     - If nobody addressed you and no active commitment demands speaking: verb "wait". Do not volunteer speech unprompted.
     - When your action this turn performs one of your own commitments whose due
       tick has arrived, include "commitment_id": "<its id from Commitments>" so

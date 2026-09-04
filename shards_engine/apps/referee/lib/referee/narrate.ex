@@ -48,7 +48,13 @@ defmodule Referee.Narrate do
       |> Enum.reject(&(&1 == ""))
 
     {Enum.join(lines, " "), ctx,
-     %Audit{class: :narrate, adapter: :template, parse_verdict: :skipped, ok: true, agent_id: pc_id}}
+     %Audit{
+       class: :narrate,
+       adapter: :template,
+       parse_verdict: :skipped,
+       ok: true,
+       agent_id: pc_id
+     }}
   end
 
   ## LLM path
@@ -93,7 +99,6 @@ defmodule Referee.Narrate do
     """
   end
 
-
   ## Deterministic templates (decision 31)
 
   defp template(%Types.Action{verb: :wait, params: %{hesitant: true}}, _resolution, _opts),
@@ -108,8 +113,10 @@ defmodule Referee.Narrate do
   defp template(%Types.Action{verb: :move, params: params}, _resolution, _opts),
     do: "You go #{Map.get(params, :direction, "on")}."
 
-  defp template(%Types.Action{verb: :shout, target_id: tid} = action, _resolution, opts)
-       when is_binary(tid) do
+  # Speech registers share one delivery contract (decision 88): directed
+  # words address one person, ambient words quote the room line.
+  defp template(%Types.Action{verb: verb, target_id: tid} = action, _resolution, opts)
+       when is_binary(tid) and verb in [:shout, :speak] do
     who = Keyword.get(opts, :target_name, tid)
 
     case Map.get(action.params, :message, "") do
@@ -120,6 +127,9 @@ defmodule Referee.Narrate do
 
   defp template(%Types.Action{verb: :shout, params: params}, _resolution, _opts),
     do: "You shout: \"#{Map.get(params, :message, "")}\""
+
+  defp template(%Types.Action{verb: :speak, params: params}, _resolution, _opts),
+    do: "You say: \"#{Map.get(params, :message, "")}\""
 
   defp template(%Types.Action{verb: :strike}, {:diegetic_fail, events}, _opts) do
     if Enum.any?(events, &(&1.payload[:kind] == :belief_corrected)) do
@@ -161,8 +171,8 @@ defmodule Referee.Narrate do
     end
   end
 
-
   defp hit_phrase(nil), do: "You land a blow."
+
   defp hit_phrase(%Ledger.Event{payload: %{amount: amount, target_id: target}}),
     do: "You strike #{target} for #{amount} damage."
 
@@ -190,7 +200,6 @@ defmodule Referee.Narrate do
   end
 
   defp rich?(prefs), do: prefs[:narration_style] == "rich"
-
 
   defp outcome_word({:ok, _}), do: "succeeds"
   defp outcome_word({:diegetic_fail, _}), do: "fails in the fiction"
